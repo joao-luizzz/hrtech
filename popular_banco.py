@@ -475,14 +475,27 @@ def criar_vagas_exemplo():
 def limpar_dados():
     """
     Limpa todos os dados existentes (PostgreSQL e Neo4j).
+    
+    ATENÇÃO: Esta função é para ambiente de DESENVOLVIMENTO/TESTE.
+    Não limpa Users do Django para evitar deletar superusers.
+    
+    O model Candidato tem OneToOneField(User, null=True), então:
+    - Candidatos criados pelo script NÃO têm User associado
+    - Se houver candidatos com User, o User permanecerá (órfão)
     """
+    from core.models import AuditoriaMatch
+    
     print("Limpando dados existentes...")
     
-    # PostgreSQL
+    # PostgreSQL - ordem importa por causa das FKs
+    # 1. Primeiro AuditoriaMatch (referencia Candidato e Vaga)
+    AuditoriaMatch.objects.all().delete()
+    
+    # 2. Depois Candidato e Vaga
     Candidato.objects.all().delete()
     Vaga.objects.all().delete()
     
-    # Neo4j
+    # Neo4j - limpa todos os nós e relações
     driver = get_neo4j_driver()
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
