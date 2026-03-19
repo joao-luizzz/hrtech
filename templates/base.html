@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HRTech ATS{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--primary-gradient);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }
+
+        /* Status badges */
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-pendente { background-color: #f8f9fa; color: #6c757d; }
+        .status-recebido { background-color: #cfe2ff; color: #0a58ca; }
+        .status-processando { background-color: #fff3cd; color: #997404; }
+        .status-extraindo { background-color: #d1e7dd; color: #0f5132; }
+        .status-concluido { background-color: #d1e7dd; color: #0f5132; }
+        .status-erro { background-color: #f8d7da; color: #842029; }
+
+        /* Spinner */
+        .spinner-grow-sm {
+            width: 0.75rem;
+            height: 0.75rem;
+        }
+
+        /* Animação de fade */
+        .htmx-settling {
+            opacity: 0;
+        }
+
+        .htmx-added {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Progress steps */
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+            background-color: #e7f1ff;
+        }
+
+        .progress-step.completed {
+            background-color: #d1e7dd;
+        }
+
+        .progress-step.error {
+            background-color: #f8d7da;
+        }
+
+        .step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'core:home' %}">
+                <i class="bi bi-people-fill"></i>
+                <span>HRTech ATS</span>
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'core:upload_cv' %}">
+                    <i class="bi bi-cloud-upload"></i> Upload CV
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-muted py-4 mt-5">
+        <small>HRTech ATS &copy; 2024 - Sistema de Recomendação de Candidatos</small>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <script>
+        // Configuração global HTMX
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            // Adiciona CSRF token em todas as requisições
+            evt.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+
+        // Para o polling quando processamento completar
+        document.body.addEventListener('processingComplete', function() {
+            console.log('Processamento completo!');
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

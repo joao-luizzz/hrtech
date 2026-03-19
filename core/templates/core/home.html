@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}HRTech ATS - Sistema de Recomendação de Candidatos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Hero -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold mb-3">
+                <i class="bi bi-people-fill text-primary"></i>
+                HRTech ATS
+            </h1>
+            <p class="lead text-muted">
+                Sistema inteligente de recomendação de candidatos usando grafos e IA
+            </p>
+        </div>
+
+        <!-- Cards de ação -->
+        <div class="row g-4">
+            <!-- Upload CV -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-cloud-upload display-4 text-primary"></i>
+                        </div>
+                        <h5 class="card-title">Upload de Currículo</h5>
+                        <p class="card-text text-muted">
+                            Envie seu CV em PDF e nossa IA extrairá suas habilidades automaticamente
+                        </p>
+                        <a href="{% url 'core:upload_cv' %}" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Enviar CV
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matching -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-diagram-3 display-4 text-success"></i>
+                        </div>
+                        <h5 class="card-title">Matching Inteligente</h5>
+                        <p class="card-text text-muted">
+                            Algoritmo de 3 camadas com grafo Neo4j para encontrar os melhores candidatos
+                        </p>
+                        <a href="{% url 'admin:index' %}" class="btn btn-outline-success">
+                            <i class="bi bi-box-arrow-in-right"></i> Acessar Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="card mt-5">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-4">
+                    <i class="bi bi-stars text-warning"></i> Funcionalidades
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-cpu text-primary fs-4"></i>
+                            <div>
+                                <h6 class="mb-1">Extração com IA</h6>
+                                <small class="text-muted">GPT-4o-mini analisa CVs e extrai habilidades automaticamente</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-diagram-2 text-success fs-4"></i>
+                            <div>
+                                <h6 class="mb-1">Grafo de Skills</h6>
+                                <small class="text-muted">Neo4j mapeia relações entre habilidades similares</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-speedometer2 text-info fs-4"></i>
+                            <div>
+                                <h6 class="mb-1">Score 0-100</h6>
+                                <small class="text-muted">Ranking preciso com match direto + similaridade + perfil</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3">
+                            <i class="bi bi-shield-check text-danger fs-4"></i>
+                            <div>
+                                <h6 class="mb-1">LGPD Compliant</h6>
+                                <small class="text-muted">Dados pessoais mascarados antes de processar</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

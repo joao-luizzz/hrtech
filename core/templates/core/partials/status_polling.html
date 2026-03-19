@@ -1,0 +1,195 @@
+{% comment %}
+HRTech - Partial: Status Polling (HTMX)
+=======================================
+
+Este partial é atualizado a cada 3 segundos via hx-get
+até que o status seja CONCLUIDO ou ERRO.
+
+Variáveis de contexto:
+    - candidato: objeto Candidato
+    - candidato_id: UUID como string
+    - finalizado: bool (True se CONCLUIDO ou ERRO)
+
+Comportamento HTMX:
+    - hx-get: busca status atualizado
+    - hx-trigger: "every 3s" (para quando finalizado)
+    - hx-swap: substitui este div
+
+Decisão: Polling ao invés de WebSocket
+Razão: Simplicidade, funciona sem infra adicional
+{% endcomment %}
+
+{% if not finalizado %}
+{# Ainda processando - continua polling #}
+<div hx-get="{% url 'core:status_cv_htmx' candidato_id %}"
+     hx-trigger="every 3s"
+     hx-swap="outerHTML"
+     class="p-4">
+{% else %}
+{# Finalizado - para o polling #}
+<div class="p-4">
+{% endif %}
+
+    <!-- Header com status -->
+    <div class="text-center mb-4">
+        {% if candidato.status_cv == 'recebido' %}
+            <div class="status-badge status-recebido">
+                <span class="spinner-grow spinner-grow-sm"></span>
+                CV Recebido - Aguardando processamento
+            </div>
+        {% elif candidato.status_cv == 'processando' %}
+            <div class="status-badge status-processando">
+                <span class="spinner-grow spinner-grow-sm"></span>
+                Lendo PDF...
+            </div>
+        {% elif candidato.status_cv == 'extraindo' %}
+            <div class="status-badge status-extraindo">
+                <span class="spinner-grow spinner-grow-sm"></span>
+                Extraindo habilidades com IA...
+            </div>
+        {% elif candidato.status_cv == 'concluido' %}
+            <div class="status-badge status-concluido">
+                <i class="bi bi-check-circle-fill"></i>
+                Processamento Concluído!
+            </div>
+        {% elif candidato.status_cv == 'erro' %}
+            <div class="status-badge status-erro">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                Erro no Processamento
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="mb-4">
+        <!-- Step 1: Recebido -->
+        <div class="progress-step {% if candidato.status_cv != 'pendente' %}completed{% endif %}">
+            <div class="step-icon bg-{% if candidato.status_cv != 'pendente' %}success text-white{% else %}light{% endif %}">
+                {% if candidato.status_cv != 'pendente' %}
+                    <i class="bi bi-check"></i>
+                {% else %}
+                    <i class="bi bi-cloud-upload"></i>
+                {% endif %}
+            </div>
+            <div>
+                <strong>Upload Recebido</strong>
+                <div class="small text-muted">CV enviado com sucesso</div>
+            </div>
+        </div>
+
+        <!-- Step 2: Processando -->
+        <div class="progress-step
+            {% if candidato.status_cv == 'processando' %}active{% endif %}
+            {% if candidato.status_cv in 'extraindo,concluido' %}completed{% endif %}
+            {% if candidato.status_cv == 'erro' %}error{% endif %}">
+            <div class="step-icon
+                {% if candidato.status_cv == 'processando' %}bg-warning text-dark{% elif candidato.status_cv in 'extraindo,concluido' %}bg-success text-white{% elif candidato.status_cv == 'erro' %}bg-danger text-white{% else %}bg-light{% endif %}">
+                {% if candidato.status_cv == 'processando' %}
+                    <span class="spinner-border spinner-border-sm"></span>
+                {% elif candidato.status_cv in 'extraindo,concluido' %}
+                    <i class="bi bi-check"></i>
+                {% elif candidato.status_cv == 'erro' %}
+                    <i class="bi bi-x"></i>
+                {% else %}
+                    <i class="bi bi-file-text"></i>
+                {% endif %}
+            </div>
+            <div>
+                <strong>Leitura do PDF</strong>
+                <div class="small text-muted">
+                    {% if candidato.status_cv == 'processando' %}
+                        Extraindo texto do documento...
+                    {% elif candidato.status_cv in 'extraindo,concluido' %}
+                        Texto extraído com sucesso
+                    {% elif candidato.status_cv == 'erro' %}
+                        Falha na leitura do PDF
+                    {% else %}
+                        Aguardando...
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Extraindo -->
+        <div class="progress-step
+            {% if candidato.status_cv == 'extraindo' %}active{% endif %}
+            {% if candidato.status_cv == 'concluido' %}completed{% endif %}">
+            <div class="step-icon
+                {% if candidato.status_cv == 'extraindo' %}bg-info text-white{% elif candidato.status_cv == 'concluido' %}bg-success text-white{% else %}bg-light{% endif %}">
+                {% if candidato.status_cv == 'extraindo' %}
+                    <span class="spinner-border spinner-border-sm"></span>
+                {% elif candidato.status_cv == 'concluido' %}
+                    <i class="bi bi-check"></i>
+                {% else %}
+                    <i class="bi bi-cpu"></i>
+                {% endif %}
+            </div>
+            <div>
+                <strong>Análise com IA</strong>
+                <div class="small text-muted">
+                    {% if candidato.status_cv == 'extraindo' %}
+                        GPT-4o-mini identificando habilidades...
+                    {% elif candidato.status_cv == 'concluido' %}
+                        Habilidades extraídas com sucesso
+                    {% else %}
+                        Aguardando...
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Concluído -->
+        <div class="progress-step {% if candidato.status_cv == 'concluido' %}completed{% endif %}">
+            <div class="step-icon {% if candidato.status_cv == 'concluido' %}bg-success text-white{% else %}bg-light{% endif %}">
+                {% if candidato.status_cv == 'concluido' %}
+                    <i class="bi bi-check"></i>
+                {% else %}
+                    <i class="bi bi-diagram-3"></i>
+                {% endif %}
+            </div>
+            <div>
+                <strong>Salvo no Grafo</strong>
+                <div class="small text-muted">
+                    {% if candidato.status_cv == 'concluido' %}
+                        Perfil pronto para matching!
+                    {% else %}
+                        Aguardando...
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagem final -->
+    {% if candidato.status_cv == 'concluido' %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle-fill"></i>
+            <strong>Sucesso!</strong> Seu currículo foi processado.
+            <br>
+            <small class="text-muted">
+                Senioridade detectada: <strong>{{ candidato.senioridade|title }}</strong>
+                {% if candidato.anos_experiencia %}
+                    | {{ candidato.anos_experiencia }} anos de experiência
+                {% endif %}
+            </small>
+        </div>
+        <div class="d-grid gap-2">
+            <a href="{% url 'core:upload_cv' %}" class="btn btn-outline-primary">
+                <i class="bi bi-upload"></i> Enviar outro CV
+            </a>
+        </div>
+    {% elif candidato.status_cv == 'erro' %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Erro!</strong> Não foi possível processar o currículo.
+            <br>
+            <small>Possíveis causas: PDF protegido por senha, arquivo corrompido ou sem texto legível.</small>
+        </div>
+        <div class="d-grid gap-2">
+            <a href="{% url 'core:upload_cv' %}" class="btn btn-danger">
+                <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
+            </a>
+        </div>
+    {% endif %}
+
+</div>

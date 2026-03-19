@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload de Currículo - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-cloud-upload text-primary"></i>
+                    Upload de Currículo
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Área de resultado HTMX -->
+                <div id="upload-result">
+                    <!-- Formulário de upload -->
+                    <form hx-post="{% url 'core:processar_upload' %}"
+                          hx-target="#upload-result"
+                          hx-swap="innerHTML"
+                          hx-indicator="#upload-spinner"
+                          enctype="multipart/form-data"
+                          class="needs-validation"
+                          novalidate>
+                        {% csrf_token %}
+
+                        <!-- Nome -->
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">
+                                <i class="bi bi-person"></i> Nome Completo
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="nome"
+                                   name="nome"
+                                   placeholder="João da Silva"
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor, informe seu nome.
+                            </div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="bi bi-envelope"></i> Email
+                            </label>
+                            <input type="email"
+                                   class="form-control"
+                                   id="email"
+                                   name="email"
+                                   placeholder="joao@exemplo.com"
+                                   required>
+                            <div class="invalid-feedback">
+                                Por favor, informe um email válido.
+                            </div>
+                        </div>
+
+                        <!-- Upload CV -->
+                        <div class="mb-4">
+                            <label for="cv" class="form-label">
+                                <i class="bi bi-file-earmark-pdf"></i> Currículo (PDF)
+                            </label>
+                            <input type="file"
+                                   class="form-control"
+                                   id="cv"
+                                   name="cv"
+                                   accept=".pdf"
+                                   required>
+                            <div class="form-text">
+                                Arquivo PDF, máximo 10MB
+                            </div>
+                            <div class="invalid-feedback">
+                                Por favor, selecione um arquivo PDF.
+                            </div>
+                        </div>
+
+                        <!-- Botão Submit -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <span id="upload-spinner" class="htmx-indicator">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Enviando...
+                                </span>
+                                <span class="htmx-hide-on-request">
+                                    <i class="bi bi-upload"></i> Enviar Currículo
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Info LGPD -->
+                <div class="alert alert-info mt-4 mb-0">
+                    <i class="bi bi-shield-check"></i>
+                    <strong>Privacidade:</strong> Seus dados pessoais (CPF, RG, etc) são
+                    automaticamente removidos antes do processamento por IA, em conformidade com a LGPD.
+                </div>
+            </div>
+        </div>
+
+        <!-- Como funciona -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-info-circle text-info"></i> Como funciona?
+                </h6>
+                <ol class="mb-0 small text-muted">
+                    <li>Envie seu currículo em PDF</li>
+                    <li>Nossa IA extrai o texto (com OCR se necessário)</li>
+                    <li>GPT-4o-mini identifica suas habilidades e nível</li>
+                    <li>Suas skills são salvas no grafo para matching inteligente</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Esconde conteúdo durante loading HTMX */
+    .htmx-hide-on-request {
+        display: inline;
+    }
+    .htmx-request .htmx-hide-on-request {
+        display: none;
+    }
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Validação Bootstrap
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+
+    // Valida tamanho do arquivo
+    document.getElementById('cv').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file && file.size > 10 * 1024 * 1024) {
+            alert('Arquivo muito grande. Máximo: 10MB');
+            e.target.value = '';
+        }
+    });
+</script>
+{% endblock %}

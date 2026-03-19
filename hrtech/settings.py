@@ -146,6 +146,16 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_TIME_LIMIT = 300  # 5 minutos máximo por task
 CELERY_TASK_SOFT_TIME_LIMIT = 240  # Warning aos 4 minutos
 
+# Rate limiting para tasks de OpenAI (protege contra 429)
+CELERY_TASK_ANNOTATIONS = {
+    'core.tasks.chamar_openai_task': {
+        'rate_limit': '20/m',  # Máximo 20 chamadas por minuto
+    },
+}
+
+# Celery Beat - Scheduler
+CELERY_BEAT_SCHEDULER = 'celery.beat:PersistentScheduler'
+
 # =============================================================================
 # OPENAI - Extração de Habilidades (Fase 3)
 # =============================================================================
@@ -170,10 +180,18 @@ USE_I18N = True
 USE_TZ = True
 
 # =============================================================================
-# ARQUIVOS ESTÁTICOS
+# ARQUIVOS ESTÁTICOS E MEDIA
 # =============================================================================
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Upload de arquivos (CVs antes de ir pro S3)
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Limite de upload (10MB para PDFs)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 
 # =============================================================================
 # CONFIGURAÇÕES GERAIS
