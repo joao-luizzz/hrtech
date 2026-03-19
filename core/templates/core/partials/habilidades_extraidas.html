@@ -1,0 +1,10 @@
+<!-- Partial: Habilidades extraídas (para polling HTMX) -->
+
+{% if candidato.status_cv == 'concluido' %}
+    {% if habilidades %}
+    <!-- Recarrega a página quando processamento terminar -->
+    <script>window.location.reload();</script>
+    {% endif %}
+{% elif candidato.status_cv == 'erro' %}
+    <script>window.location.reload();</script>
+{% endif %}

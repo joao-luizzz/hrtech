@@ -1,0 +1,115 @@
+<!-- Partial: Ranking de candidatos após matching -->
+<!-- Renderizado via HTMX após POST em rodar_matching -->
+
+{% if resultados %}
+<div class="p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0 text-success">
+            <i class="bi bi-check-circle me-1"></i>
+            {{ total }} candidatos encontrados
+        </h6>
+        <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-arrow-up-right"></i> Ver página completa
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Candidato</th>
+                    <th class="text-center">Score</th>
+                    <th class="text-center">C1</th>
+                    <th class="text-center">C2</th>
+                    <th class="text-center">C3</th>
+                    <th class="text-center">Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in resultados|slice:":10" %}
+                <tr>
+                    <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <div>{{ r.candidato_nome }}</div>
+                        <small class="text-muted">{{ r.candidato_senioridade|title }}</small>
+                    </td>
+                    <td class="text-center">
+                        {% if r.score_final >= 80 %}
+                            <span class="badge bg-success fs-6">{{ r.score_final|floatformat:1 }}</span>
+                        {% elif r.score_final >= 60 %}
+                            <span class="badge bg-warning text-dark fs-6">{{ r.score_final|floatformat:1 }}</span>
+                        {% else %}
+                            <span class="badge bg-danger fs-6">{{ r.score_final|floatformat:1 }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">{{ r.breakdown.camada_1|floatformat:0 }}</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">{{ r.breakdown.camada_2|floatformat:0 }}</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">{{ r.breakdown.camada_3|floatformat:0 }}</small>
+                    </td>
+                    <td class="text-center">
+                        {% if r.candidato_disponivel %}
+                            <span class="badge bg-success-subtle text-success">Disponível</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">Indisponível</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'core:detalhe_match' vaga.id r.candidato_id %}"
+                           class="btn btn-sm btn-outline-primary"
+                           hx-get="{% url 'core:detalhe_match' vaga.id r.candidato_id %}"
+                           hx-target="#modal-body"
+                           hx-swap="innerHTML"
+                           data-bs-toggle="modal"
+                           data-bs-target="#matchModal">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if resultados|length > 10 %}
+    <div class="text-center mt-2">
+        <small class="text-muted">
+            Exibindo 10 de {{ total }} candidatos.
+            <a href="{% url 'core:ranking_candidatos' vaga.id %}">Ver todos</a>
+        </small>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="p-4 text-center text-muted">
+    <i class="bi bi-emoji-frown display-4 d-block mb-2"></i>
+    Nenhum candidato compatível encontrado para esta vaga.
+    <br>
+    <small>Verifique se há candidatos com CVs processados.</small>
+</div>
+{% endif %}
+
+<!-- Modal para detalhes (Bootstrap 5) -->
+<div class="modal fade" id="matchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Match</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard RH - HRTech{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-0">
+            <i class="bi bi-clipboard2-data me-2"></i>Dashboard RH
+        </h2>
+        <p class="text-muted">Gerencie vagas e execute matching de candidatos</p>
+    </div>
+    <div class="col-auto">
+        <a href="{% url 'core:pipeline_kanban' %}" class="btn btn-outline-primary">
+            <i class="bi bi-kanban me-1"></i>Pipeline Kanban
+        </a>
+    </div>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 text-primary mb-2">{{ stats.vagas_abertas }}</div>
+                <div class="text-muted">Vagas Abertas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 text-success mb-2">{{ stats.candidatos_processados }}</div>
+                <div class="text-muted">CVs Processados</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 text-info mb-2">{{ stats.candidatos_total }}</div>
+                <div class="text-muted">Total Candidatos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 text-warning mb-2">{{ stats.matches_realizados }}</div>
+                <div class="text-muted">Matches Realizados</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Vagas -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Vagas</h5>
+        <span class="badge bg-secondary">{{ vagas|length }} vagas</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Título</th>
+                        <th>Área</th>
+                        <th>Senioridade</th>
+                        <th>Skills</th>
+                        <th>Status</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vaga in vagas %}
+                    <tr>
+                        <td>
+                            <strong>{{ vaga.titulo }}</strong>
+                            {% if vaga.descricao %}
+                            <br><small class="text-muted">{{ vaga.descricao|truncatewords:10 }}</small>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-primary">{{ vaga.area }}</span></td>
+                        <td>
+                            {% if vaga.senioridade_desejada == 'junior' %}
+                                <span class="badge bg-success">Júnior</span>
+                            {% elif vaga.senioridade_desejada == 'pleno' %}
+                                <span class="badge bg-warning text-dark">Pleno</span>
+                            {% else %}
+                                <span class="badge bg-danger">Sênior</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>
+                            {% for skill in vaga.skills_obrigatorias %}
+                                <span class="badge bg-light text-dark me-1">{{ skill.nome }}</span>
+                            {% empty %}
+                                <span class="text-muted">-</span>
+                            {% endfor %}
+                            </small>
+                        </td>
+                        <td>
+                            {% if vaga.status == 'aberta' %}
+                                <span class="badge bg-success">Aberta</span>
+                            {% elif vaga.status == 'pausada' %}
+                                <span class="badge bg-warning text-dark">Pausada</span>
+                            {% elif vaga.status == 'fechada' %}
+                                <span class="badge bg-secondary">Fechada</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">Rascunho</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button"
+                                        class="btn btn-primary"
+                                        hx-post="{% url 'core:rodar_matching' vaga.id %}"
+                                        hx-target="#matching-results-{{ vaga.id }}"
+                                        hx-swap="innerHTML"
+                                        hx-indicator="#spinner-{{ vaga.id }}"
+                                        {% if not vaga.skills_obrigatorias %}disabled{% endif %}>
+                                    <span id="spinner-{{ vaga.id }}" class="spinner-border spinner-border-sm htmx-indicator me-1"></span>
+                                    <i class="bi bi-lightning"></i> Matching
+                                </button>
+                                <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-list-ol"></i> Ranking
+                                </a>
+                                <a href="{% url 'core:pipeline_kanban_vaga' vaga.id %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-kanban"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr id="matching-results-{{ vaga.id }}" class="bg-light">
+                        <td colspan="6" class="p-0">
+                            <!-- Resultados do matching aparecem aqui via HTMX -->
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                            Nenhuma vaga cadastrada
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+    .htmx-request.htmx-indicator {
+        display: inline-block;
+    }
+</style>
+{% endblock %}

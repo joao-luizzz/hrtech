@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Pipeline Kanban{% if vaga %} - {{ vaga.titulo }}{% endif %} - HRTech{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'core:dashboard_rh' %}">Dashboard RH</a></li>
+                <li class="breadcrumb-item active">Pipeline</li>
+            </ol>
+        </nav>
+        <h2 class="mb-1">
+            <i class="bi bi-kanban me-2"></i>Pipeline Kanban
+        </h2>
+        {% if vaga %}
+        <p class="text-muted mb-0">
+            {{ vaga.titulo }} |
+            <span class="badge bg-primary">{{ vaga.area }}</span>
+            <span class="badge bg-secondary">{{ vaga.senioridade_desejada|title }}</span>
+        </p>
+        {% else %}
+        <p class="text-muted mb-0">Todos os candidatos | {{ total }} total</p>
+        {% endif %}
+    </div>
+    <div class="col-auto">
+        {% if vaga %}
+        <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="btn btn-outline-primary">
+            <i class="bi bi-list-ol me-1"></i>Ver Ranking
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Kanban Board -->
+<div class="row g-3">
+    <!-- Coluna: Novo -->
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between">
+                <span><i class="bi bi-inbox me-1"></i>Novo</span>
+                <span class="badge bg-light text-dark">{{ pipeline.novo|length }}</span>
+            </div>
+            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
+                {% for candidato in pipeline.novo %}
+                <div class="card mb-2 kanban-card" draggable="true" data-id="{{ candidato.id }}">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1">{{ candidato.nome }}</h6>
+                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="mt-2">
+                            <span class="badge bg-light text-dark">{{ candidato.senioridade|title }}</span>
+                            {% if candidato.status_cv == 'pendente' %}
+                            <span class="badge bg-secondary">Sem CV</span>
+                            {% else %}
+                            <span class="badge bg-info">CV Recebido</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3">
+                    <small>Nenhum candidato</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna: Em Análise -->
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between">
+                <span><i class="bi bi-hourglass-split me-1"></i>Em Análise</span>
+                <span class="badge bg-light text-dark">{{ pipeline.em_analise|length }}</span>
+            </div>
+            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
+                {% for candidato in pipeline.em_analise %}
+                <div class="card mb-2 kanban-card border-warning" draggable="true" data-id="{{ candidato.id }}">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1">{{ candidato.nome }}</h6>
+                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="mt-2">
+                            <span class="badge bg-warning text-dark">
+                                {% if candidato.status_cv == 'processando' %}
+                                    <span class="spinner-border spinner-border-sm me-1"></span>Lendo PDF
+                                {% else %}
+                                    <span class="spinner-border spinner-border-sm me-1"></span>Extraindo
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3">
+                    <small>Nenhum candidato</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna: Aprovado -->
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white d-flex justify-content-between">
+                <span><i class="bi bi-check-circle me-1"></i>Aprovado</span>
+                <span class="badge bg-light text-dark">{{ pipeline.aprovado|length }}</span>
+            </div>
+            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
+                {% for candidato in pipeline.aprovado %}
+                <div class="card mb-2 kanban-card border-success" draggable="true" data-id="{{ candidato.id }}">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1">{{ candidato.nome }}</h6>
+                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="mt-2">
+                            <span class="badge bg-success">CV Processado</span>
+                            <span class="badge bg-light text-dark">{{ candidato.senioridade|title }}</span>
+                        </div>
+                        <div class="mt-2">
+                            <a href="{% url 'core:dashboard_candidato' candidato.id %}"
+                               class="btn btn-sm btn-outline-primary w-100">
+                                <i class="bi bi-eye"></i> Ver Perfil
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3">
+                    <small>Nenhum candidato</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna: Reprovado -->
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-header bg-danger text-white d-flex justify-content-between">
+                <span><i class="bi bi-x-circle me-1"></i>Reprovado</span>
+                <span class="badge bg-light text-dark">{{ pipeline.reprovado|length }}</span>
+            </div>
+            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
+                {% for candidato in pipeline.reprovado %}
+                <div class="card mb-2 kanban-card border-danger" draggable="true" data-id="{{ candidato.id }}">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1 text-muted">{{ candidato.nome }}</h6>
+                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="mt-2">
+                            {% if candidato.status_cv == 'erro' %}
+                            <span class="badge bg-danger">Erro no CV</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Indisponível</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3">
+                    <small>Nenhum candidato</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kanban-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .kanban-column {
+        min-height: 200px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}

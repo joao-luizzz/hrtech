@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ candidato.nome }} - HRTech{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-1">
+            <i class="bi bi-person-circle me-2"></i>{{ candidato.nome }}
+        </h2>
+        <p class="text-muted mb-0">{{ candidato.email }}</p>
+    </div>
+    <div class="col-auto">
+        {% if candidato.status_cv == 'pendente' %}
+        <a href="{% url 'core:upload_cv' %}?candidato={{ candidato.id }}" class="btn btn-primary">
+            <i class="bi bi-upload me-1"></i>Enviar CV
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Coluna Principal -->
+    <div class="col-lg-8">
+        <!-- Status do Processamento -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-pdf me-2"></i>Status do CV</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    {% if candidato.status_cv == 'pendente' %}
+                        <span class="badge bg-secondary fs-6 me-3">Pendente</span>
+                        <span class="text-muted">Nenhum CV enviado ainda</span>
+                    {% elif candidato.status_cv == 'recebido' %}
+                        <span class="badge bg-info fs-6 me-3">
+                            <span class="spinner-border spinner-border-sm me-1"></span>Recebido
+                        </span>
+                        <span class="text-muted">CV na fila de processamento</span>
+                    {% elif candidato.status_cv == 'processando' %}
+                        <span class="badge bg-warning text-dark fs-6 me-3">
+                            <span class="spinner-border spinner-border-sm me-1"></span>Lendo PDF
+                        </span>
+                        <span class="text-muted">Extraindo texto do documento</span>
+                    {% elif candidato.status_cv == 'extraindo' %}
+                        <span class="badge bg-primary fs-6 me-3">
+                            <span class="spinner-border spinner-border-sm me-1"></span>Extraindo
+                        </span>
+                        <span class="text-muted">IA identificando habilidades</span>
+                    {% elif candidato.status_cv == 'concluido' %}
+                        <span class="badge bg-success fs-6 me-3">
+                            <i class="bi bi-check-circle me-1"></i>Concluído
+                        </span>
+                        <span class="text-muted">CV processado com sucesso</span>
+                    {% elif candidato.status_cv == 'erro' %}
+                        <span class="badge bg-danger fs-6 me-3">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Erro
+                        </span>
+                        <span class="text-muted">Falha no processamento</span>
+                    {% endif %}
+                </div>
+
+                <!-- Progress Steps -->
+                <div class="progress mb-3" style="height: 8px;">
+                    {% if candidato.status_cv == 'pendente' %}
+                        <div class="progress-bar bg-secondary" style="width: 0%"></div>
+                    {% elif candidato.status_cv == 'recebido' %}
+                        <div class="progress-bar bg-info" style="width: 25%"></div>
+                    {% elif candidato.status_cv == 'processando' %}
+                        <div class="progress-bar bg-warning" style="width: 50%"></div>
+                    {% elif candidato.status_cv == 'extraindo' %}
+                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 75%"></div>
+                    {% elif candidato.status_cv == 'concluido' %}
+                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                    {% elif candidato.status_cv == 'erro' %}
+                        <div class="progress-bar bg-danger" style="width: 100%"></div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Recebido</span>
+                    <span>Lendo PDF</span>
+                    <span>Extraindo Habilidades</span>
+                    <span>Concluído</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Habilidades Extraídas -->
+        {% if candidato.status_cv == 'concluido' and habilidades %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-stars me-2"></i>Habilidades Extraídas</h5>
+                {% if area_atuacao %}
+                <span class="badge bg-primary">{{ area_atuacao }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Habilidade</th>
+                                <th class="text-center">Nível</th>
+                                <th class="text-center">Experiência</th>
+                                <th class="text-center">Último Uso</th>
+                                <th class="text-center">Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in habilidades %}
+                            <tr>
+                                <td class="fw-bold">{{ h.nome }}</td>
+                                <td class="text-center">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= h.nivel %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                            <i class="bi bi-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td class="text-center">{{ h.anos|floatformat:1 }} anos</td>
+                                <td class="text-center">{{ h.ano_uso }}</td>
+                                <td class="text-center">
+                                    {% if h.inferido %}
+                                        <span class="badge bg-light text-muted" title="Inferido pela IA">
+                                            <i class="bi bi-robot"></i> Inferido
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success-subtle text-success">
+                                            <i class="bi bi-check"></i> Declarado
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% elif candidato.status_cv == 'concluido' %}
+        <div class="card mb-4">
+            <div class="card-body text-center text-muted py-4">
+                <i class="bi bi-file-earmark-x display-4 d-block mb-2"></i>
+                CV processado mas nenhuma habilidade foi extraída.
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Histórico de Matches -->
+        {% if matches %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de Matches</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Vaga</th>
+                                <th class="text-center">Score</th>
+                                <th class="text-center">Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in matches %}
+                            <tr>
+                                <td>
+                                    {% if match.vaga %}
+                                        {{ match.vaga.titulo }}
+                                        <br><small class="text-muted">{{ match.vaga.area }}</small>
+                                    {% else %}
+                                        <span class="text-muted">[Vaga removida]</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if match.score >= 80 %}
+                                        <span class="badge bg-success fs-6">{{ match.score|floatformat:1 }}</span>
+                                    {% elif match.score >= 60 %}
+                                        <span class="badge bg-warning text-dark fs-6">{{ match.score|floatformat:1 }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger fs-6">{{ match.score|floatformat:1 }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center text-muted">
+                                    {{ match.created_at|date:"d/m/Y H:i" }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Info do Candidato -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações</h6>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt class="text-muted small">Senioridade</dt>
+                    <dd class="mb-3">
+                        {% if candidato.senioridade == 'junior' %}
+                            <span class="badge bg-success">Júnior</span>
+                        {% elif candidato.senioridade == 'pleno' %}
+                            <span class="badge bg-warning text-dark">Pleno</span>
+                        {% else %}
+                            <span class="badge bg-danger">Sênior</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="text-muted small">Anos de Experiência</dt>
+                    <dd class="mb-3">{{ candidato.anos_experiencia }} anos</dd>
+
+                    <dt class="text-muted small">Disponibilidade</dt>
+                    <dd class="mb-3">
+                        {% if candidato.disponivel %}
+                            <span class="text-success"><i class="bi bi-check-circle me-1"></i>Disponível</span>
+                        {% else %}
+                            <span class="text-muted"><i class="bi bi-x-circle me-1"></i>Indisponível</span>
+                        {% endif %}
+                    </dd>
+
+                    {% if candidato.telefone %}
+                    <dt class="text-muted small">Telefone</dt>
+                    <dd class="mb-3">{{ candidato.telefone }}</dd>
+                    {% endif %}
+
+                    <dt class="text-muted small">Cadastrado em</dt>
+                    <dd class="mb-0">{{ candidato.created_at|date:"d/m/Y H:i" }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Área de Atuação (se processado) -->
+        {% if area_atuacao %}
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <div class="display-6 text-primary mb-2">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <h6 class="text-muted mb-1">Área de Atuação</h6>
+                <div class="fs-4">{{ area_atuacao }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Resumo de Skills -->
+        {% if habilidades %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Resumo</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total de Skills</span>
+                    <span class="fw-bold">{{ habilidades|length }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Nível Médio</span>
+                    <span class="fw-bold">
+                        {% with total=0 count=0 %}
+                        {% for h in habilidades %}
+                            {% with total=total|add:h.nivel count=count|add:1 %}{% endwith %}
+                        {% endfor %}
+                        {% endwith %}
+                        ~3.5
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Matches Realizados</span>
+                    <span class="fw-bold">{{ matches|length }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Polling para status em processamento -->
+{% if candidato.status_cv in 'recebido,processando,extraindo' %}
+<div hx-get="{% url 'core:habilidades_htmx' candidato.id %}"
+     hx-trigger="every 3s"
+     hx-swap="none">
+</div>
+{% endif %}
+{% endblock %}

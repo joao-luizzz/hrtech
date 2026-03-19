@@ -1,0 +1,158 @@
+<!-- Partial: Detalhe do match (gap analysis) -->
+<!-- Usado em modal via HTMX ou como página standalone -->
+
+<div class="detalhe-match">
+    <!-- Header com Score -->
+    <div class="text-center mb-4">
+        <div class="display-4 mb-2">
+            {% if score >= 80 %}
+                <span class="text-success">{{ score|floatformat:1 }}</span>
+            {% elif score >= 60 %}
+                <span class="text-warning">{{ score|floatformat:1 }}</span>
+            {% else %}
+                <span class="text-danger">{{ score|floatformat:1 }}</span>
+            {% endif %}
+            <small class="text-muted fs-4">/100</small>
+        </div>
+        <h5 class="mb-1">{{ candidato.nome }}</h5>
+        <p class="text-muted mb-0">{{ candidato.email }}</p>
+    </div>
+
+    <!-- Breakdown das 3 Camadas -->
+    <div class="row g-3 mb-4">
+        <div class="col-4 text-center">
+            <div class="card h-100 border-primary">
+                <div class="card-body py-2">
+                    <div class="fs-4 text-primary">{{ breakdown.camada_1|floatformat:1 }}</div>
+                    <small class="text-muted">C1: Skills (60%)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-4 text-center">
+            <div class="card h-100 border-info">
+                <div class="card-body py-2">
+                    <div class="fs-4 text-info">{{ breakdown.camada_2|floatformat:1 }}</div>
+                    <small class="text-muted">C2: Similar (25%)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-4 text-center">
+            <div class="card h-100 border-success">
+                <div class="card-body py-2">
+                    <div class="fs-4 text-success">{{ breakdown.camada_3|floatformat:1 }}</div>
+                    <small class="text-muted">C3: Perfil (15%)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gap Analysis -->
+    {% if gap_analysis %}
+    <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">
+            <i class="bi bi-exclamation-triangle text-warning me-2"></i>Gap Analysis
+        </h6>
+
+        {% if gap_analysis.skills_ausentes %}
+        <div class="alert alert-danger py-2 mb-2">
+            <small class="fw-bold">Skills Ausentes:</small>
+            <div class="mt-1">
+                {% for skill in gap_analysis.skills_ausentes %}
+                    <span class="badge bg-danger me-1">{{ skill }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gap_analysis.skills_abaixo_nivel %}
+        <div class="alert alert-warning py-2 mb-2">
+            <small class="fw-bold">Abaixo do Nível:</small>
+            <div class="mt-1">
+                {% for skill in gap_analysis.skills_abaixo_nivel %}
+                    <span class="badge bg-warning text-dark me-1">
+                        {{ skill.nome }} ({{ skill.nivel_atual }}/{{ skill.nivel_minimo }})
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gap_analysis.skills_desejaveis_ausentes %}
+        <div class="alert alert-info py-2 mb-2">
+            <small class="fw-bold">Desejáveis Ausentes:</small>
+            <div class="mt-1">
+                {% for skill in gap_analysis.skills_desejaveis_ausentes %}
+                    <span class="badge bg-info me-1">{{ skill }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if gap_analysis.texto_explicativo %}
+        <div class="bg-light p-3 rounded small">
+            <i class="bi bi-lightbulb text-warning me-1"></i>
+            {{ gap_analysis.texto_explicativo }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Habilidades do Candidato -->
+    {% if habilidades %}
+    <div class="mb-3">
+        <h6 class="border-bottom pb-2 mb-3">
+            <i class="bi bi-stars text-primary me-2"></i>Habilidades Extraídas
+        </h6>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Skill</th>
+                        <th class="text-center">Nível</th>
+                        <th class="text-center">Anos</th>
+                        <th class="text-center">Último Uso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in habilidades %}
+                    <tr>
+                        <td>
+                            {{ h.nome }}
+                            {% if h.inferido %}
+                                <span class="badge bg-light text-muted ms-1" title="Inferido">?</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= h.nivel %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-star text-muted"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td class="text-center">{{ h.anos|floatformat:1 }}</td>
+                        <td class="text-center">{{ h.ano_uso }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Info do Candidato -->
+    <div class="row g-2 small text-muted">
+        <div class="col-6">
+            <i class="bi bi-briefcase me-1"></i>
+            {{ candidato.senioridade|title }} | {{ candidato.anos_experiencia }} anos exp.
+        </div>
+        <div class="col-6 text-end">
+            {% if candidato.disponivel %}
+                <span class="text-success"><i class="bi bi-check-circle me-1"></i>Disponível</span>
+            {% else %}
+                <span class="text-muted"><i class="bi bi-x-circle me-1"></i>Indisponível</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
