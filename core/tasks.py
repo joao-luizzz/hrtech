@@ -500,8 +500,9 @@ def salvar_habilidades_neo4j(
     logger.info(f"Salvando {len(habilidades)} habilidades no Neo4j")
 
     # Query Cypher - usa 'uuid' conforme schema do Neo4j (Fase 1)
+    # MERGE no Candidato para criar o nó se não existir (upload via Django)
     query = """
-    MATCH (c:Candidato {uuid: $candidato_uuid})
+    MERGE (c:Candidato {uuid: $candidato_uuid})
 
     MERGE (a:Area {nome: $area})
     MERGE (c)-[:ATUA_EM]->(a)
