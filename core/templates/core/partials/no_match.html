@@ -1,0 +1,32 @@
+{% comment %}
+HRTech - Partial: Sem Match Encontrado
+======================================
+
+Exibido quando não há auditoria de match para o candidato/vaga.
+
+Variáveis de contexto:
+    - vaga: objeto Vaga
+    - candidato: objeto Candidato
+{% endcomment %}
+
+<div class="text-center py-5">
+    <div class="text-muted mb-3">
+        <i class="bi bi-search display-4"></i>
+    </div>
+    <h5 class="text-muted mb-2">Match n encontrado</h5>
+    <p class="text-muted mb-4">
+        O candidato <strong>{{ candidato.nome }}</strong> ainda n foi avaliado para a vaga <strong>{{ vaga.titulo }}</strong>.
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+        <a href="{% url 'core:dashboard_rh' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <button type="button"
+                class="btn btn-primary"
+                hx-post="{% url 'core:rodar_matching' vaga.id %}"
+                hx-target="body"
+                hx-swap="innerHTML">
+            <i class="bi bi-lightning me-1"></i>Rodar Matching
+        </button>
+    </div>
+</div>

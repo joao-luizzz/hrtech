@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+
+{% block title %}Match: {{ candidato.nome }} - {{ vaga.titulo }} - HRTech{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'core:dashboard_rh' %}">Dashboard RH</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'core:ranking_candidatos' vaga.id %}">{{ vaga.titulo }}</a></li>
+                <li class="breadcrumb-item active">Detalhes do Match</li>
+            </ol>
+        </nav>
+        <h2 class="mb-1">Detalhes do Match</h2>
+        <p class="text-muted mb-0">
+            <span class="badge bg-primary">{{ vaga.area }}</span>
+            <span class="badge bg-secondary">{{ vaga.senioridade_desejada|title }}</span>
+        </p>
+    </div>
+    <div class="col-auto">
+        <a href="{% url 'core:dashboard_candidato' candidato.id %}" class="btn btn-outline-primary">
+            <i class="bi bi-person me-1"></i>Ver Perfil Completo
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Coluna Principal -->
+    <div class="col-lg-8">
+        <!-- Card de Score -->
+        <div class="card mb-4">
+            <div class="card-body text-center py-4">
+                <div class="display-2 mb-2">
+                    {% if score >= 80 %}
+                        <span class="text-success fw-bold">{{ score|floatformat:1 }}</span>
+                    {% elif score >= 60 %}
+                        <span class="text-warning fw-bold">{{ score|floatformat:1 }}</span>
+                    {% else %}
+                        <span class="text-danger fw-bold">{{ score|floatformat:1 }}</span>
+                    {% endif %}
+                    <small class="text-muted fs-3">/100</small>
+                </div>
+                <h4 class="mb-1">{{ candidato.nome }}</h4>
+                <p class="text-muted mb-0">{{ candidato.email }}</p>
+            </div>
+        </div>
+
+        <!-- Breakdown das 3 Camadas -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-layers me-2"></i>Breakdown do Score</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- Camada 1 -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="display-5 text-primary mb-2">{{ breakdown.camada_1|floatformat:1 }}</div>
+                            <h6>Camada 1</h6>
+                            <p class="text-muted small mb-2">Match Direto de Skills</p>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-primary" style="width: {{ breakdown.camada_1 }}%"></div>
+                            </div>
+                            <small class="text-muted">Peso: 60%</small>
+                        </div>
+                    </div>
+                    <!-- Camada 2 -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="display-5 text-info mb-2">{{ breakdown.camada_2|floatformat:1 }}</div>
+                            <h6>Camada 2</h6>
+                            <p class="text-muted small mb-2">Similaridade de Skills</p>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" style="width: {{ breakdown.camada_2 }}%"></div>
+                            </div>
+                            <small class="text-muted">Peso: 25%</small>
+                        </div>
+                    </div>
+                    <!-- Camada 3 -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="display-5 text-success mb-2">{{ breakdown.camada_3|floatformat:1 }}</div>
+                            <h6>Camada 3</h6>
+                            <p class="text-muted small mb-2">Compatibilidade de Perfil</p>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: {{ breakdown.camada_3 }}%"></div>
+                            </div>
+                            <small class="text-muted">Peso: 15%</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gap Analysis -->
+        {% if gap_analysis %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning-subtle">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Gap Analysis</h5>
+            </div>
+            <div class="card-body">
+                {% if gap_analysis.texto %}
+                <div class="alert alert-light border mb-4">
+                    <i class="bi bi-lightbulb text-warning me-2"></i>
+                    {{ gap_analysis.texto }}
+                </div>
+                {% endif %}
+
+                <div class="row g-3">
+                    {% if gap_analysis.skills_ausentes %}
+                    <div class="col-md-6">
+                        <h6 class="text-danger mb-2">
+                            <i class="bi bi-x-circle me-1"></i>Skills Obrigatorias Ausentes
+                        </h6>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for skill in gap_analysis.skills_ausentes %}
+                                <span class="badge bg-danger">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if gap_analysis.skills_abaixo_nivel %}
+                    <div class="col-md-6">
+                        <h6 class="text-warning mb-2">
+                            <i class="bi bi-arrow-down-circle me-1"></i>Abaixo do Nivel Minimo
+                        </h6>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for skill in gap_analysis.skills_abaixo_nivel %}
+                                <span class="badge bg-warning text-dark">
+                                    {{ skill.nome }}
+                                    <small>({{ skill.nivel_atual }}/{{ skill.nivel_minimo }})</small>
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if gap_analysis.skills_desejaveis_ausentes %}
+                    <div class="col-12">
+                        <h6 class="text-info mb-2">
+                            <i class="bi bi-info-circle me-1"></i>Skills Desejaveis Ausentes
+                        </h6>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for skill in gap_analysis.skills_desejaveis_ausentes %}
+                                <span class="badge bg-info">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if not gap_analysis.skills_ausentes and not gap_analysis.skills_abaixo_nivel %}
+                <div class="text-center text-success py-3">
+                    <i class="bi bi-check-circle display-4 d-block mb-2"></i>
+                    Nenhum gap critico identificado!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Habilidades do Candidato -->
+        {% if habilidades %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-stars me-2"></i>Habilidades do Candidato</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Habilidade</th>
+                                <th class="text-center">Nivel</th>
+                                <th class="text-center">Experiencia</th>
+                                <th class="text-center">Ultimo Uso</th>
+                                <th class="text-center">Fonte</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in habilidades %}
+                            <tr>
+                                <td class="fw-bold">{{ h.nome }}</td>
+                                <td class="text-center">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= h.nivel %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                            <i class="bi bi-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <small class="text-muted ms-1">({{ h.nivel }}/5)</small>
+                                </td>
+                                <td class="text-center">{{ h.anos|floatformat:1 }} anos</td>
+                                <td class="text-center">{{ h.ano_uso }}</td>
+                                <td class="text-center">
+                                    {% if h.inferido %}
+                                        <span class="badge bg-light text-muted" title="Inferido pela IA">
+                                            <i class="bi bi-robot"></i> Inferido
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success-subtle text-success">
+                                            <i class="bi bi-check"></i> Declarado
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Info do Candidato -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-person me-2"></i>Candidato</h6>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt class="text-muted small">Nome</dt>
+                    <dd class="mb-2">{{ candidato.nome }}</dd>
+
+                    <dt class="text-muted small">Email</dt>
+                    <dd class="mb-2">{{ candidato.email }}</dd>
+
+                    <dt class="text-muted small">Senioridade</dt>
+                    <dd class="mb-2">
+                        {% if candidato.senioridade == 'junior' %}
+                            <span class="badge bg-success">Junior</span>
+                        {% elif candidato.senioridade == 'pleno' %}
+                            <span class="badge bg-warning text-dark">Pleno</span>
+                        {% else %}
+                            <span class="badge bg-danger">Senior</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="text-muted small">Experiencia</dt>
+                    <dd class="mb-2">{{ candidato.anos_experiencia }} anos</dd>
+
+                    <dt class="text-muted small">Disponibilidade</dt>
+                    <dd class="mb-0">
+                        {% if candidato.disponivel %}
+                            <span class="text-success">
+                                <i class="bi bi-check-circle me-1"></i>Disponivel
+                            </span>
+                        {% else %}
+                            <span class="text-muted">
+                                <i class="bi bi-x-circle me-1"></i>Indisponivel
+                            </span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Info da Vaga -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-briefcase me-2"></i>Vaga</h6>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt class="text-muted small">Titulo</dt>
+                    <dd class="mb-2">{{ vaga.titulo }}</dd>
+
+                    <dt class="text-muted small">Area</dt>
+                    <dd class="mb-2"><span class="badge bg-primary">{{ vaga.area }}</span></dd>
+
+                    <dt class="text-muted small">Senioridade Desejada</dt>
+                    <dd class="mb-2">
+                        {% if vaga.senioridade_desejada == 'junior' %}
+                            <span class="badge bg-success">Junior</span>
+                        {% elif vaga.senioridade_desejada == 'pleno' %}
+                            <span class="badge bg-warning text-dark">Pleno</span>
+                        {% else %}
+                            <span class="badge bg-danger">Senior</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="text-muted small">Skills Obrigatorias</dt>
+                    <dd class="mb-2">
+                        {% for skill in vaga.skills_obrigatorias %}
+                            <span class="badge bg-danger-subtle text-danger me-1 mb-1">
+                                {{ skill.nome }}
+                            </span>
+                        {% empty %}
+                            <span class="text-muted">-</span>
+                        {% endfor %}
+                    </dd>
+
+                    <dt class="text-muted small">Skills Desejaveis</dt>
+                    <dd class="mb-0">
+                        {% for skill in vaga.skills_desejaveis %}
+                            <span class="badge bg-info-subtle text-info me-1 mb-1">
+                                {{ skill.nome }}
+                            </span>
+                        {% empty %}
+                            <span class="text-muted">-</span>
+                        {% endfor %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Auditoria -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Auditoria</h6>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0 small">
+                    <dt class="text-muted">Data do Match</dt>
+                    <dd class="mb-2">{{ auditoria.created_at|date:"d/m/Y H:i" }}</dd>
+
+                    <dt class="text-muted">Versao do Algoritmo</dt>
+                    <dd class="mb-0">
+                        <code>{{ auditoria.versao_algoritmo }}</code>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

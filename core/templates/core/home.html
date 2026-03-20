@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}HRTech ATS - Sistema de Recomendação de Candidatos{% endblock %}
+{% block title %}HRTech ATS - Sistema de Recomendacao de Candidatos{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-10">
         <!-- Hero -->
         <div class="text-center mb-5">
             <h1 class="display-5 fw-bold mb-3">
@@ -12,43 +12,79 @@
                 HRTech ATS
             </h1>
             <p class="lead text-muted">
-                Sistema inteligente de recomendação de candidatos usando grafos e IA
+                Sistema inteligente de recomendacao de candidatos usando grafos e IA
             </p>
         </div>
 
-        <!-- Cards de ação -->
-        <div class="row g-4">
-            <!-- Upload CV -->
-            <div class="col-md-6">
-                <div class="card h-100">
+        <!-- Cards de acesso rapido -->
+        <div class="row g-4 mb-5">
+            <!-- Dashboard RH -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-primary">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
-                            <i class="bi bi-cloud-upload display-4 text-primary"></i>
+                            <i class="bi bi-clipboard2-data display-4 text-primary"></i>
                         </div>
-                        <h5 class="card-title">Upload de Currículo</h5>
-                        <p class="card-text text-muted">
-                            Envie seu CV em PDF e nossa IA extrairá suas habilidades automaticamente
+                        <h5 class="card-title">Dashboard RH</h5>
+                        <p class="card-text text-muted small">
+                            Gerencie vagas e execute matching de candidatos
                         </p>
-                        <a href="{% url 'core:upload_cv' %}" class="btn btn-primary">
-                            <i class="bi bi-upload"></i> Enviar CV
+                        <a href="{% url 'core:dashboard_rh' %}" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-right"></i> Acessar
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Matching -->
-            <div class="col-md-6">
-                <div class="card h-100">
+            <!-- Pipeline Kanban -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-warning">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
-                            <i class="bi bi-diagram-3 display-4 text-success"></i>
+                            <i class="bi bi-kanban display-4 text-warning"></i>
                         </div>
-                        <h5 class="card-title">Matching Inteligente</h5>
-                        <p class="card-text text-muted">
-                            Algoritmo de 3 camadas com grafo Neo4j para encontrar os melhores candidatos
+                        <h5 class="card-title">Pipeline Kanban</h5>
+                        <p class="card-text text-muted small">
+                            Visualize candidatos por etapa do processo
                         </p>
-                        <a href="{% url 'admin:index' %}" class="btn btn-outline-success">
-                            <i class="bi bi-box-arrow-in-right"></i> Acessar Admin
+                        <a href="{% url 'core:pipeline_kanban' %}" class="btn btn-warning w-100">
+                            <i class="bi bi-arrow-right"></i> Acessar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estatisticas -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-info">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-graph-up display-4 text-info"></i>
+                        </div>
+                        <h5 class="card-title">Estatisticas</h5>
+                        <p class="card-text text-muted small">
+                            Graficos e metricas do sistema de recrutamento
+                        </p>
+                        <a href="{% url 'core:dashboard_geral' %}" class="btn btn-info w-100">
+                            <i class="bi bi-arrow-right"></i> Acessar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload CV -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-success">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <i class="bi bi-cloud-upload display-4 text-success"></i>
+                        </div>
+                        <h5 class="card-title">Upload de CV</h5>
+                        <p class="card-text text-muted small">
+                            Envie seu curriculo e tenha skills extraidas
+                        </p>
+                        <a href="{% url 'core:upload_cv' %}" class="btn btn-success w-100">
+                            <i class="bi bi-upload"></i> Enviar CV
                         </a>
                     </div>
                 </div>
@@ -56,7 +92,7 @@
         </div>
 
         <!-- Features -->
-        <div class="card mt-5">
+        <div class="card">
             <div class="card-body p-4">
                 <h5 class="card-title mb-4">
                     <i class="bi bi-stars text-warning"></i> Funcionalidades
@@ -66,7 +102,7 @@
                         <div class="d-flex gap-3">
                             <i class="bi bi-cpu text-primary fs-4"></i>
                             <div>
-                                <h6 class="mb-1">Extração com IA</h6>
+                                <h6 class="mb-1">Extracao com IA</h6>
                                 <small class="text-muted">GPT-4o-mini analisa CVs e extrai habilidades automaticamente</small>
                             </div>
                         </div>
@@ -76,7 +112,7 @@
                             <i class="bi bi-diagram-2 text-success fs-4"></i>
                             <div>
                                 <h6 class="mb-1">Grafo de Skills</h6>
-                                <small class="text-muted">Neo4j mapeia relações entre habilidades similares</small>
+                                <small class="text-muted">Neo4j mapeia relacoes entre habilidades similares</small>
                             </div>
                         </div>
                     </div>
@@ -96,6 +132,44 @@
                                 <h6 class="mb-1">LGPD Compliant</h6>
                                 <small class="text-muted">Dados pessoais mascarados antes de processar</small>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Algoritmo de 3 Camadas -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-layers text-primary me-2"></i>Algoritmo de Matching - 3 Camadas</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                            <div class="display-6 text-primary mb-2">60%</div>
+                            <h6>Camada 1</h6>
+                            <p class="small text-muted mb-0">
+                                Match direto de skills obrigatorias com decaimento temporal
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center p-3 bg-info bg-opacity-10 rounded">
+                            <div class="display-6 text-info mb-2">25%</div>
+                            <h6>Camada 2</h6>
+                            <p class="small text-muted mb-0">
+                                Match por similaridade via grafo Neo4j
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                            <div class="display-6 text-success mb-2">15%</div>
+                            <h6>Camada 3</h6>
+                            <p class="small text-muted mb-0">
+                                Compatibilidade de perfil (area + senioridade)
+                            </p>
                         </div>
                     </div>
                 </div>

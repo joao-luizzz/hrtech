@@ -1,0 +1,33 @@
+{% comment %}
+HRTech - Partial: Erro no Matching
+==================================
+
+Exibido quando ocorre erro ao executar o matching.
+
+Variáveis de contexto:
+    - error: mensagem de erro
+    - vaga: objeto Vaga
+{% endcomment %}
+
+<div class="p-4 text-center">
+    <div class="text-danger mb-3">
+        <i class="bi bi-exclamation-triangle display-4"></i>
+    </div>
+    <h5 class="text-danger mb-2">Erro ao executar matching</h5>
+    <p class="text-muted mb-3">
+        Ocorreu um erro ao processar o matching para a vaga <strong>{{ vaga.titulo }}</strong>.
+    </p>
+    <div class="alert alert-danger text-start small">
+        <i class="bi bi-bug me-1"></i>
+        <code>{{ error }}</code>
+    </div>
+    <div class="mt-3">
+        <button type="button"
+                class="btn btn-outline-danger"
+                hx-post="{% url 'core:rodar_matching' vaga.id %}"
+                hx-target="#matching-results-{{ vaga.id }}"
+                hx-swap="innerHTML">
+            <i class="bi bi-arrow-clockwise me-1"></i>Tentar Novamente
+        </button>
+    </div>
+</div>
