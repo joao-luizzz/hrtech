@@ -48,6 +48,7 @@ urlpatterns = [
     path('rh/vaga/<int:vaga_id>/match/<str:candidato_id>/', views.detalhe_candidato_match, name='detalhe_match'),
     path('rh/pipeline/', views.pipeline_kanban, name='pipeline_kanban'),
     path('rh/pipeline/<int:vaga_id>/', views.pipeline_kanban, name='pipeline_kanban_vaga'),
+    path('rh/pipeline/mover/', views.mover_kanban, name='mover_kanban'),
 
     # ==========================================================================
     # FASE 4: DASHBOARD DO CANDIDATO

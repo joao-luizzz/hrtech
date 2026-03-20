@@ -412,31 +412,55 @@ def pipeline_kanban(request, vaga_id=None):
     """
     Pipeline Kanban para gerenciar candidatos.
 
-    Colunas: Novo → Em Análise → Aprovado → Reprovado
+    Colunas: Novo -> Em Analise -> Aprovado -> Reprovado
 
     Se vaga_id for fornecido, filtra candidatos com match para essa vaga.
-    Caso contrário, exibe todos os candidatos.
+    Caso contrario, exibe todos os candidatos.
 
     Template: core/pipeline_kanban.html
     """
     vaga = None
+    scores_map = {}
+
     if vaga_id:
         vaga = get_object_or_404(Vaga, pk=vaga_id)
 
-        # Busca candidatos com match para esta vaga
+        # Busca candidatos com match para esta vaga e seus scores
         auditorias = AuditoriaMatch.objects.filter(vaga=vaga).select_related('candidato')
         candidatos_ids = [a.candidato_id for a in auditorias if a.candidato_id]
         candidatos = Candidato.objects.filter(id__in=candidatos_ids)
+
+        # Mapa de scores por candidato
+        for a in auditorias:
+            if a.candidato_id:
+                scores_map[str(a.candidato_id)] = float(a.score)
     else:
         candidatos = Candidato.objects.all()
 
+        # Busca ultimo score de cada candidato (se houver)
+        for candidato in candidatos:
+            ultima_auditoria = AuditoriaMatch.objects.filter(
+                candidato=candidato
+            ).order_by('-created_at').first()
+            if ultima_auditoria:
+                scores_map[str(candidato.id)] = float(ultima_auditoria.score)
+
+    # Funcao auxiliar para criar item com candidato e score
+    def make_items(qs):
+        items = []
+        for c in qs:
+            items.append({
+                'candidato': c,
+                'score': scores_map.get(str(c.id))
+            })
+        return items
+
     # Agrupa por status de CV (como proxy para pipeline)
-    # Em produção usaríamos um campo específico de pipeline
     pipeline = {
-        'novo': candidatos.filter(status_cv__in=['pendente', 'recebido']),
-        'em_analise': candidatos.filter(status_cv__in=['processando', 'extraindo']),
-        'aprovado': candidatos.filter(status_cv='concluido', disponivel=True),
-        'reprovado': candidatos.filter(Q(status_cv='erro') | Q(disponivel=False)),
+        'novo': make_items(candidatos.filter(status_cv__in=['pendente', 'recebido'])),
+        'em_analise': make_items(candidatos.filter(status_cv__in=['processando', 'extraindo'])),
+        'aprovado': make_items(candidatos.filter(status_cv='concluido', disponivel=True)),
+        'reprovado': make_items(candidatos.filter(Q(status_cv='erro') | Q(disponivel=False))),
     }
 
     return render(request, 'core/pipeline_kanban.html', {
@@ -444,6 +468,53 @@ def pipeline_kanban(request, vaga_id=None):
         'pipeline': pipeline,
         'total': candidatos.count(),
     })
+
+
+@require_POST
+@csrf_protect
+def mover_kanban(request):
+    """
+    Move candidato entre colunas do Kanban via HTMX.
+
+    Recebe:
+        candidato_id: UUID do candidato
+        novo_status: novo, em_analise, aprovado, reprovado
+        vaga_id: ID da vaga (opcional)
+
+    Retorna:
+        200 OK se sucesso
+        400 Bad Request se erro
+    """
+    candidato_id = request.POST.get('candidato_id')
+    novo_status = request.POST.get('novo_status')
+
+    if not candidato_id or not novo_status:
+        return JsonResponse({'error': 'Parametros invalidos'}, status=400)
+
+    try:
+        candidato = Candidato.objects.get(pk=candidato_id)
+    except Candidato.DoesNotExist:
+        return JsonResponse({'error': 'Candidato nao encontrado'}, status=404)
+
+    # Mapeia status do kanban para status_cv e disponivel
+    # Nota: Em producao usariamos um campo especifico de pipeline
+    if novo_status == 'novo':
+        candidato.status_cv = Candidato.StatusCV.RECEBIDO
+        candidato.disponivel = True
+    elif novo_status == 'em_analise':
+        candidato.status_cv = Candidato.StatusCV.PROCESSANDO
+        candidato.disponivel = True
+    elif novo_status == 'aprovado':
+        candidato.status_cv = Candidato.StatusCV.CONCLUIDO
+        candidato.disponivel = True
+    elif novo_status == 'reprovado':
+        candidato.disponivel = False
+
+    candidato.save()
+
+    logger.info(f"Candidato {candidato_id} movido para {novo_status}")
+
+    return JsonResponse({'success': True, 'novo_status': novo_status})
 
 
 # =============================================================================

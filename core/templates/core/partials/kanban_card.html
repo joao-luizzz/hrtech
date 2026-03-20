@@ -1,0 +1,61 @@
+<!-- Partial: Card do Kanban -->
+<!-- Usado para renderizar cada candidato no board -->
+
+<div class="card mb-2 kanban-card {% if status == 'aprovado' %}border-success{% elif status == 'em_analise' %}border-warning{% elif status == 'reprovado' %}border-danger{% endif %}"
+     draggable="true"
+     data-candidato-id="{{ candidato.id }}"
+     id="card-{{ candidato.id }}">
+    <div class="card-body p-2">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+            <h6 class="card-title mb-0 text-truncate" style="max-width: 150px;">
+                {{ candidato.nome }}
+            </h6>
+            {% if score %}
+                {% if score >= 80 %}
+                    <span class="badge bg-success">{{ score|floatformat:0 }}</span>
+                {% elif score >= 60 %}
+                    <span class="badge bg-warning text-dark">{{ score|floatformat:0 }}</span>
+                {% else %}
+                    <span class="badge bg-danger">{{ score|floatformat:0 }}</span>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <small class="text-muted d-block text-truncate">{{ candidato.email }}</small>
+
+        <div class="mt-2 d-flex flex-wrap gap-1">
+            <span class="badge bg-light text-dark">{{ candidato.senioridade|title }}</span>
+
+            {% if candidato.status_cv == 'pendente' %}
+                <span class="badge bg-secondary">Sem CV</span>
+            {% elif candidato.status_cv == 'recebido' %}
+                <span class="badge bg-info">Recebido</span>
+            {% elif candidato.status_cv == 'processando' %}
+                <span class="badge bg-warning text-dark">
+                    <span class="spinner-border spinner-border-sm" style="width: 10px; height: 10px;"></span>
+                </span>
+            {% elif candidato.status_cv == 'extraindo' %}
+                <span class="badge bg-primary">
+                    <span class="spinner-border spinner-border-sm" style="width: 10px; height: 10px;"></span>
+                </span>
+            {% elif candidato.status_cv == 'concluido' %}
+                <span class="badge bg-success">OK</span>
+            {% elif candidato.status_cv == 'erro' %}
+                <span class="badge bg-danger">Erro</span>
+            {% endif %}
+
+            {% if candidato.disponivel %}
+                <span class="badge bg-success-subtle text-success" title="Disponivel">
+                    <i class="bi bi-check"></i>
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="mt-2">
+            <a href="{% url 'core:dashboard_candidato' candidato.id %}"
+               class="btn btn-sm btn-outline-secondary w-100 py-0">
+                <small><i class="bi bi-eye"></i> Ver</small>
+            </a>
+        </div>
+    </div>
+</div>

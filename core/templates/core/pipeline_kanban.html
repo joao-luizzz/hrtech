@@ -30,70 +30,122 @@
             <i class="bi bi-list-ol me-1"></i>Ver Ranking
         </a>
         {% endif %}
+        <button class="btn btn-outline-secondary" hx-get="" hx-target="body" hx-swap="outerHTML">
+            <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+        </button>
     </div>
 </div>
 
+<!-- Legenda de Scores -->
+<div class="alert alert-light mb-4 py-2">
+    <small>
+        <strong>Legenda de Score:</strong>
+        <span class="badge bg-success ms-2">80+</span> Excelente
+        <span class="badge bg-warning text-dark ms-2">60-79</span> Bom
+        <span class="badge bg-danger ms-2">&lt;60</span> Baixo
+        <span class="text-muted ms-3">| Arraste os cards entre colunas para mover</span>
+    </small>
+</div>
+
 <!-- Kanban Board -->
-<div class="row g-3">
+<div class="row g-3" id="kanban-board">
     <!-- Coluna: Novo -->
     <div class="col-md-3">
         <div class="card h-100">
             <div class="card-header bg-secondary text-white d-flex justify-content-between">
                 <span><i class="bi bi-inbox me-1"></i>Novo</span>
-                <span class="badge bg-light text-dark">{{ pipeline.novo|length }}</span>
+                <span class="badge bg-light text-dark" id="count-novo">{{ pipeline.novo|length }}</span>
             </div>
-            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
-                {% for candidato in pipeline.novo %}
-                <div class="card mb-2 kanban-card" draggable="true" data-id="{{ candidato.id }}">
+            <div class="card-body p-2 kanban-column"
+                 id="coluna-novo"
+                 data-status="novo">
+                {% for item in pipeline.novo %}
+                <div class="card mb-2 kanban-card"
+                     draggable="true"
+                     data-candidato-id="{{ item.candidato.id }}"
+                     id="card-{{ item.candidato.id }}">
                     <div class="card-body p-2">
-                        <h6 class="card-title mb-1">{{ candidato.nome }}</h6>
-                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title mb-0 text-truncate" style="max-width: 140px;">
+                                {{ item.candidato.nome }}
+                            </h6>
+                            {% if item.score %}
+                                {% if item.score >= 80 %}
+                                    <span class="badge bg-success">{{ item.score|floatformat:0 }}</span>
+                                {% elif item.score >= 60 %}
+                                    <span class="badge bg-warning text-dark">{{ item.score|floatformat:0 }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ item.score|floatformat:0 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <small class="text-muted d-block text-truncate">{{ item.candidato.email }}</small>
                         <div class="mt-2">
-                            <span class="badge bg-light text-dark">{{ candidato.senioridade|title }}</span>
-                            {% if candidato.status_cv == 'pendente' %}
+                            <span class="badge bg-light text-dark">{{ item.candidato.senioridade|title }}</span>
+                            {% if item.candidato.status_cv == 'pendente' %}
                             <span class="badge bg-secondary">Sem CV</span>
                             {% else %}
-                            <span class="badge bg-info">CV Recebido</span>
+                            <span class="badge bg-info">Recebido</span>
                             {% endif %}
                         </div>
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-center text-muted py-3">
-                    <small>Nenhum candidato</small>
+                <div class="text-center text-muted py-4 empty-placeholder">
+                    <i class="bi bi-inbox"></i>
+                    <small class="d-block">Arraste candidatos aqui</small>
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- Coluna: Em Análise -->
+    <!-- Coluna: Em Analise -->
     <div class="col-md-3">
         <div class="card h-100">
             <div class="card-header bg-warning text-dark d-flex justify-content-between">
-                <span><i class="bi bi-hourglass-split me-1"></i>Em Análise</span>
-                <span class="badge bg-light text-dark">{{ pipeline.em_analise|length }}</span>
+                <span><i class="bi bi-hourglass-split me-1"></i>Em Analise</span>
+                <span class="badge bg-light text-dark" id="count-em_analise">{{ pipeline.em_analise|length }}</span>
             </div>
-            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
-                {% for candidato in pipeline.em_analise %}
-                <div class="card mb-2 kanban-card border-warning" draggable="true" data-id="{{ candidato.id }}">
+            <div class="card-body p-2 kanban-column"
+                 id="coluna-em_analise"
+                 data-status="em_analise">
+                {% for item in pipeline.em_analise %}
+                <div class="card mb-2 kanban-card border-warning"
+                     draggable="true"
+                     data-candidato-id="{{ item.candidato.id }}"
+                     id="card-{{ item.candidato.id }}">
                     <div class="card-body p-2">
-                        <h6 class="card-title mb-1">{{ candidato.nome }}</h6>
-                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title mb-0 text-truncate" style="max-width: 140px;">
+                                {{ item.candidato.nome }}
+                            </h6>
+                            {% if item.score %}
+                                {% if item.score >= 80 %}
+                                    <span class="badge bg-success">{{ item.score|floatformat:0 }}</span>
+                                {% elif item.score >= 60 %}
+                                    <span class="badge bg-warning text-dark">{{ item.score|floatformat:0 }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ item.score|floatformat:0 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <small class="text-muted d-block text-truncate">{{ item.candidato.email }}</small>
                         <div class="mt-2">
                             <span class="badge bg-warning text-dark">
-                                {% if candidato.status_cv == 'processando' %}
-                                    <span class="spinner-border spinner-border-sm me-1"></span>Lendo PDF
+                                {% if item.candidato.status_cv == 'processando' %}
+                                    <span class="spinner-border spinner-border-sm" style="width:10px;height:10px;"></span> Lendo
                                 {% else %}
-                                    <span class="spinner-border spinner-border-sm me-1"></span>Extraindo
+                                    <span class="spinner-border spinner-border-sm" style="width:10px;height:10px;"></span> Extraindo
                                 {% endif %}
                             </span>
                         </div>
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-center text-muted py-3">
-                    <small>Nenhum candidato</small>
+                <div class="text-center text-muted py-4 empty-placeholder">
+                    <i class="bi bi-hourglass"></i>
+                    <small class="d-block">Arraste candidatos aqui</small>
                 </div>
                 {% endfor %}
             </div>
@@ -105,29 +157,48 @@
         <div class="card h-100">
             <div class="card-header bg-success text-white d-flex justify-content-between">
                 <span><i class="bi bi-check-circle me-1"></i>Aprovado</span>
-                <span class="badge bg-light text-dark">{{ pipeline.aprovado|length }}</span>
+                <span class="badge bg-light text-dark" id="count-aprovado">{{ pipeline.aprovado|length }}</span>
             </div>
-            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
-                {% for candidato in pipeline.aprovado %}
-                <div class="card mb-2 kanban-card border-success" draggable="true" data-id="{{ candidato.id }}">
+            <div class="card-body p-2 kanban-column"
+                 id="coluna-aprovado"
+                 data-status="aprovado">
+                {% for item in pipeline.aprovado %}
+                <div class="card mb-2 kanban-card border-success"
+                     draggable="true"
+                     data-candidato-id="{{ item.candidato.id }}"
+                     id="card-{{ item.candidato.id }}">
                     <div class="card-body p-2">
-                        <h6 class="card-title mb-1">{{ candidato.nome }}</h6>
-                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title mb-0 text-truncate" style="max-width: 140px;">
+                                {{ item.candidato.nome }}
+                            </h6>
+                            {% if item.score %}
+                                {% if item.score >= 80 %}
+                                    <span class="badge bg-success">{{ item.score|floatformat:0 }}</span>
+                                {% elif item.score >= 60 %}
+                                    <span class="badge bg-warning text-dark">{{ item.score|floatformat:0 }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ item.score|floatformat:0 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <small class="text-muted d-block text-truncate">{{ item.candidato.email }}</small>
                         <div class="mt-2">
-                            <span class="badge bg-success">CV Processado</span>
-                            <span class="badge bg-light text-dark">{{ candidato.senioridade|title }}</span>
+                            <span class="badge bg-success">Processado</span>
+                            <span class="badge bg-light text-dark">{{ item.candidato.senioridade|title }}</span>
                         </div>
                         <div class="mt-2">
-                            <a href="{% url 'core:dashboard_candidato' candidato.id %}"
-                               class="btn btn-sm btn-outline-primary w-100">
-                                <i class="bi bi-eye"></i> Ver Perfil
+                            <a href="{% url 'core:dashboard_candidato' item.candidato.id %}"
+                               class="btn btn-sm btn-outline-primary w-100 py-0">
+                                <small><i class="bi bi-eye"></i> Ver</small>
                             </a>
                         </div>
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-center text-muted py-3">
-                    <small>Nenhum candidato</small>
+                <div class="text-center text-muted py-4 empty-placeholder">
+                    <i class="bi bi-check-circle"></i>
+                    <small class="d-block">Arraste candidatos aqui</small>
                 </div>
                 {% endfor %}
             </div>
@@ -139,29 +210,62 @@
         <div class="card h-100">
             <div class="card-header bg-danger text-white d-flex justify-content-between">
                 <span><i class="bi bi-x-circle me-1"></i>Reprovado</span>
-                <span class="badge bg-light text-dark">{{ pipeline.reprovado|length }}</span>
+                <span class="badge bg-light text-dark" id="count-reprovado">{{ pipeline.reprovado|length }}</span>
             </div>
-            <div class="card-body p-2 kanban-column" style="max-height: 70vh; overflow-y: auto;">
-                {% for candidato in pipeline.reprovado %}
-                <div class="card mb-2 kanban-card border-danger" draggable="true" data-id="{{ candidato.id }}">
+            <div class="card-body p-2 kanban-column"
+                 id="coluna-reprovado"
+                 data-status="reprovado">
+                {% for item in pipeline.reprovado %}
+                <div class="card mb-2 kanban-card border-danger"
+                     draggable="true"
+                     data-candidato-id="{{ item.candidato.id }}"
+                     id="card-{{ item.candidato.id }}">
                     <div class="card-body p-2">
-                        <h6 class="card-title mb-1 text-muted">{{ candidato.nome }}</h6>
-                        <small class="text-muted d-block">{{ candidato.email }}</small>
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title mb-0 text-truncate text-muted" style="max-width: 140px;">
+                                {{ item.candidato.nome }}
+                            </h6>
+                            {% if item.score %}
+                                {% if item.score >= 80 %}
+                                    <span class="badge bg-success">{{ item.score|floatformat:0 }}</span>
+                                {% elif item.score >= 60 %}
+                                    <span class="badge bg-warning text-dark">{{ item.score|floatformat:0 }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ item.score|floatformat:0 }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <small class="text-muted d-block text-truncate">{{ item.candidato.email }}</small>
                         <div class="mt-2">
-                            {% if candidato.status_cv == 'erro' %}
-                            <span class="badge bg-danger">Erro no CV</span>
+                            {% if item.candidato.status_cv == 'erro' %}
+                            <span class="badge bg-danger">Erro CV</span>
                             {% else %}
-                            <span class="badge bg-secondary">Indisponível</span>
+                            <span class="badge bg-secondary">Indisponivel</span>
                             {% endif %}
                         </div>
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-center text-muted py-3">
-                    <small>Nenhum candidato</small>
+                <div class="text-center text-muted py-4 empty-placeholder">
+                    <i class="bi bi-x-circle"></i>
+                    <small class="d-block">Arraste candidatos aqui</small>
                 </div>
                 {% endfor %}
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de feedback -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="kanban-toast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-check-circle text-success me-2"></i>
+            <strong class="me-auto">Atualizado</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toast-message">
+            Candidato movido com sucesso!
         </div>
     </div>
 </div>
@@ -169,18 +273,165 @@
 
 {% block extra_css %}
 <style>
-    .kanban-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-    }
-    .kanban-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
     .kanban-column {
-        min-height: 200px;
+        min-height: 300px;
+        max-height: 65vh;
+        overflow-y: auto;
         background: #f8f9fa;
         border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .kanban-column.drag-over {
+        background-color: #e3f2fd;
+        border: 2px dashed #2196f3;
+    }
+
+    .kanban-card {
+        transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .kanban-card.dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+    }
+
+    .empty-placeholder {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        margin: 8px;
+    }
+
+    .kanban-column::-webkit-scrollbar {
+        width: 6px;
+    }
+    .kanban-column::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .kanban-column::-webkit-scrollbar-thumb {
+        background: #ced4da;
+        border-radius: 3px;
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let draggedCard = null;
+    let draggedId = null;
+
+    document.addEventListener('DOMContentLoaded', initDragAndDrop);
+
+    function initDragAndDrop() {
+        const cards = document.querySelectorAll('.kanban-card');
+        const columns = document.querySelectorAll('.kanban-column');
+
+        cards.forEach(card => {
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+        });
+
+        columns.forEach(column => {
+            column.addEventListener('dragover', handleDragOver);
+            column.addEventListener('dragenter', handleDragEnter);
+            column.addEventListener('dragleave', handleDragLeave);
+            column.addEventListener('drop', handleDrop);
+        });
+    }
+
+    function handleDragStart(e) {
+        draggedCard = this;
+        draggedId = this.dataset.candidatoId;
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedId);
+    }
+
+    function handleDragEnd(e) {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.kanban-column').forEach(col => {
+            col.classList.remove('drag-over');
+        });
+        draggedCard = null;
+        draggedId = null;
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDragEnter(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+        if (!this.contains(e.relatedTarget)) {
+            this.classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('drag-over');
+
+        if (!draggedCard) return;
+
+        const novoStatus = this.dataset.status;
+        const candidatoId = draggedId;
+        const colOrigem = draggedCard.parentElement;
+
+        // Move visualmente
+        this.appendChild(draggedCard);
+
+        // Remove placeholder se existir
+        const placeholder = this.querySelector('.empty-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        // Mostra placeholder na coluna de origem se ficou vazia
+        if (colOrigem.querySelectorAll('.kanban-card').length === 0) {
+            const ph = colOrigem.querySelector('.empty-placeholder');
+            if (ph) ph.style.display = 'block';
+        }
+
+        // Faz POST via HTMX
+        htmx.ajax('POST', '{% url "core:mover_kanban" %}', {
+            values: {
+                candidato_id: candidatoId,
+                novo_status: novoStatus,
+                vaga_id: '{{ vaga.id|default:"" }}'
+            },
+            swap: 'none'
+        });
+
+        showToast('Candidato movido para ' + formatStatus(novoStatus));
+        updateCounts();
+    }
+
+    function formatStatus(s) {
+        return {novo:'Novo', em_analise:'Em Analise', aprovado:'Aprovado', reprovado:'Reprovado'}[s] || s;
+    }
+
+    function showToast(msg) {
+        document.getElementById('toast-message').textContent = msg;
+        new bootstrap.Toast(document.getElementById('kanban-toast')).show();
+    }
+
+    function updateCounts() {
+        ['novo','em_analise','aprovado','reprovado'].forEach(s => {
+            const col = document.getElementById('coluna-' + s);
+            const cnt = document.getElementById('count-' + s);
+            if (col && cnt) cnt.textContent = col.querySelectorAll('.kanban-card').length;
+        });
+    }
+</script>
 {% endblock %}
