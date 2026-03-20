@@ -27,6 +27,7 @@ Regras de Segurança:
 """
 
 import uuid
+import json
 import logging
 from pathlib import Path
 from decimal import Decimal
@@ -663,11 +664,18 @@ def dashboard_geral(request):
         ).count(),
     }
 
+    # Serializa para JSON (Python True/False/None → JavaScript true/false/null)
+    # Converte Decimal para float para serialização
+    def decimal_default(obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
     return render(request, 'core/dashboard_geral.html', {
-        'senioridade_data': senioridade_data,
-        'area_data': area_data,
-        'vagas_status': vagas_status,
-        'score_por_vaga': score_por_vaga,
+        'senioridade_data': json.dumps(senioridade_data, default=decimal_default),
+        'area_data': json.dumps(area_data, default=decimal_default),
+        'vagas_status': json.dumps(vagas_status, default=decimal_default),
+        'score_por_vaga': json.dumps(score_por_vaga, default=decimal_default),
         'stats': stats,
     })
 
