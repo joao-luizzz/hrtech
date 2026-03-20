@@ -161,6 +161,11 @@ CELERY_BEAT_SCHEDULER = 'celery.beat:PersistentScheduler'
 # =============================================================================
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 
+# Mock mode: quando True, gera habilidades mockadas sem chamar a API OpenAI
+# Util para desenvolvimento/testes quando creditos estao esgotados
+# Ative com OPENAI_MOCK_MODE=True no .env
+OPENAI_MOCK_MODE = config('OPENAI_MOCK_MODE', default=False, cast=bool)
+
 # =============================================================================
 # VALIDAÇÃO DE SENHAS
 # =============================================================================

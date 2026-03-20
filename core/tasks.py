@@ -17,6 +17,7 @@ REGRAS DE SEGURANÇA (LGPD):
 
 import re
 import json
+import random
 import logging
 from datetime import timedelta
 from typing import Optional
@@ -45,6 +46,9 @@ logger = logging.getLogger(__name__)
 # Cliente OpenAI (singleton)
 _openai_client: Optional[OpenAI] = None
 
+# Mock mode - ativa quando OPENAI_MOCK_MODE=True no settings
+MOCK_MODE = getattr(settings, 'OPENAI_MOCK_MODE', False)
+
 
 def get_openai_client() -> OpenAI:
     """Retorna cliente OpenAI como singleton."""
@@ -52,6 +56,95 @@ def get_openai_client() -> OpenAI:
     if _openai_client is None:
         _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
     return _openai_client
+
+
+# =============================================================================
+# MOCK DATA - Usado quando OPENAI_MOCK_MODE=True
+# =============================================================================
+
+MOCK_HABILIDADES_POR_AREA = {
+    'backend': [
+        {'nome': 'Python', 'nivel': 4, 'anos_experiencia': 4.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'Django', 'nivel': 4, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'PostgreSQL', 'nivel': 3, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'Docker', 'nivel': 3, 'anos_experiencia': 2.0, 'ano_ultima_utilizacao': 2023, 'inferido': True},
+        {'nome': 'Redis', 'nivel': 2, 'anos_experiencia': 1.5, 'ano_ultima_utilizacao': 2024, 'inferido': True},
+    ],
+    'frontend': [
+        {'nome': 'JavaScript', 'nivel': 4, 'anos_experiencia': 4.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'React', 'nivel': 4, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'TypeScript', 'nivel': 3, 'anos_experiencia': 2.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'CSS', 'nivel': 3, 'anos_experiencia': 4.0, 'ano_ultima_utilizacao': 2024, 'inferido': True},
+        {'nome': 'HTML', 'nivel': 4, 'anos_experiencia': 5.0, 'ano_ultima_utilizacao': 2024, 'inferido': True},
+    ],
+    'dados': [
+        {'nome': 'Python', 'nivel': 4, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'SQL', 'nivel': 4, 'anos_experiencia': 4.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'Pandas', 'nivel': 4, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'Spark', 'nivel': 3, 'anos_experiencia': 2.0, 'ano_ultima_utilizacao': 2023, 'inferido': True},
+        {'nome': 'Airflow', 'nivel': 2, 'anos_experiencia': 1.0, 'ano_ultima_utilizacao': 2024, 'inferido': True},
+    ],
+    'devops': [
+        {'nome': 'Docker', 'nivel': 4, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'Kubernetes', 'nivel': 3, 'anos_experiencia': 2.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'AWS', 'nivel': 4, 'anos_experiencia': 3.0, 'ano_ultima_utilizacao': 2024, 'inferido': False},
+        {'nome': 'Terraform', 'nivel': 3, 'anos_experiencia': 2.0, 'ano_ultima_utilizacao': 2023, 'inferido': True},
+        {'nome': 'Linux', 'nivel': 4, 'anos_experiencia': 5.0, 'ano_ultima_utilizacao': 2024, 'inferido': True},
+    ],
+}
+
+
+def gerar_mock_cv_parseado(texto_cv: str) -> CVParseado:
+    """
+    Gera um CVParseado mockado baseado em palavras-chave do texto.
+
+    Usado quando OPENAI_MOCK_MODE=True (sem creditos OpenAI).
+    """
+    from core.schemas import HabilidadeExtraida
+    import random
+
+    texto_lower = texto_cv.lower()
+
+    # Detecta area baseado em palavras-chave
+    if any(kw in texto_lower for kw in ['python', 'django', 'flask', 'fastapi', 'backend', 'api']):
+        area = 'Backend'
+        habs = MOCK_HABILIDADES_POR_AREA['backend']
+    elif any(kw in texto_lower for kw in ['react', 'vue', 'angular', 'javascript', 'frontend', 'css']):
+        area = 'Frontend'
+        habs = MOCK_HABILIDADES_POR_AREA['frontend']
+    elif any(kw in texto_lower for kw in ['dados', 'data', 'analytics', 'pandas', 'spark', 'sql']):
+        area = 'Dados'
+        habs = MOCK_HABILIDADES_POR_AREA['dados']
+    elif any(kw in texto_lower for kw in ['devops', 'docker', 'kubernetes', 'aws', 'cloud', 'infra']):
+        area = 'DevOps'
+        habs = MOCK_HABILIDADES_POR_AREA['devops']
+    else:
+        area = 'Backend'
+        habs = MOCK_HABILIDADES_POR_AREA['backend']
+
+    # Detecta senioridade
+    if any(kw in texto_lower for kw in ['senior', 'sênior', 'lead', 'staff', 'principal', '10 anos', '8 anos']):
+        senioridade = 'senior'
+    elif any(kw in texto_lower for kw in ['pleno', 'mid', 'middle', '5 anos', '4 anos', '3 anos']):
+        senioridade = 'pleno'
+    else:
+        senioridade = 'junior'
+
+    # Adiciona variacao aleatoria nos niveis
+    habilidades = []
+    for h in habs:
+        hab_copy = h.copy()
+        # Varia nivel em +/- 1
+        hab_copy['nivel'] = max(1, min(5, hab_copy['nivel'] + random.randint(-1, 1)))
+        habilidades.append(HabilidadeExtraida(**hab_copy))
+
+    logger.info(f"[MOCK MODE] Gerando CV parseado: area={area}, senioridade={senioridade}")
+
+    return CVParseado(
+        area_atuacao=area,
+        senioridade_inferida=senioridade,
+        habilidades=habilidades
+    )
 
 
 # =============================================================================
@@ -335,6 +428,8 @@ def chamar_openai_extracao(texto_cv: str) -> CVParseado:
     """
     Chama GPT-4o-mini para extrair habilidades do CV.
 
+    Se OPENAI_MOCK_MODE=True, retorna dados mockados sem chamar a API.
+
     Args:
         texto_cv: Texto do CV já sanitizado (sem dados pessoais)
 
@@ -344,6 +439,11 @@ def chamar_openai_extracao(texto_cv: str) -> CVParseado:
     Raises:
         ValidationError: Se resposta não passar validação
     """
+    # MOCK MODE: retorna dados mockados sem chamar OpenAI
+    if MOCK_MODE:
+        logger.warning("[MOCK MODE ATIVO] Gerando habilidades mockadas - OpenAI nao sera chamada")
+        return gerar_mock_cv_parseado(texto_cv)
+
     client = get_openai_client()
 
     prompt = f"""
