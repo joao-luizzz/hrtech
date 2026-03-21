@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Historico de Acoes - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clock-history me-2"></i>Historico de Acoes</h2>
+    <span class="badge bg-secondary fs-6">{{ acoes.paginator.count }} registros</span>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label small">Tipo de Acao</label>
+                <select name="tipo" class="form-select">
+                    <option value="">Todos os tipos</option>
+                    {% for value, label in tipo_choices %}
+                    <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">&nbsp;</label>
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Acoes -->
+<div class="card">
+    <div class="list-group list-group-flush">
+        {% for acao in acoes %}
+        <div class="list-group-item">
+            <div class="d-flex w-100 justify-content-between align-items-start">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        {% if acao.tipo_acao == 'login' %}
+                        <span class="badge bg-info"><i class="bi bi-box-arrow-in-right"></i></span>
+                        {% elif acao.tipo_acao == 'logout' %}
+                        <span class="badge bg-secondary"><i class="bi bi-box-arrow-right"></i></span>
+                        {% elif 'candidato' in acao.tipo_acao or 'cv' in acao.tipo_acao or 'etapa' in acao.tipo_acao %}
+                        <span class="badge bg-primary"><i class="bi bi-person"></i></span>
+                        {% elif 'vaga' in acao.tipo_acao %}
+                        <span class="badge bg-success"><i class="bi bi-briefcase"></i></span>
+                        {% elif 'matching' in acao.tipo_acao %}
+                        <span class="badge bg-warning"><i class="bi bi-stars"></i></span>
+                        {% else %}
+                        <span class="badge bg-dark"><i class="bi bi-gear"></i></span>
+                        {% endif %}
+
+                        <strong>{{ acao.get_tipo_acao_display }}</strong>
+                    </div>
+
+                    <p class="mb-1 text-muted small">
+                        {% if acao.usuario %}
+                        <i class="bi bi-person-circle me-1"></i>{{ acao.usuario.email }}
+                        {% else %}
+                        <i class="bi bi-robot me-1"></i>Sistema
+                        {% endif %}
+
+                        {% if acao.candidato %}
+                        <span class="mx-2">|</span>
+                        <i class="bi bi-person me-1"></i>
+                        <a href="{% url 'core:dashboard_candidato' acao.candidato.id %}">{{ acao.candidato.nome }}</a>
+                        {% endif %}
+
+                        {% if acao.vaga %}
+                        <span class="mx-2">|</span>
+                        <i class="bi bi-briefcase me-1"></i>{{ acao.vaga.titulo }}
+                        {% endif %}
+
+                        {% if acao.ip_address %}
+                        <span class="mx-2">|</span>
+                        <i class="bi bi-geo-alt me-1"></i>{{ acao.ip_address }}
+                        {% endif %}
+                    </p>
+
+                    {% if acao.detalhes %}
+                    <div class="small text-muted">
+                        {% for key, value in acao.detalhes.items %}
+                        <span class="badge bg-light text-dark me-1">{{ key }}: {{ value }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <small class="text-muted text-nowrap">
+                    <i class="bi bi-clock me-1"></i>
+                    {{ acao.created_at|date:"d/m/Y H:i" }}
+                </small>
+            </div>
+        </div>
+        {% empty %}
+        <div class="list-group-item text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            Nenhuma acao registrada.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Paginacao -->
+{% if acoes.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if acoes.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ acoes.previous_page_number }}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}">
+                Anterior
+            </a>
+        </li>
+        {% endif %}
+
+        <li class="page-item disabled">
+            <span class="page-link">Pagina {{ acoes.number }} de {{ acoes.paginator.num_pages }}</span>
+        </li>
+
+        {% if acoes.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ acoes.next_page_number }}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}">
+                Proxima
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

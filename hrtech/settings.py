@@ -55,9 +55,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Requerido pelo allauth
+    # Django Allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
     # Apps do projeto
     'core',
 ]
+
+# Site ID para django-allauth
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -68,7 +76,43 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Django Allauth
 ]
+
+# =============================================================================
+# AUTENTICAÇÃO - Django Allauth
+# =============================================================================
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# URLs de redirecionamento
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = 'account_login'
+
+# Configurações do Allauth
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' em produção se tiver SMTP
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_SESSION_REMEMBER = True
+
+# Email backend (console em dev, SMTP em produção)
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@hrtech.com')
 
 ROOT_URLCONF = 'hrtech.urls'
 

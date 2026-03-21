@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}{% if editing %}Editar{% else %}Nova{% endif %} Vaga - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-{% if editing %}pencil{% else %}plus-lg{% endif %} me-2"></i>
+                    {% if editing %}Editar Vaga{% else %}Nova Vaga{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="titulo" class="form-label">Titulo da Vaga *</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo"
+                                   value="{{ vaga.titulo|default:'' }}" required
+                                   placeholder="Ex: Desenvolvedor Python Senior">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if vaga.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="area" class="form-label">Area *</label>
+                            <input type="text" class="form-control" id="area" name="area"
+                                   value="{{ vaga.area|default:'' }}" required
+                                   placeholder="Ex: Backend, Dados, Frontend, DevOps">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="senioridade" class="form-label">Senioridade Desejada</label>
+                            <select class="form-select" id="senioridade" name="senioridade">
+                                {% for value, label in senioridade_choices %}
+                                <option value="{{ value }}" {% if vaga.senioridade_desejada == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descricao" class="form-label">Descricao</label>
+                        <textarea class="form-control" id="descricao" name="descricao" rows="4"
+                                  placeholder="Descreva as responsabilidades e requisitos da vaga...">{{ vaga.descricao|default:'' }}</textarea>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="mb-3"><i class="bi bi-tools me-1"></i> Skills</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Skills Obrigatorias</label>
+                            <div id="skills-obrigatorias-container">
+                                <!-- Skills serao adicionadas aqui via JS -->
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addSkill('obrigatorias')">
+                                <i class="bi bi-plus"></i> Adicionar Skill
+                            </button>
+                            <input type="hidden" name="skills_obrigatorias" id="skills_obrigatorias"
+                                   value='{{ vaga.skills_obrigatorias|default:"[]"|safe }}'>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Skills Desejaveis</label>
+                            <div id="skills-desejaveis-container">
+                                <!-- Skills serao adicionadas aqui via JS -->
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addSkill('desejaveis')">
+                                <i class="bi bi-plus"></i> Adicionar Skill
+                            </button>
+                            <input type="hidden" name="skills_desejaveis" id="skills_desejaveis"
+                                   value='{{ vaga.skills_desejaveis|default:"[]"|safe }}'>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'core:lista_vagas' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>
+                            {% if editing %}Salvar Alteracoes{% else %}Criar Vaga{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let skillsObrigatorias = [];
+let skillsDesejaveis = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Carrega skills existentes
+    try {
+        skillsObrigatorias = JSON.parse(document.getElementById('skills_obrigatorias').value) || [];
+        skillsDesejaveis = JSON.parse(document.getElementById('skills_desejaveis').value) || [];
+    } catch (e) {
+        skillsObrigatorias = [];
+        skillsDesejaveis = [];
+    }
+
+    renderSkills('obrigatorias');
+    renderSkills('desejaveis');
+});
+
+function addSkill(tipo) {
+    const skills = tipo === 'obrigatorias' ? skillsObrigatorias : skillsDesejaveis;
+    skills.push({ nome: '', nivel_minimo: 3 });
+    renderSkills(tipo);
+    updateHiddenInput(tipo);
+}
+
+function removeSkill(tipo, index) {
+    const skills = tipo === 'obrigatorias' ? skillsObrigatorias : skillsDesejaveis;
+    skills.splice(index, 1);
+    renderSkills(tipo);
+    updateHiddenInput(tipo);
+}
+
+function updateSkill(tipo, index, field, value) {
+    const skills = tipo === 'obrigatorias' ? skillsObrigatorias : skillsDesejaveis;
+    if (field === 'nivel_minimo') {
+        skills[index][field] = parseInt(value);
+    } else {
+        skills[index][field] = value;
+    }
+    updateHiddenInput(tipo);
+}
+
+function renderSkills(tipo) {
+    const container = document.getElementById(`skills-${tipo}-container`);
+    const skills = tipo === 'obrigatorias' ? skillsObrigatorias : skillsDesejaveis;
+
+    container.innerHTML = skills.map((skill, index) => `
+        <div class="input-group mb-2">
+            <input type="text" class="form-control" placeholder="Nome da skill"
+                   value="${skill.nome}"
+                   onchange="updateSkill('${tipo}', ${index}, 'nome', this.value)">
+            <select class="form-select" style="max-width: 100px;"
+                    onchange="updateSkill('${tipo}', ${index}, 'nivel_minimo', this.value)">
+                <option value="1" ${skill.nivel_minimo === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${skill.nivel_minimo === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${skill.nivel_minimo === 3 ? 'selected' : ''}>3</option>
+                <option value="4" ${skill.nivel_minimo === 4 ? 'selected' : ''}>4</option>
+                <option value="5" ${skill.nivel_minimo === 5 ? 'selected' : ''}>5</option>
+            </select>
+            <button type="button" class="btn btn-outline-danger" onclick="removeSkill('${tipo}', ${index})">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function updateHiddenInput(tipo) {
+    const skills = tipo === 'obrigatorias' ? skillsObrigatorias : skillsDesejaveis;
+    document.getElementById(`skills_${tipo}`).value = JSON.stringify(skills);
+}
+</script>
+{% endblock %}

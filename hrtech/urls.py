@@ -6,6 +6,7 @@ Rotas do projeto HRTech ATS.
 
 Estrutura:
     /admin/     → Django Admin
+    /accounts/  → Django Allauth (login, registro, etc)
     /           → App Core (upload de CVs)
 """
 
@@ -16,6 +17,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/', include('allauth.urls')),  # Django Allauth
     path('', include('core.urls')),
 ]
 

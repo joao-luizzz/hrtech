@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar Candidatos - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-search me-2"></i>Buscar Candidatos</h2>
+    <span class="badge bg-secondary fs-6">{{ candidatos.paginator.count }} candidatos</span>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small">Nome</label>
+                    <input type="text" name="nome" class="form-control" placeholder="Buscar por nome..." value="{{ request.GET.nome }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Email</label>
+                    <input type="text" name="email" class="form-control" placeholder="Buscar por email..." value="{{ request.GET.email }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Senioridade</label>
+                    <select name="senioridade" class="form-select">
+                        <option value="">Todas</option>
+                        {% for value, label in senioridade_choices %}
+                        <option value="{{ value }}" {% if request.GET.senioridade == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Etapa</label>
+                    <select name="etapa" class="form-select">
+                        <option value="">Todas</option>
+                        {% for value, label in etapa_choices %}
+                        <option value="{{ value }}" {% if request.GET.etapa == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Status CV</label>
+                    <select name="status_cv" class="form-select">
+                        <option value="">Todos</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if request.GET.status_cv == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label small">Skill</label>
+                    <input type="text" name="skill" class="form-control" placeholder="Buscar por skill..." value="{{ request.GET.skill }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">&nbsp;</label>
+                    <a href="{% url 'core:buscar_candidatos' %}" class="btn btn-outline-secondary w-100">
+                        Limpar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Candidatos -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Senioridade</th>
+                    <th>Etapa</th>
+                    <th>Status CV</th>
+                    <th>Disponivel</th>
+                    <th>Cadastrado em</th>
+                    <th class="text-end">Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidato in candidatos %}
+                <tr>
+                    <td>
+                        <strong>{{ candidato.nome }}</strong>
+                    </td>
+                    <td>
+                        <small>{{ candidato.email }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">{{ candidato.get_senioridade_display }}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge etapa-{{ candidato.etapa_processo }}">
+                            {{ candidato.get_etapa_processo_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ candidato.status_cv }}">
+                            {{ candidato.get_status_cv_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if candidato.disponivel %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                        <i class="bi bi-x-circle-fill text-danger"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>{{ candidato.created_at|date:"d/m/Y" }}</small>
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'core:dashboard_candidato' candidato.id %}" class="btn btn-sm btn-outline-primary" title="Ver perfil">
+                            <i class="bi bi-person"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Nenhum candidato encontrado com os filtros aplicados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Paginacao -->
+{% if candidatos.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if candidatos.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ candidatos.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                Anterior
+            </a>
+        </li>
+        {% endif %}
+
+        <li class="page-item disabled">
+            <span class="page-link">Pagina {{ candidatos.number }} de {{ candidatos.paginator.num_pages }}</span>
+        </li>
+
+        {% if candidatos.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ candidatos.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                Proxima
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

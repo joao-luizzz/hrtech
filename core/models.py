@@ -12,12 +12,80 @@ Decisões Arquiteturais Importantes:
 2. SET_NULL em AuditoriaMatch - preserva histórico mesmo após deleção (LGPD)
 3. JSONField para skills - flexibilidade sem normalização excessiva
 4. Status de CV como choices - facilita tracking do pipeline Celery
+5. Profile com roles - separação de permissões RH vs Candidato
 """
 
 import uuid
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+class Profile(models.Model):
+    """
+    Perfil estendido do usuário com role e configurações.
+
+    Roles:
+    - candidato: Pode ver próprio perfil e matches
+    - rh: Pode gerenciar vagas, ver todos candidatos, rodar matching
+    - admin: Acesso total (superuser)
+    """
+
+    class Role(models.TextChoices):
+        CANDIDATO = 'candidato', 'Candidato'
+        RH = 'rh', 'Recrutador (RH)'
+        ADMIN = 'admin', 'Administrador'
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+
+    role = models.CharField(
+        max_length=10,
+        choices=Role.choices,
+        default=Role.CANDIDATO
+    )
+
+    # Configurações pessoais
+    receber_notificacoes = models.BooleanField(
+        default=True,
+        help_text="Receber notificações por email"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Perfil'
+        verbose_name_plural = 'Perfis'
+
+    def __str__(self):
+        return f"{self.user.email} ({self.get_role_display()})"
+
+    @property
+    def is_rh(self):
+        return self.role in [self.Role.RH, self.Role.ADMIN]
+
+    @property
+    def is_candidato(self):
+        return self.role == self.Role.CANDIDATO
+
+
+# Signal para criar Profile automaticamente quando User é criado
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
 
 
 class Candidato(models.Model):
@@ -47,6 +115,17 @@ class Candidato(models.Model):
         EXTRAINDO = 'extraindo', 'Extraindo habilidades'  # GPT-4o-mini rodando
         CONCLUIDO = 'concluido', 'Concluído'        # Sucesso
         ERRO = 'erro', 'Erro no processamento'      # Falha
+
+    # Choices para etapa do processo seletivo (pipeline RH)
+    class EtapaProcesso(models.TextChoices):
+        TRIAGEM = 'triagem', 'Triagem'
+        ENTREVISTA_RH = 'entrevista_rh', 'Entrevista RH'
+        TESTE_TECNICO = 'teste_tecnico', 'Teste Técnico'
+        ENTREVISTA_TECNICA = 'entrevista_tecnica', 'Entrevista Técnica'
+        PROPOSTA = 'proposta', 'Proposta'
+        CONTRATADO = 'contratado', 'Contratado'
+        REJEITADO = 'rejeitado', 'Rejeitado'
+        DESISTIU = 'desistiu', 'Desistiu'
     
     # UUID como PK - mesmo valor será usado no Neo4j
     # Decisão: UUIDField ao invés de AutoField para facilitar dual-write
@@ -103,6 +182,14 @@ class Candidato(models.Model):
         max_length=15,
         choices=StatusCV.choices,
         default=StatusCV.PENDENTE
+    )
+
+    # Etapa do processo seletivo (pipeline RH) - separado do status_cv
+    etapa_processo = models.CharField(
+        max_length=20,
+        choices=EtapaProcesso.choices,
+        default=EtapaProcesso.TRIAGEM,
+        help_text="Etapa atual no processo seletivo"
     )
     
     # Timestamps
@@ -268,3 +355,118 @@ class AuditoriaMatch(models.Model):
         vaga_str = self.vaga.titulo if self.vaga else '[Vaga deletada]'
         cand_str = self.candidato.nome if self.candidato else '[Candidato deletado]'
         return f"{cand_str} → {vaga_str}: {self.score}"
+
+
+class HistoricoAcao(models.Model):
+    """
+    Log de ações realizadas por usuários do sistema.
+
+    Registra:
+    - Quem fez a ação
+    - Qual ação foi feita
+    - Em qual entidade (candidato, vaga)
+    - Quando foi feita
+    - Detalhes adicionais (JSON)
+
+    LGPD: Este log é essencial para auditoria de acesso a dados pessoais.
+    """
+
+    class TipoAcao(models.TextChoices):
+        # Ações em Candidatos
+        CANDIDATO_CRIADO = 'candidato_criado', 'Candidato criado'
+        CANDIDATO_EDITADO = 'candidato_editado', 'Candidato editado'
+        CANDIDATO_DELETADO = 'candidato_deletado', 'Candidato deletado'
+        CANDIDATO_CV_UPLOAD = 'cv_upload', 'CV enviado'
+        CANDIDATO_CV_VISUALIZADO = 'cv_visualizado', 'CV visualizado'
+        CANDIDATO_ETAPA_ALTERADA = 'etapa_alterada', 'Etapa alterada'
+        # Ações em Vagas
+        VAGA_CRIADA = 'vaga_criada', 'Vaga criada'
+        VAGA_EDITADA = 'vaga_editada', 'Vaga editada'
+        VAGA_DELETADA = 'vaga_deletada', 'Vaga deletada'
+        VAGA_STATUS_ALTERADO = 'vaga_status', 'Status da vaga alterado'
+        # Ações de Matching
+        MATCHING_EXECUTADO = 'matching', 'Matching executado'
+        # Ações de Autenticação
+        LOGIN = 'login', 'Login'
+        LOGOUT = 'logout', 'Logout'
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='historico_acoes'
+    )
+
+    tipo_acao = models.CharField(
+        max_length=30,
+        choices=TipoAcao.choices
+    )
+
+    # Referências opcionais às entidades afetadas
+    candidato = models.ForeignKey(
+        Candidato,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='historico'
+    )
+
+    vaga = models.ForeignKey(
+        Vaga,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='historico'
+    )
+
+    # Detalhes adicionais (ex: de qual etapa para qual etapa)
+    detalhes = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Detalhes da ação em JSON"
+    )
+
+    # IP do usuário (para auditoria de segurança)
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Histórico de Ação'
+        verbose_name_plural = 'Histórico de Ações'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['usuario', 'created_at']),
+            models.Index(fields=['tipo_acao', 'created_at']),
+            models.Index(fields=['candidato', 'created_at']),
+        ]
+
+    def __str__(self):
+        user_str = self.usuario.email if self.usuario else '[Sistema]'
+        return f"{user_str} - {self.get_tipo_acao_display()} ({self.created_at.strftime('%d/%m/%Y %H:%M')})"
+
+
+def registrar_acao(usuario, tipo_acao, candidato=None, vaga=None, detalhes=None, ip_address=None):
+    """
+    Helper function para registrar ações no histórico.
+
+    Uso:
+        registrar_acao(
+            usuario=request.user,
+            tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_ETAPA_ALTERADA,
+            candidato=candidato,
+            detalhes={'de': 'triagem', 'para': 'entrevista_rh'},
+            ip_address=get_client_ip(request)
+        )
+    """
+    return HistoricoAcao.objects.create(
+        usuario=usuario if usuario and usuario.is_authenticated else None,
+        tipo_acao=tipo_acao,
+        candidato=candidato,
+        vaga=vaga,
+        detalhes=detalhes or {},
+        ip_address=ip_address
+    )
