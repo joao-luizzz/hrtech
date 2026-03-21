@@ -61,6 +61,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files em produção
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -134,8 +135,10 @@ AWS_PRESIGNED_URL_TTL = config('AWS_PRESIGNED_URL_TTL', default=900, cast=int)  
 # =============================================================================
 # Decisão: Redis como broker E backend
 # Razão: simplicidade operacional, uma dependência a menos
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+# CRÍTICO: Em produção, configure CELERY_BROKER_URL no ambiente
+# Opções gratuitas: Upstash Redis, Redis Cloud free tier
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0' if DEBUG else None)
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0' if DEBUG else None)
 
 # Configurações de serialização segura
 CELERY_ACCEPT_CONTENT = ['json']
@@ -189,6 +192,16 @@ USE_TZ = True
 # =============================================================================
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise para servir arquivos estáticos em produção (Render, Heroku, etc)
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Upload de arquivos (CVs antes de ir pro S3)
 MEDIA_URL = 'media/'
