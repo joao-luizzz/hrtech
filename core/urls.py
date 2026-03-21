@@ -29,6 +29,15 @@ Estrutura:
     # Busca de Candidatos (protegido)
     /rh/candidatos/             → buscar_candidatos
 
+    # Comentários (protegido)
+    /rh/candidato/<id>/comentarios/           → listar_comentarios
+    /rh/candidato/<id>/comentarios/adicionar/ → adicionar_comentario (POST)
+    /rh/comentario/<id>/excluir/              → excluir_comentario (POST)
+
+    # Favoritos (protegido)
+    /rh/candidato/<id>/favorito/→ toggle_favorito (POST)
+    /rh/favoritos/              → meus_favoritos
+
     # Dashboard Candidato
     /candidato/<id>/            → dashboard_candidato
     /candidato/<id>/habilidades/→ habilidades_candidato_htmx
@@ -93,4 +102,17 @@ urlpatterns = [
     # PERFIL DO USUÁRIO
     # ==========================================================================
     path('perfil/', views.meu_perfil, name='meu_perfil'),
+
+    # ==========================================================================
+    # COMENTÁRIOS (PROTEGIDO)
+    # ==========================================================================
+    path('rh/candidato/<str:candidato_id>/comentarios/', views.listar_comentarios, name='listar_comentarios'),
+    path('rh/candidato/<str:candidato_id>/comentarios/adicionar/', views.adicionar_comentario, name='adicionar_comentario'),
+    path('rh/comentario/<int:comentario_id>/excluir/', views.excluir_comentario, name='excluir_comentario'),
+
+    # ==========================================================================
+    # FAVORITOS (PROTEGIDO)
+    # ==========================================================================
+    path('rh/candidato/<str:candidato_id>/favorito/', views.toggle_favorito, name='toggle_favorito'),
+    path('rh/favoritos/', views.meus_favoritos, name='meus_favoritos'),
 ]

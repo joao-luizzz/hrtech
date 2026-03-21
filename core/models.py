@@ -470,3 +470,108 @@ def registrar_acao(usuario, tipo_acao, candidato=None, vaga=None, detalhes=None,
         detalhes=detalhes or {},
         ip_address=ip_address
     )
+
+
+class Comentario(models.Model):
+    """
+    Comentários/notas do RH sobre candidatos.
+
+    Permite que recrutadores adicionem observações durante o processo seletivo.
+    Útil para comunicação entre membros da equipe de RH.
+    """
+
+    class Tipo(models.TextChoices):
+        NOTA = 'nota', 'Nota'
+        FEEDBACK = 'feedback', 'Feedback de Entrevista'
+        ALERTA = 'alerta', 'Alerta'
+        POSITIVO = 'positivo', 'Ponto Positivo'
+        NEGATIVO = 'negativo', 'Ponto de Atenção'
+
+    candidato = models.ForeignKey(
+        Candidato,
+        on_delete=models.CASCADE,
+        related_name='comentarios'
+    )
+
+    autor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='comentarios_feitos'
+    )
+
+    tipo = models.CharField(
+        max_length=10,
+        choices=Tipo.choices,
+        default=Tipo.NOTA
+    )
+
+    texto = models.TextField(
+        help_text="Conteúdo do comentário"
+    )
+
+    # Opcional: vincular a uma vaga específica
+    vaga = models.ForeignKey(
+        Vaga,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='comentarios'
+    )
+
+    # Privacidade: comentário visível apenas para o autor ou para todos do RH
+    privado = models.BooleanField(
+        default=False,
+        help_text="Se marcado, apenas o autor pode ver"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Comentário'
+        verbose_name_plural = 'Comentários'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        autor_str = self.autor.email if self.autor else '[Deletado]'
+        return f"{autor_str} sobre {self.candidato.nome}: {self.texto[:50]}..."
+
+
+class Favorito(models.Model):
+    """
+    Candidatos favoritos por usuário e vaga.
+
+    Permite que recrutadores marquem candidatos como favoritos
+    para fácil acesso posterior.
+    """
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favoritos'
+    )
+
+    candidato = models.ForeignKey(
+        Candidato,
+        on_delete=models.CASCADE,
+        related_name='favoritado_por'
+    )
+
+    vaga = models.ForeignKey(
+        Vaga,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='favoritos'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Favorito'
+        verbose_name_plural = 'Favoritos'
+        unique_together = ['usuario', 'candidato', 'vaga']
+
+    def __str__(self):
+        return f"{self.usuario.email} ⭐ {self.candidato.nome}"

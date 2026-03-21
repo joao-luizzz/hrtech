@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Favoritos - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-star-fill text-warning me-2"></i>Meus Favoritos</h2>
+    <span class="badge bg-secondary fs-6">{{ favoritos|length }} candidatos</span>
+</div>
+
+{% if favoritos %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Candidato</th>
+                    <th>Email</th>
+                    <th>Senioridade</th>
+                    <th>Vaga Relacionada</th>
+                    <th>Adicionado em</th>
+                    <th class="text-end">Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for favorito in favoritos %}
+                <tr id="favorito-{{ favorito.id }}">
+                    <td>
+                        <strong>{{ favorito.candidato.nome }}</strong>
+                    </td>
+                    <td>
+                        <small>{{ favorito.candidato.email }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">{{ favorito.candidato.get_senioridade_display }}</span>
+                    </td>
+                    <td>
+                        {% if favorito.vaga %}
+                        <a href="{% url 'core:ranking_candidatos' favorito.vaga.id %}" class="text-decoration-none">
+                            <i class="bi bi-briefcase me-1"></i>{{ favorito.vaga.titulo }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>{{ favorito.created_at|date:"d/m/Y H:i" }}</small>
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'core:dashboard_candidato' favorito.candidato.id %}" class="btn btn-sm btn-outline-primary" title="Ver perfil">
+                            <i class="bi bi-person"></i>
+                        </a>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                hx-post="{% url 'core:toggle_favorito' favorito.candidato.id %}"
+                                hx-target="#favorito-{{ favorito.id }}"
+                                hx-swap="outerHTML"
+                                title="Remover dos favoritos">
+                            <i class="bi bi-star-fill"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-star fs-1 d-block mb-3 text-muted"></i>
+        <h5 class="text-muted">Nenhum candidato favorito</h5>
+        <p class="text-muted mb-4">
+            Adicione candidatos aos favoritos clicando na estrela no perfil deles.
+        </p>
+        <a href="{% url 'core:buscar_candidatos' %}" class="btn btn-primary">
+            <i class="bi bi-search me-2"></i>Buscar Candidatos
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

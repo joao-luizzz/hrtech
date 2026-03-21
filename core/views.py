@@ -33,7 +33,8 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 
 from core.models import (
-    Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao
+    Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
+    Comentario, Favorito
 )
 from core.tasks import processar_cv_task
 from core.matching import MatchingEngine, resultado_para_dict
@@ -682,11 +683,22 @@ def dashboard_candidato(request, candidato_id):
         candidato=candidato
     ).select_related('vaga').order_by('-created_at')[:10]
 
+    # Dados para RH
+    total_comentarios = 0
+    is_favorito = False
+    if request.user.is_authenticated:
+        total_comentarios = Comentario.objects.filter(candidato=candidato).count()
+        is_favorito = Favorito.objects.filter(
+            usuario=request.user, candidato=candidato
+        ).exists()
+
     return render(request, 'core/dashboard_candidato.html', {
         'candidato': candidato,
         'habilidades': habilidades,
         'area_atuacao': area_atuacao,
         'matches': matches,
+        'total_comentarios': total_comentarios,
+        'is_favorito': is_favorito,
     })
 
 
@@ -858,3 +870,138 @@ def historico_acoes(request):
 def meu_perfil(request):
     """Página de perfil do usuário logado."""
     return render(request, 'account/profile.html')
+
+
+# =============================================================================
+# COMENTÁRIOS EM CANDIDATOS
+# =============================================================================
+
+@login_required
+@rh_required
+@require_POST
+@csrf_protect
+def adicionar_comentario(request, candidato_id):
+    """Adiciona um comentário a um candidato."""
+    candidato = get_object_or_404(Candidato, pk=candidato_id)
+
+    texto = request.POST.get('texto', '').strip()
+    tipo = request.POST.get('tipo', 'nota')
+    vaga_id = request.POST.get('vaga_id')
+    privado = request.POST.get('privado') in ('on', '1', 'true')
+
+    if not texto:
+        return JsonResponse({'error': 'Texto é obrigatório'}, status=400)
+
+    vaga = None
+    if vaga_id:
+        vaga = Vaga.objects.filter(pk=vaga_id).first()
+
+    comentario = Comentario.objects.create(
+        candidato=candidato,
+        autor=request.user,
+        tipo=tipo,
+        texto=texto,
+        vaga=vaga,
+        privado=privado
+    )
+
+    logger.info(f"Comentário adicionado ao candidato {candidato_id} por {request.user.email}")
+
+    # Retorna o HTML do comentário para HTMX
+    if request.headers.get('HX-Request'):
+        return render(request, 'core/partials/comentario_item.html', {
+            'comentario': comentario
+        })
+
+    return JsonResponse({'success': True, 'id': comentario.id})
+
+
+@login_required
+@rh_required
+@require_GET
+def listar_comentarios(request, candidato_id):
+    """Lista comentários de um candidato."""
+    candidato = get_object_or_404(Candidato, pk=candidato_id)
+
+    comentarios = Comentario.objects.filter(candidato=candidato)
+
+    # Filtra comentários privados (só mostra os próprios)
+    comentarios = comentarios.filter(
+        Q(privado=False) | Q(autor=request.user)
+    ).select_related('autor', 'vaga').order_by('-created_at')
+
+    # Vagas ativas para o formulário
+    vagas = Vaga.objects.filter(ativo=True).order_by('titulo')
+
+    return render(request, 'core/comentarios/lista.html', {
+        'candidato': candidato,
+        'comentarios': comentarios,
+        'vagas': vagas
+    })
+
+
+@login_required
+@rh_required
+@require_POST
+@csrf_protect
+def excluir_comentario(request, comentario_id):
+    """Exclui um comentário (apenas o autor pode excluir)."""
+    comentario = get_object_or_404(Comentario, pk=comentario_id)
+
+    # Só o autor ou superuser pode excluir
+    if comentario.autor != request.user and not request.user.is_superuser:
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    comentario.delete()
+
+    return JsonResponse({'success': True})
+
+
+# =============================================================================
+# FAVORITOS
+# =============================================================================
+
+@login_required
+@rh_required
+@require_POST
+@csrf_protect
+def toggle_favorito(request, candidato_id):
+    """Adiciona ou remove candidato dos favoritos."""
+    candidato = get_object_or_404(Candidato, pk=candidato_id)
+    vaga_id = request.POST.get('vaga_id')
+
+    vaga = None
+    if vaga_id:
+        vaga = Vaga.objects.filter(pk=vaga_id).first()
+
+    favorito, created = Favorito.objects.get_or_create(
+        usuario=request.user,
+        candidato=candidato,
+        vaga=vaga
+    )
+
+    if not created:
+        # Já existe, então remove
+        favorito.delete()
+        is_favorito = False
+    else:
+        is_favorito = True
+
+    return JsonResponse({
+        'success': True,
+        'is_favorito': is_favorito
+    })
+
+
+@login_required
+@rh_required
+@require_GET
+def meus_favoritos(request):
+    """Lista candidatos favoritos do usuário."""
+    favoritos = Favorito.objects.filter(
+        usuario=request.user
+    ).select_related('candidato', 'vaga').order_by('-created_at')
+
+    return render(request, 'core/favoritos/lista.html', {
+        'favoritos': favoritos
+    })

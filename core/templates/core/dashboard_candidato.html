@@ -200,6 +200,31 @@
 
     <!-- Sidebar -->
     <div class="col-lg-4">
+        <!-- Ações RH -->
+        {% if user.is_authenticated and user.profile.is_rh %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-briefcase me-2"></i>Ações RH</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'core:listar_comentarios' candidato.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-chat-left-text me-2"></i>Comentários
+                        {% if total_comentarios %}<span class="badge bg-primary ms-1">{{ total_comentarios }}</span>{% endif %}
+                    </a>
+                    <button type="button"
+                            class="btn {% if is_favorito %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                            hx-post="{% url 'core:toggle_favorito' candidato.id %}"
+                            hx-swap="none"
+                            hx-on::after-request="this.classList.toggle('btn-warning'); this.classList.toggle('btn-outline-warning');">
+                        <i class="bi bi-star{% if is_favorito %}-fill{% endif %} me-2"></i>
+                        {% if is_favorito %}Favoritado{% else %}Adicionar aos Favoritos{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Info do Candidato -->
         <div class="card mb-4">
             <div class="card-header">

@@ -1,0 +1,49 @@
+<!-- Partial: Item de Comentario -->
+<!-- Usado para renderizar cada comentario na lista -->
+
+<div class="list-group-item list-group-item-action" id="comentario-{{ comentario.id }}">
+    <div class="d-flex w-100 justify-content-between align-items-start">
+        <div class="flex-grow-1">
+            <div class="d-flex align-items-center mb-1">
+                {% if comentario.tipo == 'nota' %}
+                <span class="badge bg-secondary me-2"><i class="bi bi-sticky me-1"></i>Nota</span>
+                {% elif comentario.tipo == 'feedback' %}
+                <span class="badge bg-info me-2"><i class="bi bi-chat-dots me-1"></i>Feedback</span>
+                {% elif comentario.tipo == 'alerta' %}
+                <span class="badge bg-warning text-dark me-2"><i class="bi bi-exclamation-triangle me-1"></i>Alerta</span>
+                {% elif comentario.tipo == 'positivo' %}
+                <span class="badge bg-success me-2"><i class="bi bi-hand-thumbs-up me-1"></i>Positivo</span>
+                {% elif comentario.tipo == 'negativo' %}
+                <span class="badge bg-danger me-2"><i class="bi bi-hand-thumbs-down me-1"></i>Atencao</span>
+                {% endif %}
+
+                {% if comentario.privado %}
+                <span class="badge bg-dark"><i class="bi bi-lock me-1"></i>Privado</span>
+                {% endif %}
+            </div>
+
+            <p class="mb-1">{{ comentario.texto }}</p>
+
+            <small class="text-muted">
+                <i class="bi bi-person me-1"></i>{{ comentario.autor.email|default:"Usuario removido" }}
+                <span class="mx-2">|</span>
+                <i class="bi bi-clock me-1"></i>{{ comentario.created_at|date:"d/m/Y H:i" }}
+                {% if comentario.vaga %}
+                <span class="mx-2">|</span>
+                <i class="bi bi-briefcase me-1"></i>{{ comentario.vaga.titulo }}
+                {% endif %}
+            </small>
+        </div>
+
+        {% if comentario.autor == request.user or request.user.is_staff %}
+        <button type="button"
+                class="btn btn-sm btn-outline-danger"
+                hx-post="{% url 'core:excluir_comentario' comentario.id %}"
+                hx-target="#comentario-{{ comentario.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Tem certeza que deseja excluir este comentario?">
+            <i class="bi bi-trash"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>

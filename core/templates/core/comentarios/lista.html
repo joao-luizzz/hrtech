@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Comentarios - {{ candidato.nome }} - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'core:buscar_candidatos' %}">Candidatos</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'core:dashboard_candidato' candidato.id %}">{{ candidato.nome }}</a></li>
+                <li class="breadcrumb-item active">Comentarios</li>
+            </ol>
+        </nav>
+        <h2 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Comentarios</h2>
+    </div>
+    <a href="{% url 'core:dashboard_candidato' candidato.id %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+</div>
+
+<div class="row">
+    <!-- Formulario para adicionar comentario -->
+    <div class="col-md-4">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Novo Comentario</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% url 'core:adicionar_comentario' candidato.id %}"
+                      hx-post="{% url 'core:adicionar_comentario' candidato.id %}"
+                      hx-target="#lista-comentarios"
+                      hx-swap="afterbegin"
+                      hx-on::after-request="this.reset()">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label">Tipo</label>
+                        <select name="tipo" id="tipo" class="form-select" required>
+                            <option value="nota">Nota</option>
+                            <option value="feedback">Feedback de Entrevista</option>
+                            <option value="alerta">Alerta</option>
+                            <option value="positivo">Ponto Positivo</option>
+                            <option value="negativo">Ponto de Atencao</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="texto" class="form-label">Comentario</label>
+                        <textarea name="texto" id="texto" class="form-control" rows="4"
+                                  placeholder="Digite seu comentario..." required></textarea>
+                    </div>
+
+                    {% if vagas %}
+                    <div class="mb-3">
+                        <label for="vaga_id" class="form-label">Vaga (opcional)</label>
+                        <select name="vaga_id" id="vaga_id" class="form-select">
+                            <option value="">Nenhuma vaga especifica</option>
+                            {% for vaga in vagas %}
+                            <option value="{{ vaga.id }}">{{ vaga.titulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="privado" id="privado" class="form-check-input" value="1">
+                        <label for="privado" class="form-check-label">
+                            <i class="bi bi-lock me-1"></i>Comentario privado
+                            <small class="text-muted d-block">Visivel apenas para voce</small>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-send me-2"></i>Adicionar Comentario
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de comentarios -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Historico de Comentarios</h5>
+                <span class="badge bg-secondary">{{ comentarios|length }} comentarios</span>
+            </div>
+            <div class="list-group list-group-flush" id="lista-comentarios">
+                {% for comentario in comentarios %}
+                {% include "core/partials/comentario_item.html" %}
+                {% empty %}
+                <div class="list-group-item text-center py-5 text-muted">
+                    <i class="bi bi-chat-left-text fs-1 d-block mb-2"></i>
+                    Nenhum comentario ainda. Seja o primeiro a comentar!
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
