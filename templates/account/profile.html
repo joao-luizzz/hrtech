@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Minha Conta - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <div class="row">
+                    <!-- Sidebar do perfil -->
+                    <div class="col-md-4 border-end">
+                        <div class="text-center p-3">
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                                <i class="bi bi-person-fill text-primary" style="font-size: 3rem;"></i>
+                            </div>
+                            <h5 class="mt-3 mb-1">{{ user.email }}</h5>
+                            <p class="text-muted mb-2">
+                                {% if user.profile.role == 'rh' %}
+                                <span class="badge bg-primary"><i class="bi bi-shield-check me-1"></i>Recrutador</span>
+                                {% elif user.profile.role == 'admin' %}
+                                <span class="badge bg-danger"><i class="bi bi-star-fill me-1"></i>Admin</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>Candidato</span>
+                                {% endif %}
+                            </p>
+                            <small class="text-muted">
+                                Membro desde {{ user.date_joined|date:"d/m/Y" }}
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Opcoes da conta -->
+                    <div class="col-md-8">
+                        <h4 class="mb-4"><i class="bi bi-gear me-2"></i>Configuracoes da Conta</h4>
+
+                        <div class="list-group">
+                            <a href="{% url 'account_change_password' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                                <i class="bi bi-key text-primary me-3 fs-5"></i>
+                                <div>
+                                    <strong>Alterar Senha</strong>
+                                    <p class="mb-0 text-muted small">Atualize sua senha de acesso</p>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+
+                            <a href="{% url 'account_email' %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                                <i class="bi bi-envelope text-primary me-3 fs-5"></i>
+                                <div>
+                                    <strong>Gerenciar Email</strong>
+                                    <p class="mb-0 text-muted small">Adicione ou altere seus emails</p>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+
+                            {% if user.is_staff %}
+                            <a href="/admin/" class="list-group-item list-group-item-action d-flex align-items-center">
+                                <i class="bi bi-sliders text-warning me-3 fs-5"></i>
+                                <div>
+                                    <strong>Painel Admin</strong>
+                                    <p class="mb-0 text-muted small">Acesso administrativo do sistema</p>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                            {% endif %}
+
+                            <a href="{% url 'account_logout' %}" class="list-group-item list-group-item-action d-flex align-items-center text-danger">
+                                <i class="bi bi-box-arrow-right me-3 fs-5"></i>
+                                <div>
+                                    <strong>Sair da Conta</strong>
+                                    <p class="mb-0 text-muted small">Encerrar sua sessao</p>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto"></i>
+                            </a>
+                        </div>
+
+                        {% if user.profile.is_rh %}
+                        <hr class="my-4">
+
+                        <h5 class="mb-3"><i class="bi bi-briefcase me-2"></i>Acesso Rapido</h5>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <a href="{% url 'core:dashboard_rh' %}" class="btn btn-outline-primary w-100">
+                                    <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="{% url 'core:lista_vagas' %}" class="btn btn-outline-primary w-100">
+                                    <i class="bi bi-briefcase me-1"></i>Vagas
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="{% url 'core:pipeline_kanban' %}" class="btn btn-outline-primary w-100">
+                                    <i class="bi bi-kanban me-1"></i>Pipeline
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="{% url 'core:buscar_candidatos' %}" class="btn btn-outline-primary w-100">
+                                    <i class="bi bi-search me-1"></i>Candidatos
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

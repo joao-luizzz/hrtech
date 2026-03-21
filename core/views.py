@@ -847,3 +847,14 @@ def historico_acoes(request):
         'acoes': acoes,
         'tipo_choices': HistoricoAcao.TipoAcao.choices,
     })
+
+
+# =============================================================================
+# PERFIL DO USUÁRIO
+# =============================================================================
+
+@login_required
+@require_GET
+def meu_perfil(request):
+    """Página de perfil do usuário logado."""
+    return render(request, 'account/profile.html')

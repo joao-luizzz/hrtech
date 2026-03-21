@@ -213,18 +213,23 @@
                                     </span>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
-                                {% if user.profile.is_candidato %}
                                 <li>
-                                    <a class="dropdown-item" href="#">
-                                        <i class="bi bi-person-badge me-2"></i>Meu Perfil
+                                    <a class="dropdown-item" href="{% url 'core:meu_perfil' %}">
+                                        <i class="bi bi-person-badge me-2"></i>Minha Conta
                                     </a>
                                 </li>
-                                {% endif %}
                                 <li>
                                     <a class="dropdown-item" href="{% url 'account_change_password' %}">
                                         <i class="bi bi-key me-2"></i>Alterar Senha
                                     </a>
                                 </li>
+                                {% if user.is_staff %}
+                                <li>
+                                    <a class="dropdown-item" href="/admin/">
+                                        <i class="bi bi-sliders me-2"></i>Painel Admin
+                                    </a>
+                                </li>
+                                {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item text-danger" href="{% url 'account_logout' %}">

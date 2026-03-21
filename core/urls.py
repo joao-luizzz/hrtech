@@ -88,4 +88,9 @@ urlpatterns = [
     # ==========================================================================
     path('dashboard/', views.dashboard_geral, name='dashboard_geral'),
     path('api/stats/', views.api_stats, name='api_stats'),
+
+    # ==========================================================================
+    # PERFIL DO USUÁRIO
+    # ==========================================================================
+    path('perfil/', views.meu_perfil, name='meu_perfil'),
 ]
