@@ -220,6 +220,9 @@
                         <i class="bi bi-star{% if is_favorito %}-fill{% endif %} me-2"></i>
                         {% if is_favorito %}Favoritado{% else %}Adicionar aos Favoritos{% endif %}
                     </button>
+                    <a href="{% url 'core:relatorio_candidato' candidato.id %}" target="_blank" class="btn btn-outline-success">
+                        <i class="bi bi-printer me-2"></i>Imprimir Relatório
+                    </a>
                 </div>
             </div>
         </div>

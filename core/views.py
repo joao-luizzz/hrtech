@@ -34,7 +34,7 @@ from django.core.paginator import Paginator
 
 from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
-    Comentario, Favorito
+    Comentario, Favorito, Profile
 )
 from core.tasks import processar_cv_task
 from core.matching import MatchingEngine, resultado_para_dict
@@ -597,16 +597,33 @@ def mover_kanban(request):
 @rh_required
 @require_GET
 def buscar_candidatos(request):
-    """Busca e filtros de candidatos."""
-    candidatos = Candidato.objects.all().order_by('-created_at')
+    """Busca e filtros de candidatos com filtros avançados."""
+    candidatos = Candidato.objects.all()
 
-    # Filtros
+    # Filtros básicos
     nome = request.GET.get('nome')
     email = request.GET.get('email')
     senioridade = request.GET.get('senioridade')
     etapa = request.GET.get('etapa')
     status_cv = request.GET.get('status_cv')
-    skill = request.GET.get('skill')
+
+    # Filtros avançados
+    disponivel = request.GET.get('disponivel')
+    skills = request.GET.get('skills')  # Múltiplas skills separadas por vírgula
+    skill_logic = request.GET.get('skill_logic', 'OR')  # AND ou OR
+    nivel_minimo = request.GET.get('nivel_minimo')  # Nível mínimo da skill
+    ordenar = request.GET.get('ordenar', '-created_at')  # Ordenação
+
+    # Validação de nivel_minimo
+    if nivel_minimo:
+        try:
+            nivel_minimo = int(nivel_minimo)
+            if nivel_minimo < 1 or nivel_minimo > 5:
+                logger.warning(f"nivel_minimo inválido: {nivel_minimo}. Deve ser entre 1 e 5.")
+                nivel_minimo = None
+        except (ValueError, TypeError):
+            logger.warning(f"nivel_minimo deve ser um número inteiro: {nivel_minimo}")
+            nivel_minimo = None
 
     if nome:
         candidatos = candidatos.filter(nome__icontains=nome)
@@ -618,20 +635,76 @@ def buscar_candidatos(request):
         candidatos = candidatos.filter(etapa_processo=etapa)
     if status_cv:
         candidatos = candidatos.filter(status_cv=status_cv)
+    if disponivel:
+        candidatos = candidatos.filter(disponivel=(disponivel == 'sim'))
 
-    # Busca por skill (no Neo4j)
-    if skill:
+    # Busca por múltiplas skills (no Neo4j)
+    if skills:
         try:
-            query = """
-            MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
-            WHERE toLower(h.nome) CONTAINS toLower($skill)
-            RETURN DISTINCT c.uuid as uuid
-            """
-            results = run_query(query, {'skill': skill})
-            uuids = [r['uuid'] for r in results]
-            candidatos = candidatos.filter(id__in=uuids)
+            skills_list = [s.strip() for s in skills.split(',') if s.strip()]
+
+            if skill_logic == 'AND':
+                # Candidatos que têm TODAS as skills
+                for skill in skills_list:
+                    if nivel_minimo:
+                        query = """
+                        MATCH (c:Candidato)-[r:TEM_HABILIDADE]->(h:Habilidade)
+                        WHERE toLower(h.nome) CONTAINS toLower($skill)
+                        AND r.nivel >= $nivel_minimo
+                        RETURN DISTINCT c.uuid as uuid
+                        """
+                        results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo})
+                    else:
+                        query = """
+                        MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
+                        WHERE toLower(h.nome) CONTAINS toLower($skill)
+                        RETURN DISTINCT c.uuid as uuid
+                        """
+                        results = run_query(query, {'skill': skill})
+
+                    uuids = [r['uuid'] for r in results]
+                    candidatos = candidatos.filter(id__in=uuids)
+            else:
+                # Candidatos que têm QUALQUER uma das skills (OR)
+                uuids_set = set()
+                for skill in skills_list:
+                    if nivel_minimo:
+                        query = """
+                        MATCH (c:Candidato)-[r:TEM_HABILIDADE]->(h:Habilidade)
+                        WHERE toLower(h.nome) CONTAINS toLower($skill)
+                        AND r.nivel >= $nivel_minimo
+                        RETURN DISTINCT c.uuid as uuid
+                        """
+                        results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo})
+                    else:
+                        query = """
+                        MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
+                        WHERE toLower(h.nome) CONTAINS toLower($skill)
+                        RETURN DISTINCT c.uuid as uuid
+                        """
+                        results = run_query(query, {'skill': skill})
+
+                    uuids_set.update([r['uuid'] for r in results])
+
+                if uuids_set:
+                    candidatos = candidatos.filter(id__in=list(uuids_set))
+
         except Exception as e:
-            logger.warning(f"Erro na busca por skill: {e}")
+            logger.warning(f"Erro na busca por skills: {e}")
+
+    # Ordenação
+    valid_orderings = {
+        'nome': 'nome',
+        '-nome': '-nome',
+        'created_at': 'created_at',
+        '-created_at': '-created_at',
+        'senioridade': 'senioridade',
+        '-senioridade': '-senioridade',
+    }
+    if ordenar in valid_orderings:
+        candidatos = candidatos.order_by(valid_orderings[ordenar])
+    else:
+        candidatos = candidatos.order_by('-created_at')
 
     # Paginação
     paginator = Paginator(candidatos, 20)
@@ -1004,4 +1077,384 @@ def meus_favoritos(request):
 
     return render(request, 'core/favoritos/lista.html', {
         'favoritos': favoritos
+    })
+
+
+# =============================================================================
+# ÁREA DO CANDIDATO (LOGADO)
+# =============================================================================
+
+@login_required
+@require_GET
+def minha_area(request):
+    """
+    Área pessoal do candidato.
+
+    Mostra status do perfil, matches e aplicações.
+    """
+    # Verifica se o usuário tem um perfil de candidato vinculado
+    candidato = getattr(request.user, 'candidato', None)
+
+    if not candidato:
+        # Usuário logado mas não tem perfil de candidato
+        # Mostra opção de vincular
+        return render(request, 'core/candidato/vincular.html', {
+            'user': request.user
+        })
+
+    # Busca dados do Neo4j
+    habilidades = []
+    area_atuacao = None
+    try:
+        area_query = """
+        MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
+        RETURN a.nome as area
+        """
+        areas = run_query(area_query, {'uuid': str(candidato.id)})
+        if areas:
+            area_atuacao = areas[0]['area']
+
+        hab_query = """
+        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
+        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
+               r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
+        ORDER BY r.nivel DESC
+        """
+        habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
+    except Exception as e:
+        logger.warning(f"Erro ao buscar dados do Neo4j: {e}")
+
+    # Matches recentes
+    matches = AuditoriaMatch.objects.filter(
+        candidato=candidato
+    ).select_related('vaga').order_by('-created_at')[:10]
+
+    return render(request, 'core/candidato/minha_area.html', {
+        'candidato': candidato,
+        'habilidades': habilidades,
+        'area_atuacao': area_atuacao,
+        'matches': matches,
+    })
+
+
+@login_required
+@require_POST
+@csrf_protect
+def vincular_candidato(request):
+    """
+    Vincula o usuário logado a um perfil de candidato existente.
+
+    Busca pelo email do usuário.
+    """
+    if hasattr(request.user, 'candidato') and request.user.candidato:
+        messages.warning(request, 'Você já possui um perfil de candidato vinculado.')
+        return redirect('core:minha_area')
+
+    # Tenta encontrar candidato pelo email do usuário
+    try:
+        candidato = Candidato.objects.get(email=request.user.email)
+
+        # Verifica se já não está vinculado a outro usuário
+        if candidato.user and candidato.user != request.user:
+            messages.error(request, 'Este perfil de candidato já está vinculado a outra conta.')
+            return redirect('core:minha_area')
+
+        # Vincula
+        candidato.user = request.user
+        candidato.save(update_fields=['user'])
+
+        # Atualiza o role do profile para candidato se necessário
+        if hasattr(request.user, 'profile'):
+            if request.user.profile.role == Profile.Role.CANDIDATO:
+                pass  # Já é candidato
+        else:
+            Profile.objects.create(user=request.user, role=Profile.Role.CANDIDATO)
+
+        messages.success(request, f'Perfil vinculado com sucesso! Bem-vindo(a), {candidato.nome}!')
+        return redirect('core:minha_area')
+
+    except Candidato.DoesNotExist:
+        messages.info(request, 'Não encontramos um perfil de candidato com seu email. Envie seu CV para criar um.')
+        return redirect('core:upload_cv')
+
+
+@login_required
+@require_GET
+def minhas_aplicacoes(request):
+    """
+    Lista as vagas em que o candidato está participando.
+    """
+    candidato = getattr(request.user, 'candidato', None)
+
+    if not candidato:
+        messages.warning(request, 'Você precisa vincular seu perfil de candidato primeiro.')
+        return redirect('core:minha_area')
+
+    # Busca matches do candidato
+    matches = AuditoriaMatch.objects.filter(
+        candidato=candidato
+    ).select_related('vaga').order_by('-created_at')
+
+    # Agrupa por vaga
+    vagas_aplicadas = {}
+    for match in matches:
+        if match.vaga_id not in vagas_aplicadas:
+            vagas_aplicadas[match.vaga_id] = {
+                'vaga': match.vaga,
+                'melhor_score': match.score,
+                'ultimo_match': match.created_at,
+                'total_matches': 1
+            }
+        else:
+            vagas_aplicadas[match.vaga_id]['total_matches'] += 1
+            if match.score > vagas_aplicadas[match.vaga_id]['melhor_score']:
+                vagas_aplicadas[match.vaga_id]['melhor_score'] = match.score
+
+    return render(request, 'core/candidato/aplicacoes.html', {
+        'candidato': candidato,
+        'vagas_aplicadas': vagas_aplicadas.values()
+    })
+
+
+# =============================================================================
+# EXPORTAÇÃO DE RELATÓRIOS
+# =============================================================================
+
+@login_required
+@rh_required
+@require_GET
+def exportar_candidatos_excel(request):
+    """
+    Exporta lista de candidatos para Excel.
+
+    Respeita os mesmos filtros da busca.
+    """
+    import io
+    from datetime import datetime
+    from django.http import HttpResponse
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    except ImportError:
+        messages.error(request, 'Módulo openpyxl não instalado. Execute: pip install openpyxl')
+        return redirect('core:buscar_candidatos')
+
+    # Aplica os mesmos filtros da busca
+    candidatos = Candidato.objects.all().order_by('-created_at')
+
+    nome = request.GET.get('nome', '').strip()
+    email = request.GET.get('email', '').strip()
+    senioridade = request.GET.get('senioridade', '').strip()
+    etapa = request.GET.get('etapa', '').strip()
+    status_cv = request.GET.get('status_cv', '').strip()
+
+    if nome:
+        candidatos = candidatos.filter(nome__icontains=nome)
+    if email:
+        candidatos = candidatos.filter(email__icontains=email)
+    if senioridade:
+        candidatos = candidatos.filter(senioridade=senioridade)
+    if etapa:
+        candidatos = candidatos.filter(etapa_processo=etapa)
+    if status_cv:
+        candidatos = candidatos.filter(status_cv=status_cv)
+
+    # Cria workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Candidatos"
+
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Cabeçalho
+    headers = ['Nome', 'Email', 'Telefone', 'Senioridade', 'Anos Exp.', 'Etapa', 'Status CV', 'Disponível', 'Cadastro']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # Dados
+    for row, candidato in enumerate(candidatos, 2):
+        ws.cell(row=row, column=1, value=candidato.nome).border = thin_border
+        ws.cell(row=row, column=2, value=candidato.email).border = thin_border
+        ws.cell(row=row, column=3, value=candidato.telefone or '-').border = thin_border
+        ws.cell(row=row, column=4, value=candidato.get_senioridade_display()).border = thin_border
+        ws.cell(row=row, column=5, value=candidato.anos_experiencia).border = thin_border
+        ws.cell(row=row, column=6, value=candidato.get_etapa_processo_display()).border = thin_border
+        ws.cell(row=row, column=7, value=candidato.get_status_cv_display()).border = thin_border
+        ws.cell(row=row, column=8, value='Sim' if candidato.disponivel else 'Não').border = thin_border
+        ws.cell(row=row, column=9, value=candidato.created_at.strftime('%d/%m/%Y')).border = thin_border
+
+    # Ajusta largura das colunas
+    column_widths = [30, 35, 15, 12, 10, 20, 18, 12, 12]
+    for col, width in enumerate(column_widths, 1):
+        ws.column_dimensions[chr(64 + col)].width = width
+
+    # Salva em memória
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # Response
+    filename = f"candidatos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    logger.info(f"Exportação de candidatos por {request.user.email}: {candidatos.count()} registros")
+
+    return response
+
+
+@login_required
+@rh_required
+@require_GET
+def exportar_ranking_excel(request, vaga_id):
+    """
+    Exporta ranking de candidatos para uma vaga específica.
+    """
+    import io
+    from datetime import datetime
+    from django.http import HttpResponse
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    except ImportError:
+        messages.error(request, 'Módulo openpyxl não instalado.')
+        return redirect('core:ranking_candidatos', vaga_id=vaga_id)
+
+    vaga = get_object_or_404(Vaga, pk=vaga_id)
+
+    # Busca matches
+    matches = AuditoriaMatch.objects.filter(
+        vaga=vaga
+    ).select_related('candidato').order_by('-score')
+
+    # Cria workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Ranking"
+
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Título da vaga
+    ws.cell(row=1, column=1, value=f"Ranking - {vaga.titulo}").font = Font(bold=True, size=14)
+    ws.merge_cells('A1:G1')
+    ws.cell(row=2, column=1, value=f"Área: {vaga.area} | Senioridade: {vaga.get_senioridade_desejada_display()}")
+    ws.merge_cells('A2:G2')
+
+    # Cabeçalho
+    headers = ['Posição', 'Nome', 'Email', 'Score', 'Senioridade', 'Etapa', 'Data Match']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = thin_border
+
+    # Dados
+    for row, match in enumerate(matches, 5):
+        ws.cell(row=row, column=1, value=row - 4).border = thin_border
+        ws.cell(row=row, column=2, value=match.candidato.nome).border = thin_border
+        ws.cell(row=row, column=3, value=match.candidato.email).border = thin_border
+        cell_score = ws.cell(row=row, column=4, value=f"{match.score:.1f}%")
+        cell_score.border = thin_border
+        if match.score >= 80:
+            cell_score.fill = PatternFill(start_color="d1e7dd", end_color="d1e7dd", fill_type="solid")
+        elif match.score >= 60:
+            cell_score.fill = PatternFill(start_color="fff3cd", end_color="fff3cd", fill_type="solid")
+        ws.cell(row=row, column=5, value=match.candidato.get_senioridade_display()).border = thin_border
+        ws.cell(row=row, column=6, value=match.candidato.get_etapa_processo_display()).border = thin_border
+        ws.cell(row=row, column=7, value=match.created_at.strftime('%d/%m/%Y %H:%M')).border = thin_border
+
+    # Ajusta largura
+    column_widths = [10, 30, 35, 12, 12, 18, 18]
+    for col, width in enumerate(column_widths, 1):
+        ws.column_dimensions[chr(64 + col)].width = width
+
+    # Salva
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"ranking_{vaga.id}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    return response
+
+
+@login_required
+@rh_required
+@require_GET
+def relatorio_candidato_print(request, candidato_id):
+    """
+    Página de relatório do candidato para impressão/PDF.
+    """
+    candidato = get_object_or_404(Candidato, pk=candidato_id)
+
+    # Busca dados do Neo4j
+    habilidades = []
+    area_atuacao = None
+    try:
+        area_query = """
+        MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
+        RETURN a.nome as area
+        """
+        areas = run_query(area_query, {'uuid': str(candidato.id)})
+        if areas:
+            area_atuacao = areas[0]['area']
+
+        hab_query = """
+        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
+        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
+               r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
+        ORDER BY r.nivel DESC
+        """
+        habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
+    except Exception as e:
+        logger.warning(f"Erro ao buscar dados do Neo4j: {e}")
+
+    # Matches
+    matches = AuditoriaMatch.objects.filter(
+        candidato=candidato
+    ).select_related('vaga').order_by('-created_at')[:10]
+
+    # Comentários
+    comentarios = Comentario.objects.filter(
+        candidato=candidato,
+        privado=False
+    ).select_related('autor', 'vaga').order_by('-created_at')[:5]
+
+    return render(request, 'core/relatorios/candidato_print.html', {
+        'candidato': candidato,
+        'habilidades': habilidades,
+        'area_atuacao': area_atuacao,
+        'matches': matches,
+        'comentarios': comentarios,
     })

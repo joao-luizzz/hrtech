@@ -22,6 +22,9 @@
         <a href="{% url 'core:pipeline_kanban_vaga' vaga.id %}" class="btn btn-outline-primary">
             <i class="bi bi-kanban me-1"></i>Pipeline
         </a>
+        <a href="{% url 'core:exportar_ranking' vaga.id %}" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
         <button type="button"
                 class="btn btn-primary"
                 hx-post="{% url 'core:rodar_matching' vaga.id %}"

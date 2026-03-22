@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Minha Area - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-0">
+            <i class="bi bi-person-circle me-2"></i>Ola, {{ candidato.nome }}!
+        </h2>
+        <p class="text-muted">Acompanhe seu perfil e candidaturas</p>
+    </div>
+    <div class="col-auto">
+        <a href="{% url 'core:minhas_aplicacoes' %}" class="btn btn-outline-primary">
+            <i class="bi bi-briefcase me-1"></i>Minhas Aplicacoes
+        </a>
+    </div>
+</div>
+
+<!-- Cards de Status -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100 {% if candidato.status_cv == 'concluido' %}border-success{% elif candidato.status_cv == 'erro' %}border-danger{% endif %}">
+            <div class="card-body text-center">
+                {% if candidato.status_cv == 'concluido' %}
+                <div class="display-6 text-success mb-2"><i class="bi bi-check-circle"></i></div>
+                <div class="text-muted">CV Processado</div>
+                {% elif candidato.status_cv == 'pendente' %}
+                <div class="display-6 text-secondary mb-2"><i class="bi bi-file-earmark"></i></div>
+                <div class="text-muted">CV Pendente</div>
+                {% elif candidato.status_cv in 'recebido,processando,extraindo' %}
+                <div class="display-6 text-primary mb-2">
+                    <span class="spinner-border"></span>
+                </div>
+                <div class="text-muted">Processando CV</div>
+                {% else %}
+                <div class="display-6 text-danger mb-2"><i class="bi bi-exclamation-triangle"></i></div>
+                <div class="text-muted">Erro no CV</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 text-primary mb-2">{{ habilidades|length }}</div>
+                <div class="text-muted">Habilidades Identificadas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 text-info mb-2">{{ matches|length }}</div>
+                <div class="text-muted">Matches com Vagas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-6 mb-2">
+                    <span class="badge fs-5 {% if candidato.etapa_processo == 'contratado' %}bg-success{% elif candidato.etapa_processo == 'rejeitado' %}bg-danger{% elif candidato.etapa_processo == 'desistiu' %}bg-secondary{% else %}bg-primary{% endif %}">
+                        {{ candidato.get_etapa_processo_display }}
+                    </span>
+                </div>
+                <div class="text-muted">Etapa Atual</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Coluna Principal -->
+    <div class="col-lg-8">
+        <!-- Status do CV -->
+        {% if candidato.status_cv == 'pendente' %}
+        <div class="card mb-4 border-warning">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-cloud-upload display-1 text-warning d-block mb-3"></i>
+                <h4>Envie seu curriculo</h4>
+                <p class="text-muted mb-4">
+                    Para participar de processos seletivos, precisamos analisar seu CV.
+                </p>
+                <a href="{% url 'core:upload_cv' %}" class="btn btn-warning btn-lg">
+                    <i class="bi bi-upload me-2"></i>Enviar CV
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Habilidades -->
+        {% if habilidades %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-stars me-2"></i>Suas Habilidades</h5>
+                {% if area_atuacao %}
+                <span class="badge bg-primary">{{ area_atuacao }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    {% for h in habilidades %}
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                            <div>
+                                <strong>{{ h.nome }}</strong>
+                                <small class="text-muted d-block">{{ h.anos|floatformat:1 }} anos</small>
+                            </div>
+                            <div>
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= h.nivel %}
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    {% else %}
+                                        <i class="bi bi-star text-muted"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Matches Recentes -->
+        {% if matches %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Matches Recentes</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for match in matches %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ match.vaga.titulo|default:"Vaga removida" }}</strong>
+                        {% if match.vaga %}
+                        <small class="text-muted d-block">{{ match.vaga.area }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        {% if match.score >= 80 %}
+                        <span class="badge bg-success fs-6">{{ match.score|floatformat:0 }}%</span>
+                        {% elif match.score >= 60 %}
+                        <span class="badge bg-warning text-dark fs-6">{{ match.score|floatformat:0 }}%</span>
+                        {% else %}
+                        <span class="badge bg-secondary fs-6">{{ match.score|floatformat:0 }}%</span>
+                        {% endif %}
+                        <small class="text-muted d-block">{{ match.created_at|date:"d/m/Y" }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Informacoes Pessoais -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-person me-2"></i>Suas Informacoes</h6>
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt class="text-muted small">Nome</dt>
+                    <dd class="mb-2">{{ candidato.nome }}</dd>
+
+                    <dt class="text-muted small">Email</dt>
+                    <dd class="mb-2">{{ candidato.email }}</dd>
+
+                    {% if candidato.telefone %}
+                    <dt class="text-muted small">Telefone</dt>
+                    <dd class="mb-2">{{ candidato.telefone }}</dd>
+                    {% endif %}
+
+                    <dt class="text-muted small">Senioridade</dt>
+                    <dd class="mb-2">
+                        <span class="badge bg-secondary">{{ candidato.get_senioridade_display }}</span>
+                    </dd>
+
+                    <dt class="text-muted small">Experiencia</dt>
+                    <dd class="mb-2">{{ candidato.anos_experiencia }} anos</dd>
+
+                    <dt class="text-muted small">Disponibilidade</dt>
+                    <dd class="mb-0">
+                        {% if candidato.disponivel %}
+                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>Disponivel</span>
+                        {% else %}
+                        <span class="text-muted"><i class="bi bi-x-circle me-1"></i>Indisponivel</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Dicas -->
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-lightbulb me-2"></i>Dicas</h6>
+                <ul class="mb-0 ps-3 small">
+                    <li class="mb-1">Mantenha seu CV atualizado</li>
+                    <li class="mb-1">Um CV bem estruturado gera melhores matches</li>
+                    <li class="mb-1">Destaque suas principais habilidades tecnicas</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

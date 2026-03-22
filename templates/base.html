@@ -177,6 +177,12 @@
                                 <i class="bi bi-graph-up"></i> Estatisticas
                             </a>
                         </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'core:minha_area' %}">
+                                <i class="bi bi-house"></i> Minha Area
+                            </a>
+                        </li>
                         {% endif %}
                     {% endif %}
                 </ul>
@@ -213,6 +219,13 @@
                                     </span>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
+                                {% if not user.profile.is_rh and not user.is_superuser %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'core:minha_area' %}">
+                                        <i class="bi bi-house me-2"></i>Minha Area
+                                    </a>
+                                </li>
+                                {% endif %}
                                 <li>
                                     <a class="dropdown-item" href="{% url 'core:meu_perfil' %}">
                                         <i class="bi bi-person-badge me-2"></i>Minha Conta

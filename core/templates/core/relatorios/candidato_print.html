@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatorio - {{ candidato.nome }} - HRTech ATS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #333;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                font-size: 11pt;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+        }
+
+        .header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 24pt;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 10pt;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 14pt;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .info-item {
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .info-item label {
+            display: block;
+            font-size: 9pt;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .info-item span {
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10pt;
+            font-weight: 500;
+        }
+
+        .badge-success { background: #d1e7dd; color: #0f5132; }
+        .badge-warning { background: #fff3cd; color: #664d03; }
+        .badge-danger { background: #f8d7da; color: #842029; }
+        .badge-secondary { background: #e9ecef; color: #495057; }
+        .badge-primary { background: #cfe2ff; color: #084298; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .stars {
+            color: #ffc107;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-size: 9pt;
+            color: #666;
+            text-align: center;
+        }
+
+        .btn-print {
+            display: inline-block;
+            padding: 10px 25px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+        }
+
+        .btn-print:hover {
+            background: #5a6fd6;
+        }
+
+        .comment {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .comment-meta {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button class="btn-print" onclick="window.print()">
+            Imprimir / Salvar PDF
+        </button>
+        <a href="{% url 'core:dashboard_candidato' candidato.id %}" style="margin-left: 10px; color: #667eea;">
+            Voltar ao Perfil
+        </a>
+    </div>
+
+    <div class="header">
+        <h1>{{ candidato.nome }}</h1>
+        <p>Relatorio gerado em {% now "d/m/Y H:i" %} | HRTech ATS</p>
+    </div>
+
+    <!-- Informações Básicas -->
+    <div class="section">
+        <h2>Informacoes do Candidato</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Email</label>
+                <span>{{ candidato.email }}</span>
+            </div>
+            <div class="info-item">
+                <label>Telefone</label>
+                <span>{{ candidato.telefone|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <label>Senioridade</label>
+                <span class="badge badge-primary">{{ candidato.get_senioridade_display }}</span>
+            </div>
+            <div class="info-item">
+                <label>Anos de Experiencia</label>
+                <span>{{ candidato.anos_experiencia }} anos</span>
+            </div>
+            <div class="info-item">
+                <label>Etapa do Processo</label>
+                <span class="badge {% if candidato.etapa_processo == 'contratado' %}badge-success{% elif candidato.etapa_processo == 'rejeitado' %}badge-danger{% else %}badge-secondary{% endif %}">
+                    {{ candidato.get_etapa_processo_display }}
+                </span>
+            </div>
+            <div class="info-item">
+                <label>Disponibilidade</label>
+                <span>{% if candidato.disponivel %}Disponivel{% else %}Indisponivel{% endif %}</span>
+            </div>
+            {% if area_atuacao %}
+            <div class="info-item">
+                <label>Area de Atuacao</label>
+                <span>{{ area_atuacao }}</span>
+            </div>
+            {% endif %}
+            <div class="info-item">
+                <label>Status CV</label>
+                <span class="badge {% if candidato.status_cv == 'concluido' %}badge-success{% elif candidato.status_cv == 'erro' %}badge-danger{% else %}badge-secondary{% endif %}">
+                    {{ candidato.get_status_cv_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Habilidades -->
+    {% if habilidades %}
+    <div class="section">
+        <h2>Habilidades Tecnicas ({{ habilidades|length }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Habilidade</th>
+                    <th>Nivel</th>
+                    <th>Experiencia</th>
+                    <th>Ultimo Uso</th>
+                    <th>Tipo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in habilidades %}
+                <tr>
+                    <td><strong>{{ h.nome }}</strong></td>
+                    <td class="stars">
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= h.nivel %}★{% else %}☆{% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>{{ h.anos|floatformat:1 }} anos</td>
+                    <td>{{ h.ano_uso }}</td>
+                    <td>{% if h.inferido %}Inferido{% else %}Declarado{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Matches -->
+    {% if matches %}
+    <div class="section">
+        <h2>Historico de Matches</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Vaga</th>
+                    <th>Area</th>
+                    <th>Score</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td>{{ match.vaga.titulo|default:"Vaga removida" }}</td>
+                    <td>{{ match.vaga.area|default:"-" }}</td>
+                    <td>
+                        <span class="badge {% if match.score >= 80 %}badge-success{% elif match.score >= 60 %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ match.score|floatformat:1 }}%
+                        </span>
+                    </td>
+                    <td>{{ match.created_at|date:"d/m/Y" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Comentários -->
+    {% if comentarios %}
+    <div class="section">
+        <h2>Observacoes do RH</h2>
+        {% for comentario in comentarios %}
+        <div class="comment">
+            <p>{{ comentario.texto }}</p>
+            <div class="comment-meta">
+                {{ comentario.autor.email|default:"Usuario" }} | {{ comentario.created_at|date:"d/m/Y H:i" }}
+                {% if comentario.vaga %} | Vaga: {{ comentario.vaga.titulo }}{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p>Documento gerado automaticamente pelo HRTech ATS</p>
+        <p>Confidencial - Uso interno</p>
+    </div>
+</body>
+</html>

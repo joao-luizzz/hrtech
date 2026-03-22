@@ -38,9 +38,14 @@ Estrutura:
     /rh/candidato/<id>/favorito/→ toggle_favorito (POST)
     /rh/favoritos/              → meus_favoritos
 
-    # Dashboard Candidato
+    # Dashboard Candidato (público)
     /candidato/<id>/            → dashboard_candidato
     /candidato/<id>/habilidades/→ habilidades_candidato_htmx
+
+    # Área do Candidato (logado)
+    /minha-area/                → minha_area
+    /minha-area/vincular/       → vincular_candidato (POST)
+    /minha-area/aplicacoes/     → minhas_aplicacoes
 
     # Dashboard Geral (protegido)
     /dashboard/                 → dashboard_geral
@@ -115,4 +120,18 @@ urlpatterns = [
     # ==========================================================================
     path('rh/candidato/<str:candidato_id>/favorito/', views.toggle_favorito, name='toggle_favorito'),
     path('rh/favoritos/', views.meus_favoritos, name='meus_favoritos'),
+
+    # ==========================================================================
+    # ÁREA DO CANDIDATO (LOGADO)
+    # ==========================================================================
+    path('minha-area/', views.minha_area, name='minha_area'),
+    path('minha-area/vincular/', views.vincular_candidato, name='vincular_candidato'),
+    path('minha-area/aplicacoes/', views.minhas_aplicacoes, name='minhas_aplicacoes'),
+
+    # ==========================================================================
+    # EXPORTAÇÃO DE RELATÓRIOS (PROTEGIDO)
+    # ==========================================================================
+    path('rh/exportar/candidatos/', views.exportar_candidatos_excel, name='exportar_candidatos'),
+    path('rh/exportar/ranking/<int:vaga_id>/', views.exportar_ranking_excel, name='exportar_ranking'),
+    path('rh/relatorio/candidato/<str:candidato_id>/', views.relatorio_candidato_print, name='relatorio_candidato'),
 ]

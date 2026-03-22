@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Minhas Aplicacoes - HRTech ATS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'core:minha_area' %}">Minha Area</a></li>
+                <li class="breadcrumb-item active">Aplicacoes</li>
+            </ol>
+        </nav>
+        <h2 class="mb-0"><i class="bi bi-briefcase me-2"></i>Minhas Aplicacoes</h2>
+    </div>
+    <a href="{% url 'core:minha_area' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+</div>
+
+{% if vagas_aplicadas %}
+<div class="row g-4">
+    {% for item in vagas_aplicadas %}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ item.vaga.titulo|default:"Vaga removida" }}</h5>
+                {% if item.melhor_score >= 80 %}
+                <span class="badge bg-success fs-6">{{ item.melhor_score|floatformat:0 }}%</span>
+                {% elif item.melhor_score >= 60 %}
+                <span class="badge bg-warning text-dark fs-6">{{ item.melhor_score|floatformat:0 }}%</span>
+                {% else %}
+                <span class="badge bg-secondary fs-6">{{ item.melhor_score|floatformat:0 }}%</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if item.vaga %}
+                <p class="text-muted mb-3">{{ item.vaga.descricao|truncatewords:30|default:"Sem descricao" }}</p>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Area</small>
+                        <span class="badge bg-primary">{{ item.vaga.area }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Senioridade</small>
+                        <span class="badge bg-secondary">{{ item.vaga.get_senioridade_desejada_display }}</span>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Status</small>
+                        {% if item.vaga.status == 'aberta' %}
+                        <span class="badge bg-success">Aberta</span>
+                        {% elif item.vaga.status == 'pausada' %}
+                        <span class="badge bg-warning text-dark">Pausada</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ item.vaga.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Ultimo Match</small>
+                        <small>{{ item.ultimo_match|date:"d/m/Y" }}</small>
+                    </div>
+                </div>
+
+                {% if item.vaga.skills_obrigatorias %}
+                <small class="text-muted d-block mb-1">Skills Requeridas</small>
+                <div class="d-flex flex-wrap gap-1">
+                    {% for skill in item.vaga.skills_obrigatorias %}
+                    <span class="badge bg-light text-dark">{{ skill.nome }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted mb-0">Esta vaga nao esta mais disponivel.</p>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-transparent">
+                <small class="text-muted">
+                    <i class="bi bi-lightning me-1"></i>{{ item.total_matches }} match(es) realizados
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted d-block mb-3"></i>
+        <h4 class="text-muted">Nenhuma aplicacao ainda</h4>
+        <p class="text-muted mb-4">
+            Seu perfil ainda nao foi vinculado a nenhuma vaga.<br>
+            Continue acompanhando - os recrutadores podem incluir voce em novos processos!
+        </p>
+        <a href="{% url 'core:minha_area' %}" class="btn btn-primary">
+            <i class="bi bi-arrow-left me-2"></i>Voltar para Minha Area
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Sua Etapa Atual -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-kanban me-2"></i>Sua Etapa no Processo</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between">
+            {% with etapas="triagem,entrevista_rh,teste_tecnico,entrevista_tecnica,proposta,contratado" %}
+            {% for etapa in etapas.split %}
+            <div class="text-center flex-fill">
+                <div class="rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center
+                    {% if candidato.etapa_processo == etapa %}bg-primary text-white{% elif forloop.counter < etapas.split|length and candidato.etapa_processo in etapas %}bg-success text-white{% else %}bg-light text-muted{% endif %}"
+                    style="width: 40px; height: 40px;">
+                    {% if etapa == 'triagem' %}<i class="bi bi-file-earmark-text"></i>
+                    {% elif etapa == 'entrevista_rh' %}<i class="bi bi-people"></i>
+                    {% elif etapa == 'teste_tecnico' %}<i class="bi bi-code-slash"></i>
+                    {% elif etapa == 'entrevista_tecnica' %}<i class="bi bi-laptop"></i>
+                    {% elif etapa == 'proposta' %}<i class="bi bi-file-text"></i>
+                    {% elif etapa == 'contratado' %}<i class="bi bi-trophy"></i>
+                    {% endif %}
+                </div>
+                <small class="text-muted d-block">
+                    {% if etapa == 'triagem' %}Triagem
+                    {% elif etapa == 'entrevista_rh' %}RH
+                    {% elif etapa == 'teste_tecnico' %}Teste
+                    {% elif etapa == 'entrevista_tecnica' %}Tecnica
+                    {% elif etapa == 'proposta' %}Proposta
+                    {% elif etapa == 'contratado' %}Contratado
+                    {% endif %}
+                </small>
+            </div>
+            {% endfor %}
+            {% endwith %}
+        </div>
+    </div>
+</div>
+{% endblock %}

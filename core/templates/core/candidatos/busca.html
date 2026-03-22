@@ -5,13 +5,19 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-search me-2"></i>Buscar Candidatos</h2>
-    <span class="badge bg-secondary fs-6">{{ candidatos.paginator.count }} candidatos</span>
+    <div>
+        <a href="{% url 'core:exportar_candidatos' %}?{{ request.GET.urlencode }}" class="btn btn-success me-2">
+            <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+        </a>
+        <span class="badge bg-secondary fs-6">{{ candidatos.paginator.count }} candidatos</span>
+    </div>
 </div>
 
 <!-- Filtros -->
 <div class="card mb-4">
     <div class="card-body">
         <form method="GET">
+            <!-- Filtros Básicos -->
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label small">Nome</label>
@@ -49,21 +55,80 @@
                     </select>
                 </div>
             </div>
-            <div class="row g-3 mt-1">
-                <div class="col-md-4">
-                    <label class="form-label small">Skill</label>
-                    <input type="text" name="skill" class="form-control" placeholder="Buscar por skill..." value="{{ request.GET.skill }}">
+
+            <!-- Filtros Avançados (Expansível) -->
+            <div class="mt-3">
+                <button class="btn btn-sm btn-outline-secondary{% if request.GET.skills or request.GET.nivel_minimo or request.GET.disponivel or request.GET.ordenar and request.GET.ordenar != '-created_at' %} btn-primary{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosAvancados">
+                    <i class="bi bi-funnel me-1"></i>Filtros Avançados
+                    {% if request.GET.skills or request.GET.nivel_minimo or request.GET.disponivel or request.GET.ordenar and request.GET.ordenar != '-created_at' %}
+                        <span class="badge bg-light text-dark ms-1">Ativos</span>
+                    {% endif %}
+                </button>
+            </div>
+
+            <div class="collapse{% if request.GET.skills or request.GET.nivel_minimo or request.GET.disponivel %} show{% endif %} mt-3" id="filtrosAvancados">
+                <div class="border-top pt-3">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Skills <small class="text-muted">(separadas por vírgula)</small></label>
+                            <input type="text" name="skills" class="form-control" placeholder="Ex: Python, Django, React" value="{{ request.GET.skills }}">
+                            <small class="text-muted">Use vírgulas para separar múltiplas skills</small>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Lógica Skills</label>
+                            <select name="skill_logic" class="form-select">
+                                <option value="OR" {% if request.GET.skill_logic == 'OR' or not request.GET.skill_logic %}selected{% endif %}>Qualquer (OR)</option>
+                                <option value="AND" {% if request.GET.skill_logic == 'AND' %}selected{% endif %}>Todas (AND)</option>
+                            </select>
+                            <small class="text-muted">Como combinar as skills</small>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Nível Mínimo</label>
+                            <select name="nivel_minimo" class="form-select">
+                                <option value="">Qualquer</option>
+                                <option value="1" {% if request.GET.nivel_minimo == '1' %}selected{% endif %}>1 - Básico</option>
+                                <option value="2" {% if request.GET.nivel_minimo == '2' %}selected{% endif %}>2 - Intermediário</option>
+                                <option value="3" {% if request.GET.nivel_minimo == '3' %}selected{% endif %}>3 - Avançado</option>
+                                <option value="4" {% if request.GET.nivel_minimo == '4' %}selected{% endif %}>4 - Expert</option>
+                                <option value="5" {% if request.GET.nivel_minimo == '5' %}selected{% endif %}>5 - Master</option>
+                            </select>
+                            <small class="text-muted">Nível mínimo nas skills</small>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Disponibilidade</label>
+                            <select name="disponivel" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="sim" {% if request.GET.disponivel == 'sim' %}selected{% endif %}>Disponível</option>
+                                <option value="nao" {% if request.GET.disponivel == 'nao' %}selected{% endif %}>Indisponível</option>
+                            </select>
+                            <small class="text-muted">Status de disponibilidade</small>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Ordenar por</label>
+                            <select name="ordenar" class="form-select">
+                                <option value="-created_at" {% if request.GET.ordenar == '-created_at' or not request.GET.ordenar %}selected{% endif %}>Mais recentes</option>
+                                <option value="created_at" {% if request.GET.ordenar == 'created_at' %}selected{% endif %}>Mais antigos</option>
+                                <option value="nome" {% if request.GET.ordenar == 'nome' %}selected{% endif %}>Nome (A-Z)</option>
+                                <option value="-nome" {% if request.GET.ordenar == '-nome' %}selected{% endif %}>Nome (Z-A)</option>
+                                <option value="senioridade" {% if request.GET.ordenar == 'senioridade' %}selected{% endif %}>Senioridade ↑</option>
+                                <option value="-senioridade" {% if request.GET.ordenar == '-senioridade' %}selected{% endif %}>Senioridade ↓</option>
+                            </select>
+                            <small class="text-muted">Ordem de exibição</small>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="row g-3 mt-2">
                 <div class="col-md-2">
-                    <label class="form-label small">&nbsp;</label>
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Buscar
                     </button>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small">&nbsp;</label>
                     <a href="{% url 'core:buscar_candidatos' %}" class="btn btn-outline-secondary w-100">
-                        Limpar
+                        <i class="bi bi-x-circle"></i> Limpar
                     </a>
                 </div>
             </div>
