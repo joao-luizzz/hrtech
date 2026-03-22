@@ -6,12 +6,15 @@
 # SEGURANÇA - CRÍTICO: Nunca commitar estes arquivos
 # -----------------------------------------------------------------------------
 .env
+.env.*
 .env.local
 .env.*.local
 *.pem
 *.key
+*.crt
 secrets/
 credentials/
+config.local.py
 
 # -----------------------------------------------------------------------------
 # Python
@@ -37,6 +40,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
 # -----------------------------------------------------------------------------
 # Virtual Environments
@@ -45,16 +50,22 @@ venv/
 .venv/
 env/
 ENV/
+.env/
+virtualenv/
 
 # -----------------------------------------------------------------------------
 # Django
 # -----------------------------------------------------------------------------
 db.sqlite3
+db.sqlite3-journal
 *.log
+logs/
 staticfiles/
+static_collected/
 media/
 *.pot
 *.mo
+local_settings.py
 
 # -----------------------------------------------------------------------------
 # IDEs e Editores
@@ -63,17 +74,30 @@ media/
 .vscode/
 *.swp
 *.swo
+*.swn
 *~
 .project
 .pydevproject
 .settings/
+*.sublime-project
+*.sublime-workspace
+.spyderproject
+.spyproject
+.ropeproject
 
 # -----------------------------------------------------------------------------
 # Sistema Operacional
 # -----------------------------------------------------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 *.bak
+*.tmp
+*.temp
 
 # -----------------------------------------------------------------------------
 # Arquivos de teste e cobertura
@@ -89,16 +113,70 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+pytest_cache/
+test_*.py
+!core/tests/test_*.py
 
 # -----------------------------------------------------------------------------
 # Celery
 # -----------------------------------------------------------------------------
 celerybeat-schedule
+celerybeat-schedule.*
 celerybeat.pid
+*.celerybeat-schedule
 
 # -----------------------------------------------------------------------------
-# Arquivos sensíveis do projeto
+# Documentação gerada automaticamente
+# -----------------------------------------------------------------------------
+RELATORIO_QA.md
+EXPORTS_DOCUMENTATION.md
+ROADMAP_MELHORIAS.md
+docs/_build/
+
+# -----------------------------------------------------------------------------
+# Arquivos de dados e exports
 # -----------------------------------------------------------------------------
 *.pdf
 *.csv
+*.xlsx
+*.xls
 exports/
+imports/
+data/
+backups/
+
+# -----------------------------------------------------------------------------
+# Node (caso use frontend separado)
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+
+# -----------------------------------------------------------------------------
+# Arquivos temporários e de build
+# -----------------------------------------------------------------------------
+*.tmp
+*.temp
+*.bak
+*.old
+.cache/
+tmp/
+temp/
+
+# -----------------------------------------------------------------------------
+# Arquivos criados por erro
+# -----------------------------------------------------------------------------
+=*
+
+# -----------------------------------------------------------------------------
+# Claude Code / AI assistants
+# -----------------------------------------------------------------------------
+.claude/
