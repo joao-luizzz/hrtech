@@ -755,6 +755,241 @@ def buscar_candidatos(request):
 
 
 # =============================================================================
+# FILTROS SALVOS - SAVED FILTERS
+# =============================================================================
+
+@login_required
+@rh_required
+@require_http_methods(["POST"])
+def salvar_filtro_view(request):
+    """
+    Salva os parâmetros de filtro atuais com um nome personalizado.
+
+    POST params:
+    - nome_filtro: Nome descritivo do filtro
+    - parametros: JSON com os parâmetros do filtro (opcional, captura do GET atual)
+    """
+    import json
+    from .models import FiltroSalvo
+
+    nome_filtro = request.POST.get('nome_filtro', '').strip()
+
+    if not nome_filtro:
+        return JsonResponse({
+            'success': False,
+            'error': 'Nome do filtro é obrigatório'
+        }, status=400)
+
+    if len(nome_filtro) > 100:
+        return JsonResponse({
+            'success': False,
+            'error': 'Nome muito longo (máximo 100 caracteres)'
+        }, status=400)
+
+    # Capturar parâmetros do filtro (podem vir do POST ou usar os da URL)
+    parametros_json = request.POST.get('parametros')
+    if parametros_json:
+        try:
+            parametros = json.loads(parametros_json)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Parâmetros inválidos'
+            }, status=400)
+    else:
+        # Usar parâmetros atuais da URL (exceto página)
+        parametros = {k: v for k, v in request.GET.items() if k != 'page'}
+
+    # Criar ou atualizar filtro
+    filtro, created = FiltroSalvo.objects.update_or_create(
+        usuario=request.user,
+        nome=nome_filtro,
+        defaults={
+            'parametros': parametros,
+        }
+    )
+
+    return JsonResponse({
+        'success': True,
+        'id': filtro.id,
+        'nome': filtro.nome,
+        'created': created,
+        'mensagem': f"Filtro '{nome_filtro}' salvo com sucesso!" if created else f"Filtro '{nome_filtro}' atualizado!"
+    })
+
+
+@login_required
+@rh_required
+@require_GET
+def listar_filtros_api(request):
+    """
+    Retorna lista JSON com todos os filtros salvos do usuário.
+
+    Response: {
+        "filtros": [
+            {"id": 1, "nome": "Python Seniors", "criado_em": "...", "vezes_usado": 5},
+            ...
+        ]
+    }
+    """
+    from .models import FiltroSalvo
+
+    filtros = FiltroSalvo.objects.filter(usuario=request.user).values(
+        'id', 'nome', 'criado_em', 'vezes_usado', 'parametros'
+    )
+
+    return JsonResponse({
+        'success': True,
+        'filtros': list(filtros)
+    })
+
+
+@login_required
+@rh_required
+@require_GET
+def carregar_filtro_view(request, filtro_id):
+    """
+    Carrega um filtro salvo e redireciona para a busca com os parâmetros.
+
+    Incrementa contador de uso.
+    """
+    from .models import FiltroSalvo
+    from django.http import HttpResponseRedirect
+    from urllib.parse import urlencode
+
+    filtro = get_object_or_404(FiltroSalvo, id=filtro_id, usuario=request.user)
+
+    # Incrementar contador de uso
+    filtro.vezes_usado += 1
+    filtro.save(update_fields=['vezes_usado'])
+
+    # Reconstruir URL com parâmetros
+    parametros = filtro.parametros
+    query_string = urlencode(parametros, doseq=True)
+
+    redirect_url = reverse('core:buscar_candidatos')
+    if query_string:
+        redirect_url += f'?{query_string}'
+
+    return HttpResponseRedirect(redirect_url)
+
+
+@login_required
+@rh_required
+@require_http_methods(["DELETE", "POST"])
+def deletar_filtro_api(request, filtro_id):
+    """
+    Deleta um filtro salvo.
+
+    Aceita DELETE ou POST (para compatibilidade com forms HTML).
+    """
+    from .models import FiltroSalvo
+
+    filtro = get_object_or_404(FiltroSalvo, id=filtro_id, usuario=request.user)
+    nome = filtro.nome
+    filtro.delete()
+
+    return JsonResponse({
+        'success': True,
+        'mensagem': f"Filtro '{nome}' removido com sucesso!"
+    })
+
+
+# =============================================================================
+# BUSCA POR SIMILARIDADE - FIND SIMILAR CANDIDATES
+# =============================================================================
+
+@login_required
+@rh_required
+@require_GET
+def buscar_candidatos_similares(request, candidato_id):
+    """
+    Encontra candidatos similares ao candidato especificado.
+
+    Usa Neo4j para matching baseado em:
+    - Skills em comum (peso maior)
+    - Senioridade próxima
+    - Anos de experiência similares
+
+    Returns top 10 candidatos mais similares.
+    """
+    from .neo4j_connection import run_query
+
+    candidato_original = get_object_or_404(Candidato, pk=candidato_id)
+
+    # Query Cypher para encontrar candidatos similares
+    query = """
+    // Candidato de referência
+    MATCH (c_original:Candidato {uuid: $candidato_uuid})
+
+    // Encontrar outros candidatos
+    MATCH (c_similar:Candidato)
+    WHERE c_similar.uuid <> $candidato_uuid
+
+    // Calcular skills em comum
+    OPTIONAL MATCH (c_original)-[:TEM_HABILIDADE]->(h:Habilidade)<-[:TEM_HABILIDADE]-(c_similar)
+
+    // Calcular score de similaridade
+    WITH c_similar,
+         COUNT(DISTINCT h) AS skills_comuns,
+         c_original.senioridade AS senioridade_original,
+         c_original.anos_experiencia AS anos_exp_original
+
+    // Peso para senioridade próxima
+    WITH c_similar,
+         skills_comuns,
+         CASE
+            WHEN c_similar.senioridade = senioridade_original THEN 10
+            ELSE 0
+         END AS score_senioridade,
+         CASE
+            WHEN abs(c_similar.anos_experiencia - anos_exp_original) <= 2 THEN 5
+            WHEN abs(c_similar.anos_experiencia - anos_exp_original) <= 5 THEN 2
+            ELSE 0
+         END AS score_experiencia
+
+    // Score total (skills tem peso maior)
+    WITH c_similar,
+         (skills_comuns * 3) + score_senioridade + score_experiencia AS similarity_score,
+         skills_comuns
+
+    // Ordenar por similaridade e retornar top 10
+    WHERE similarity_score > 0
+    ORDER BY similarity_score DESC, skills_comuns DESC
+    LIMIT 10
+
+    RETURN c_similar.uuid AS uuid,
+           similarity_score,
+           skills_comuns
+    """
+
+    try:
+        resultados = run_query(query, {
+            'candidato_uuid': str(candidato_original.id)
+        })
+
+        # Buscar candidatos no PostgreSQL
+        candidatos_similares = []
+        for resultado in resultados:
+            try:
+                candidato = Candidato.objects.get(pk=resultado['uuid'])
+                candidato.similarity_score = resultado['similarity_score']
+                candidato.skills_comuns = resultado['skills_comuns']
+                candidatos_similares.append(candidato)
+            except Candidato.DoesNotExist:
+                continue
+
+    except Exception as e:
+        logger.error(f"Erro ao buscar candidatos similares: {e}")
+        candidatos_similares = []
+
+    return render(request, 'core/candidatos/similares.html', {
+        'candidato_original': candidato_original,
+        'candidatos_similares': candidatos_similares,
+    })
+
+
+# =============================================================================
 # DASHBOARD DO CANDIDATO
 # =============================================================================
 

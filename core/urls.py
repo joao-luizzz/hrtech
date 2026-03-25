@@ -92,6 +92,19 @@ urlpatterns = [
     path('rh/candidatos/', views.buscar_candidatos, name='buscar_candidatos'),
 
     # ==========================================================================
+    # FILTROS SALVOS (PROTEGIDO)
+    # ==========================================================================
+    path('rh/filtros/salvar/', views.salvar_filtro_view, name='salvar_filtro'),
+    path('rh/filtros/lista/', views.listar_filtros_api, name='listar_filtros'),
+    path('rh/filtros/carregar/<int:filtro_id>/', views.carregar_filtro_view, name='carregar_filtro'),
+    path('rh/filtros/deletar/<int:filtro_id>/', views.deletar_filtro_api, name='deletar_filtro'),
+
+    # ==========================================================================
+    # BUSCA POR SIMILARIDADE (PROTEGIDO)
+    # ==========================================================================
+    path('rh/candidatos/<str:candidato_id>/similares/', views.buscar_candidatos_similares, name='candidatos_similares'),
+
+    # ==========================================================================
     # DASHBOARD DO CANDIDATO
     # ==========================================================================
     path('candidato/<str:candidato_id>/', views.dashboard_candidato, name='dashboard_candidato'),

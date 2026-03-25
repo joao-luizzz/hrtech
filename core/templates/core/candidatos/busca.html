@@ -16,7 +16,25 @@
 <!-- Filtros -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET">
+        <!-- Filtros Salvos -->
+        <div class="row g-3 mb-3 pb-3 border-bottom">
+            <div class="col-md-8">
+                <label class="form-label small fw-bold">
+                    <i class="bi bi-bookmark-star me-1"></i>Filtros Salvos
+                </label>
+                <select id="filtros-salvos-select" class="form-select" onchange="carregarFiltro(this.value)">
+                    <option value="">-- Selecionar filtro salvo --</option>
+                    <!-- Preenchido dinamicamente via JavaScript -->
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="button" id="btn-salvar-filtro" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modal-salvar-filtro">
+                    <i class="bi bi-floppy me-1"></i>Salvar este Filtro
+                </button>
+            </div>
+        </div>
+
+        <form method="GET" id="form-busca">
             <!-- Filtros Básicos -->
             <div class="row g-3">
                 <div class="col-md-3">
@@ -230,6 +248,36 @@
 </nav>
 {% endif %}
 
+<!-- Modal para Salvar Filtro -->
+<div class="modal fade" id="modal-salvar-filtro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-floppy me-2"></i>Salvar Filtro Atual</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="nome-filtro" class="form-label">Nome do Filtro</label>
+                    <input type="text" id="nome-filtro" class="form-control"
+                           placeholder="Ex: Python Seniors Disponíveis"
+                           maxlength="100" required>
+                    <small class="form-text text-muted">
+                        Será salvo com os filtros atualmente ativos
+                    </small>
+                </div>
+                <div id="filtro-feedback" class="alert d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn-confirmar-salvar" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block extra_css %}
 <style>
     /* ========== ESTILOS PROFISSIONAIS PARA BUSCA ========== */
@@ -425,5 +473,130 @@
         border-radius: 10px !important;
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ========== FILTROS SALVOS - SAVED FILTERS ==========
+
+// Carregar filtros salvos ao iniciar a página
+document.addEventListener('DOMContentLoaded', function() {
+    carregarListaFiltros();
+});
+
+// Carregar lista de filtros do usuário
+function carregarListaFiltros() {
+    fetch("{% url 'core:listar_filtros' %}")
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById('filtros-salvos-select');
+                const optionPadrao = select.querySelector('option[value=""]');
+
+                // Limpar options antigas (exceto a primeira)
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+
+                //Adicionar cada filtro salvo
+                data.filtros.forEach(filtro => {
+                    const option = document.createElement('option');
+                    option.value = filtro.id;
+                    option.textContent = `${filtro.nome} (usado ${filtro.vezes_usado}x)`;
+                    option.dataset.parametros = JSON.stringify(filtro.parametros);
+                    select.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar filtros:', error));
+}
+
+// Carregar um filtro salvo específico
+function carregarFiltro(filtroId) {
+    if (!filtroId) return;
+
+    // Redirecionar para a URL de carregamento que já reconstrói os parâmetros
+    window.location.href = `/rh/filtros/carregar/${filtroId}/`;
+}
+
+// Salvar filtro atual
+document.getElementById('btn-confirmar-salvar').addEventListener('click', function() {
+    const nomeFiltro = document.getElementById('nome-filtro').value.trim();
+    const feedback = document.getElementById('filtro-feedback');
+
+    if (!nomeFiltro) {
+        mostrarFeedback('Nome do filtro é obrigatório!', 'danger');
+        return;
+    }
+
+    // Capturar parâmetros atuais da URL
+    const params = new URLSearchParams(window.location.search);
+    const parametros = {};
+    for (const [key, value] of params.entries()) {
+        if (key !== 'page') { // Não salvar página
+            parametros[key] = value;
+        }
+    }
+
+    // Enviar para servidor
+    const formData = new FormData();
+    formData.append('nome_filtro', nomeFiltro);
+    formData.append('parametros', JSON.stringify(parametros));
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch("{% url 'core:salvar_filtro' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarFeedback(data.mensagem, 'success');
+            carregarListaFiltros(); // Atualizar lista
+
+            // Fechar modal após 1.5s
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modal-salvar-filtro'));
+                modal.hide();
+                document.getElementById('nome-filtro').value = '';
+                feedback.classList.add('d-none');
+            }, 1500);
+        } else {
+            mostrarFeedback(data.error || 'Erro ao salvar filtro', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarFeedback('Erro de conexão ao salvar filtro', 'danger');
+    });
+});
+
+// Mostrar feedback no modal
+function mostrarFeedback(mensagem, tipo) {
+    const feedback = document.getElementById('filtro-feedback');
+    feedback.textContent = mensagem;
+    feedback.className = `alert alert-${tipo}`;
+    feedback.classList.remove('d-none');
+}
+
+// Deletar filtro (futuro: adicionar botão X no dropdown)
+function deletarFiltro(filtroId) {
+    if (!confirm('Tem certeza que deseja remover este filtro?')) return;
+
+    fetch(`/rh/filtros/deletar/${filtroId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            carregarListaFiltros(); // Atualizar lista
+        }
+    })
+    .catch(error => console.error('Erro ao deletar:', error));
+}
+</script>
 {% endblock %}
 {% endblock %}

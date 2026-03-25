@@ -690,3 +690,58 @@ class CandidatoTag(models.Model):
 
     def __str__(self):
         return f"{self.candidato.nome} → {self.tag.nome}"
+
+
+class FiltroSalvo(models.Model):
+    """
+    Armazena filtros salvos de busca de candidatos.
+
+    Cada usuário RH pode ter vários filtros salvos com nomes descritivos.
+    Isso elimina a repetição de aplicar os mesmos filtros frequentemente.
+
+    Exemplo de uso:
+    - "Python Seniors Disponíveis"
+    - "Frontend Plenos para Entrevista"
+    - "Candidatos Processados Última Semana"
+    """
+
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='filtros_salvos',
+        help_text="Usuário que criou o filtro"
+    )
+
+    nome = models.CharField(
+        max_length=100,
+        help_text="Nome descritivo (ex: 'Python Seniors Disponíveis')"
+    )
+
+    # Armazenar parâmetros como JSON para flexibilidade
+    # Estrutura: {"nome": "João", "senioridade": "senior", "skills": "Python,Django", ...}
+    parametros = models.JSONField(
+        default=dict,
+        help_text="Parâmetros GET salvos do filtro"
+    )
+
+    # Metadata
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    # Opcional: contar quantas vezes foi usado
+    vezes_usado = models.PositiveIntegerField(
+        default=0,
+        help_text="Contador de uso para analytics"
+    )
+
+    class Meta:
+        verbose_name = 'Filtro Salvo'
+        verbose_name_plural = 'Filtros Salvos'
+        ordering = ['-atualizado_em']
+        unique_together = ['usuario', 'nome']  # Mesmo usuário não pode ter dois com mesmo nome
+        indexes = [
+            models.Index(fields=['usuario', '-atualizado_em']),
+        ]
+
+    def __str__(self):
+        return f"🔍 {self.nome} ({self.usuario.email})"
