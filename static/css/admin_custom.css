@@ -1,7 +1,20 @@
+/* ========== ANTI-FLICKER PROTECTION ========== */
+/* Aplicar tema IMEDIATAMENTE antes de qualquer transição */
+html {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+html[data-theme="dark"] {
+    background-color: #0f1117;
+    color: #e9ecef;
+}
+
 /* ========== DARK MODE VARIABLES ========== */
 :root {
     --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --primary-color: #667eea;
+    --primary-light: #8b9bff;
     --primary-dark: #5a6fd6;
     --secondary-color: #764ba2;
 
@@ -21,15 +34,16 @@
 
 [data-theme="dark"] {
     --bg-primary: #1a1d23;
-    --bg-secondary: #212529;
+    --bg-secondary: #0f1117;
     --bg-tertiary: #2c3034;
     --text-primary: #e9ecef;
     --text-secondary: #adb5bd;
-    --text-muted: #6c757d;
-    --border-color: #495057;
-    --card-bg: #2c3034;
-    --card-shadow: rgba(0, 0, 0, 0.3);
+    --text-muted: #808080;
+    --border-color: #404040;
+    --card-bg: #1e2128;
+    --card-shadow: rgba(0, 0, 0, 0.5);
     --navbar-gradient: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    --button-hover: linear-gradient(135deg, #5a6a8e 0%, #3d4762 100%);
 }
 
 /* ========== GLOBAL STYLES ========== */
@@ -37,6 +51,7 @@ body {
     background-color: var(--bg-secondary);
     color: var(--text-primary);
     transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 html {
@@ -46,17 +61,17 @@ html {
 /* ========== HEADER/NAVIGATION ========== */
 #header {
     background: var(--navbar-gradient);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 #header a {
-    color: #ffffff;
+    color: #ffffff !important;
     text-decoration: none;
 }
 
 #header a:hover {
-    color: #e9ecef;
+    color: #e9ecef !important;
 }
 
 #site-name a {
@@ -65,6 +80,7 @@ html {
     gap: 0.5rem;
     font-weight: 600;
     font-size: 1.1rem;
+    color: #ffffff !important;
 }
 
 #site-name a i {
@@ -73,7 +89,11 @@ html {
 
 /* User info in header */
 #user-tools {
-    color: #ffffff;
+    color: #ffffff !important;
+}
+
+#user-tools a {
+    color: #ffffff !important;
 }
 
 /* ========== SIDEBAR ========== */
@@ -84,12 +104,12 @@ html {
 }
 
 #sidebar a {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     transition: all 0.2s ease;
 }
 
 #sidebar a:hover {
-    color: var(--primary-color);
+    color: var(--primary-light) !important;
     background-color: var(--bg-tertiary);
 }
 
@@ -113,13 +133,18 @@ html {
     color: white;
     border-radius: 8px 8px 0 0;
     padding: 1rem;
+    margin: 0;
 }
 
 .module h3 {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     border-bottom: 2px solid var(--border-color);
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
+}
+
+.module p {
+    color: var(--text-secondary) !important;
 }
 
 .fieldset {
@@ -129,12 +154,12 @@ html {
 }
 
 .fieldset legend {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
     border-bottom: 2px solid var(--border-color);
     padding: 0.75rem 1rem;
     border-radius: 4px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
 }
 
 /* ========== FORMS ========== */
@@ -154,7 +179,22 @@ select {
     border-radius: 4px;
     padding: 0.5rem 0.75rem;
     transition: all 0.3s ease;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: inherit;
+}
+
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="datetime"],
+[data-theme="dark"] input[type="datetime-local"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
 }
 
 input[type="text"]:focus,
@@ -171,7 +211,20 @@ select:focus {
     color: var(--text-primary);
     border-color: var(--primary-color);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] input[type="password"]:focus,
+[data-theme="dark"] input[type="email"]:focus,
+[data-theme="dark"] input[type="number"]:focus,
+[data-theme="dark"] input[type="date"]:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(139, 155, 255, 0.2);
 }
 
 /* ========== BUTTONS ========== */
@@ -193,7 +246,7 @@ button {
     cursor: pointer;
     font-weight: 500;
     transition: all 0.3s ease;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: inherit;
 }
 
 input[type="submit"]:hover,
@@ -207,6 +260,7 @@ button:hover {
 /* Botão de delete */
 .deletelink {
     background-color: #dc3545 !important;
+    color: white !important;
 }
 
 .deletelink:hover {
@@ -237,7 +291,7 @@ thead th {
     border: 1px solid var(--border-color);
     padding: 0.75rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
 }
 
 tbody tr {
@@ -246,12 +300,22 @@ tbody tr {
 }
 
 tbody tr:hover {
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-tertiary);
 }
 
 td {
     padding: 0.75rem;
     border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+tbody a {
+    color: var(--primary-light) !important;
+}
+
+tbody a:hover {
+    color: var(--primary-color) !important;
+    text-decoration: underline;
 }
 
 /* ========== PAGINATIONS ========== */
@@ -274,19 +338,20 @@ td {
     border: 1px solid var(--border-color);
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
-    color: var(--primary-color);
+    color: var(--primary-light) !important;
     transition: all 0.3s ease;
+    text-decoration: none;
 }
 
 .step-links a:hover {
     background: var(--primary-gradient);
-    color: white;
+    color: white !important;
     border-color: var(--primary-color);
 }
 
 .step-links .current {
     background: var(--primary-gradient);
-    color: white;
+    color: white !important;
     font-weight: 600;
 }
 
@@ -302,7 +367,7 @@ td {
     border-bottom: 2px solid var(--border-color);
     padding-bottom: 0.75rem;
     margin-bottom: 1rem;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     font-size: 1rem;
 }
 
@@ -316,7 +381,7 @@ td {
 }
 
 #changelist-filter a {
-    color: var(--primary-color);
+    color: var(--primary-light) !important;
     text-decoration: none;
     padding: 0.5rem;
     display: block;
@@ -327,10 +392,11 @@ td {
 #changelist-filter a:hover {
     background-color: var(--bg-secondary);
     padding-left: 0.75rem;
+    color: var(--primary-color) !important;
 }
 
 #changelist-filter .selected a {
-    color: white;
+    color: white !important;
     background: var(--primary-gradient);
 }
 
@@ -346,7 +412,7 @@ td {
     padding: 1rem;
     margin-bottom: 1rem;
     border-radius: 4px;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
 }
 
 .messagelist .success {
@@ -367,7 +433,12 @@ td {
     background-color: var(--bg-secondary);
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .readonly {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary) !important;
 }
 
 /* ========== INLINES ========== */
@@ -384,6 +455,7 @@ td {
     padding: 0.75rem;
     border-radius: 4px;
     margin-bottom: 1rem;
+    color: var(--text-primary) !important;
 }
 
 .inline-group table {
@@ -397,10 +469,19 @@ td {
     border-radius: 4px;
 }
 
+[data-theme="dark"] .related-widget-wrapper {
+    background-color: var(--bg-tertiary);
+}
+
 .selector {
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background-color: var(--bg-primary);
+}
+
+[data-theme="dark"] .selector {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
 }
 
 .selector-filter input {
@@ -408,6 +489,12 @@ td {
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     padding: 0.5rem;
+}
+
+[data-theme="dark"] .selector-filter input {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
 }
 
 /* ========== BREADCRUMBS ========== */
@@ -420,17 +507,18 @@ td {
 }
 
 .breadcrumbs a {
-    color: var(--primary-color);
+    color: var(--primary-light) !important;
     text-decoration: none;
 }
 
 .breadcrumbs a:hover {
+    color: var(--primary-color) !important;
     text-decoration: underline;
 }
 
 /* ========== LABELS ========== */
 label {
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     font-weight: 500;
 }
 
@@ -442,7 +530,7 @@ label {
 
 /* ========== HELP TEXT ========== */
 .help {
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
     font-size: 0.85rem;
     margin-top: 0.25rem;
     display: block;
@@ -450,13 +538,19 @@ label {
 
 /* ========== ERROR MESSAGES ========== */
 .errorlist {
-    background-color: #f8d7da;
+    background-color: rgba(220, 53, 69, 0.15);
     border: 1px solid #f5c6cb;
     border-radius: 4px;
     padding: 0.75rem;
     margin-bottom: 1rem;
     list-style: none;
-    color: #721c24;
+    color: #dc3545;
+}
+
+[data-theme="dark"] .errorlist {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-color: #dc3545;
+    color: #ff6b7a;
 }
 
 .errorlist li {
@@ -469,51 +563,44 @@ label {
 .errors textarea,
 .errors select {
     border-color: #dc3545;
+    border-width: 2px;
+}
+
+/* ========== FORM ROWS ========== */
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-row > div {
+    flex: 1;
+}
+
+/* ========== TEXT GENERAL ========== */
+p, span, div, a {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] div,
+[data-theme="dark"] .module p {
+    color: var(--text-primary) !important;
 }
 
 /* ========== DARK MODE FIXES ========== */
-[data-theme="dark"] input[type="text"],
-[data-theme="dark"] input[type="password"],
-[data-theme="dark"] input[type="email"],
-[data-theme="dark"] input[type="number"],
-[data-theme="dark"] input[type="date"],
-[data-theme="dark"] textarea,
-[data-theme="dark"] select {
-    background-color: var(--bg-tertiary);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] .readonly {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-}
-
 [data-theme="dark"] .module h3 {
     border-bottom-color: var(--border-color);
+    color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] thead {
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
 }
 
-[data-theme="dark"] .selector {
-    background-color: var(--bg-tertiary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .selector-filter input {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .related-widget-wrapper {
-    background-color: var(--bg-tertiary);
-}
-
 [data-theme="dark"] .messagelist li {
     background-color: var(--card-bg);
+    color: var(--text-primary) !important;
 }
 
 /* ========== RESPONSIVE ========== */
@@ -539,16 +626,8 @@ label {
     #changelist-filter {
         margin-top: 2rem;
     }
-}
 
-/* ========== SMOOTH TRANSITIONS ========== */
-* {
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-}
-
-/* Prevenir transição de transformações */
-input[type="submit"]:hover,
-.button:hover,
-button:hover {
-    transition: all 0.3s ease;
+    .form-row {
+        flex-direction: column;
+    }
 }
