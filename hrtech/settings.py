@@ -40,15 +40,22 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
+    X_FRAME_OPTIONS = 'SAMEORIGIN'  # Permitir iframe do mesmo domínio (admin-interface)
     SECURE_HSTS_SECONDS = 31536000  # 1 ano
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+else:
+    # Desenvolvimento: permitir para admin-interface funcionar
+    X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # =============================================================================
 # APLICAÇÕES
 # =============================================================================
 INSTALLED_APPS = [
+    # Admin UI (deve vir ANTES do django.contrib.admin)
+    'admin_interface',
+    'colorfield',
+    # Django core
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

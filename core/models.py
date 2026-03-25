@@ -191,7 +191,15 @@ class Candidato(models.Model):
         default=EtapaProcesso.TRIAGEM,
         help_text="Etapa atual no processo seletivo"
     )
-    
+
+    # Tags do candidato (relacionamento M2M)
+    tags = models.ManyToManyField(
+        'Tag',
+        through='CandidatoTag',
+        related_name='candidatos',
+        blank=True
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -575,3 +583,110 @@ class Favorito(models.Model):
 
     def __str__(self):
         return f"{self.usuario.email} ⭐ {self.candidato.nome}"
+
+
+class Tag(models.Model):
+    """
+    Tags customizáveis para organizar candidatos.
+
+    Permite criar categorias flexíveis como:
+    - "Entrevista Urgente", "Talento Top", "Indicação"
+    - Por projeto, por cliente, por característica, etc.
+
+    Tags podem ter cores para fácil identificação visual.
+    """
+
+    class Cor(models.TextChoices):
+        AZUL = 'primary', 'Azul'
+        VERDE = 'success', 'Verde'
+        VERMELHO = 'danger', 'Vermelho'
+        AMARELO = 'warning', 'Amarelo'
+        ROXO = 'purple', 'Roxo'
+        ROSA = 'pink', 'Rosa'
+        LARANJA = 'orange', 'Laranja'
+        CINZA = 'secondary', 'Cinza'
+        CIANO = 'info', 'Ciano'
+        ESCURO = 'dark', 'Escuro'
+
+    nome = models.CharField(
+        max_length=50,
+        help_text="Nome da tag (ex: 'Talento Top', 'Urgente')"
+    )
+
+    cor = models.CharField(
+        max_length=20,
+        choices=Cor.choices,
+        default=Cor.AZUL,
+        help_text="Cor para exibição visual"
+    )
+
+    descricao = models.TextField(
+        blank=True,
+        help_text="Descrição opcional do que significa essa tag"
+    )
+
+    # Quem criou a tag (para permitir tags privadas no futuro)
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tags_criadas'
+    )
+
+    # Tags podem ser globais (todos veem) ou privadas (só criador)
+    global_tag = models.BooleanField(
+        default=True,
+        help_text="Tag visível para toda equipe RH"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tag'
+        verbose_name_plural = 'Tags'
+        ordering = ['nome']
+        unique_together = ['nome', 'criado_por']
+
+    def __str__(self):
+        return f"🏷️ {self.nome}"
+
+
+class CandidatoTag(models.Model):
+    """
+    Relacionamento M2M entre Candidato e Tag com metadados.
+
+    Permite rastrear quem aplicou a tag e quando.
+    """
+
+    candidato = models.ForeignKey(
+        Candidato,
+        on_delete=models.CASCADE,
+        related_name='candidato_tags'
+    )
+
+    tag = models.ForeignKey(
+        Tag,
+        on_delete=models.CASCADE,
+        related_name='candidato_tags'
+    )
+
+    aplicado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tags_aplicadas'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Tag do Candidato'
+        verbose_name_plural = 'Tags dos Candidatos'
+        unique_together = ['candidato', 'tag']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.candidato.nome} → {self.tag.nome}"

@@ -23,47 +23,78 @@
     </div>
 </div>
 
-<!-- Cards de Estatísticas -->
-<div class="row g-3 mb-4">
+<!-- Cards de Estatísticas - Design Profissional -->
+<div class="row g-4 mb-4">
+    <!-- Vagas Abertas -->
     <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="display-6 text-primary mb-2">{{ stats.vagas_abertas }}</div>
-                <div class="text-muted">Vagas Abertas</div>
+        <div class="stat-card stat-card-primary">
+            <div class="stat-card-icon">
+                <i class="bi bi-briefcase-fill"></i>
+            </div>
+            <div class="stat-card-content">
+                <h3 class="stat-card-number">{{ stats.vagas_abertas }}</h3>
+                <p class="stat-card-label">Vagas Abertas</p>
+            </div>
+            <div class="stat-card-indicator">
+                <i class="bi bi-arrow-up-right"></i>
             </div>
         </div>
     </div>
+
+    <!-- CVs Processados -->
     <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="display-6 text-success mb-2">{{ stats.candidatos_processados }}</div>
-                <div class="text-muted">CVs Processados</div>
+        <div class="stat-card stat-card-success">
+            <div class="stat-card-icon">
+                <i class="bi bi-file-earmark-check-fill"></i>
+            </div>
+            <div class="stat-card-content">
+                <h3 class="stat-card-number">{{ stats.candidatos_processados }}</h3>
+                <p class="stat-card-label">CVs Processados</p>
+            </div>
+            <div class="stat-card-indicator">
+                <i class="bi bi-check-circle-fill"></i>
             </div>
         </div>
     </div>
+
+    <!-- Total Candidatos -->
     <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="display-6 text-info mb-2">{{ stats.candidatos_total }}</div>
-                <div class="text-muted">Total Candidatos</div>
+        <div class="stat-card stat-card-info">
+            <div class="stat-card-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="stat-card-content">
+                <h3 class="stat-card-number">{{ stats.candidatos_total }}</h3>
+                <p class="stat-card-label">Total Candidatos</p>
+            </div>
+            <div class="stat-card-indicator">
+                <i class="bi bi-bar-chart-fill"></i>
             </div>
         </div>
     </div>
+
+    <!-- Matches Realizados -->
     <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="display-6 text-warning mb-2">{{ stats.matches_realizados }}</div>
-                <div class="text-muted">Matches Realizados</div>
+        <div class="stat-card stat-card-warning">
+            <div class="stat-card-icon">
+                <i class="bi bi-lightning-charge-fill"></i>
+            </div>
+            <div class="stat-card-content">
+                <h3 class="stat-card-number">{{ stats.matches_realizados }}</h3>
+                <p class="stat-card-label">Matches Realizados</p>
+            </div>
+            <div class="stat-card-indicator">
+                <i class="bi bi-graph-up"></i>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Lista de Vagas -->
-<div class="card">
+<div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Vagas</h5>
-        <span class="badge bg-secondary">{{ vagas|length }} vagas</span>
+        <h5 class="mb-0"><i class="bi bi-briefcase-fill me-2"></i>Minhas Vagas</h5>
+        <span class="badge bg-white text-primary">{{ vagas|length }} vagas</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -160,6 +191,137 @@
 
 {% block extra_css %}
 <style>
+    /* ========== CARDS DE ESTATÍSTICAS PROFISSIONAIS ========== */
+    .stat-card {
+        position: relative;
+        padding: 1.75rem;
+        border-radius: 16px;
+        color: white;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        cursor: pointer;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Gradientes modernos para cada card */
+    .stat-card-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-card-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .stat-card-info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .stat-card-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    /* Ícone do card */
+    .stat-card-icon {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 3rem;
+        opacity: 0.3;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover .stat-card-icon {
+        opacity: 0.5;
+        transform: scale(1.1) rotate(10deg);
+    }
+
+    /* Conteúdo do card */
+    .stat-card-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-card-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        opacity: 0.95;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Indicador de tendência */
+    .stat-card-indicator {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+        font-size: 1.25rem;
+        opacity: 0.6;
+    }
+
+    /* ========== TABELA DE VAGAS MODERNIZADA ========== */
+    .table-card {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .table-card .card-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        color: white;
+        border: none;
+        padding: 1.5rem;
+    }
+
+    .table thead {
+        background-color: #f8fafc;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        color: #475569;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f1f5f9;
+        transform: scale(1.01);
+    }
+
+    /* Badges modernos */
+    .badge {
+        padding: 0.5rem 0.75rem;
+        font-weight: 600;
+        font-size: 0.75rem;
+        border-radius: 6px;
+    }
+
+    /* Botões com efeito hover suave */
+    .btn-group-sm .btn {
+        transition: all 0.2s ease;
+    }
+
+    .btn-group-sm .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* HTMX Indicators */
     .htmx-indicator {
         display: none;
     }
@@ -169,5 +331,26 @@
     .htmx-request.htmx-indicator {
         display: inline-block;
     }
+
+    /* Animação de entrada */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
 </style>
 {% endblock %}
