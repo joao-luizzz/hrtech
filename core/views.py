@@ -173,6 +173,10 @@ def status_cv_htmx(request, candidato_id: str):
 @require_GET
 def dashboard_rh(request):
     """Dashboard principal do RH."""
+    from django.db.models import Count
+    from datetime import datetime, timedelta
+    import json
+
     vagas = Vaga.objects.all().order_by('-created_at')
 
     stats = {
@@ -184,9 +188,40 @@ def dashboard_rh(request):
         'matches_realizados': AuditoriaMatch.objects.count(),
     }
 
+    # Dados para gráficos - Candidatos por Etapa do Processo
+    etapas_data = Candidato.objects.values('etapa_processo').annotate(count=Count('id')).order_by('etapa_processo')
+    etapas_labels = [dict(Candidato.EtapaProcesso.choices).get(item['etapa_processo'], item['etapa_processo']) for item in etapas_data]
+    etapas_values = [item['count'] for item in etapas_data]
+
+    # Dados para gráficos - Candidatos por Senioridade
+    senioridade_data = Candidato.objects.values('senioridade').annotate(count=Count('id')).order_by('senioridade')
+    senioridade_labels = [dict(Candidato.Senioridade.choices).get(item['senioridade'], item['senioridade']) for item in senioridade_data]
+    senioridade_values = [item['count'] for item in senioridade_data]
+
+    # Dados para gráficos - Candidatos nos últimos 6 meses
+    hoje = datetime.now()
+    meses_labels = []
+    meses_values = []
+    for i in range(5, -1, -1):
+        data_inicio = (hoje - timedelta(days=30*i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if i > 0:
+            data_fim = (hoje - timedelta(days=30*(i-1))).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            data_fim = hoje
+
+        count = Candidato.objects.filter(created_at__gte=data_inicio, created_at__lt=data_fim).count()
+        meses_labels.append(data_inicio.strftime('%B'))
+        meses_values.append(count)
+
     return render(request, 'core/dashboard_rh.html', {
         'vagas': vagas,
         'stats': stats,
+        'etapas_labels': json.dumps(etapas_labels),
+        'etapas_values': json.dumps(etapas_values),
+        'senioridade_labels': json.dumps(senioridade_labels),
+        'senioridade_values': json.dumps(senioridade_values),
+        'meses_labels': json.dumps(meses_labels),
+        'meses_values': json.dumps(meses_values),
     })
 
 

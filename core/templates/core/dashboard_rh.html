@@ -90,6 +90,47 @@
     </div>
 </div>
 
+<!-- Seção de Analytics com Gráficos -->
+<div class="row g-4 mb-4">
+    <!-- Funil de Candidatos por Etapa -->
+    <div class="col-md-6">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-funnel-fill me-2"></i>Funil do Processo Seletivo</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="etapasChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Distribuição por Senioridade -->
+    <div class="col-md-6">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-pie-chart-fill me-2"></i>Distribuição por Senioridade</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="senioridadeChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tendência dos Últimos 6 Meses -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Tendência de Candidatos (Últimos 6 Meses)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="tendenciaChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Lista de Vagas -->
 <div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -352,5 +393,221 @@
     .stat-card:nth-child(2) { animation-delay: 0.2s; }
     .stat-card:nth-child(3) { animation-delay: 0.3s; }
     .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+    /* ========== CARDS DE GRÁFICOS ========== */
+    .chart-card {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+    }
+
+    .chart-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-card .card-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-bottom: 2px solid #e2e8f0;
+        padding: 1rem 1.5rem;
+    }
+
+    .chart-card .card-header h6 {
+        color: #1e293b;
+        font-weight: 600;
+    }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurações globais do Chart.js
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    Chart.defaults.color = '#64748b';
+
+    // ========== FUNIL DE CANDIDATOS POR ETAPA ==========
+    const etapasCtx = document.getElementById('etapasChart');
+    if (etapasCtx) {
+        new Chart(etapasCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ etapas_labels|safe }},
+                datasets: [{
+                    label: 'Candidatos',
+                    data: {{ etapas_values|safe }},
+                    backgroundColor: [
+                        'rgba(99, 102, 241, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                    ],
+                    borderColor: [
+                        'rgb(99, 102, 241)',
+                        'rgb(59, 130, 246)',
+                        'rgb(16, 185, 129)',
+                        'rgb(245, 158, 11)',
+                        'rgb(239, 68, 68)',
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        borderRadius: 8,
+                        titleFont: { size: 14, weight: '600' },
+                        bodyFont: { size: 13 },
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ========== DISTRIBUIÇÃO POR SENIORIDADE ==========
+    const senioridadeCtx = document.getElementById('senioridadeChart');
+    if (senioridadeCtx) {
+        new Chart(senioridadeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ senioridade_labels|safe }},
+                datasets: [{
+                    data: {{ senioridade_values|safe }},
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                    ],
+                    borderColor: [
+                        'rgb(16, 185, 129)',
+                        'rgb(245, 158, 11)',
+                        'rgb(239, 68, 68)',
+                    ],
+                    borderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: { size: 13 },
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        borderRadius: 8,
+                        titleFont: { size: 14, weight: '600' },
+                        bodyFont: { size: 13 },
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ========== TENDÊNCIA DOS ÚLTIMOS 6 MESES ==========
+    const tendenciaCtx = document.getElementById('tendenciaChart');
+    if (tendenciaCtx) {
+        new Chart(tendenciaCtx, {
+            type: 'line',
+            data: {
+                labels: {{ meses_labels|safe }},
+                datasets: [{
+                    label: 'Novos Candidatos',
+                    data: {{ meses_values|safe }},
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderColor: 'rgb(99, 102, 241)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: 'rgb(99, 102, 241)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverBackgroundColor: 'rgb(99, 102, 241)',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        borderRadius: 8,
+                        titleFont: { size: 14, weight: '600' },
+                        bodyFont: { size: 13 },
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
