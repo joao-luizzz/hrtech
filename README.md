@@ -11,7 +11,15 @@
   <img src="https://img.shields.io/badge/Neo4j-AuraDB-008CC1?logo=neo4j&logoColor=white" alt="Neo4j">
   <img src="https://img.shields.io/badge/Redis-7.0-DC382D?logo=redis&logoColor=white" alt="Redis">
   <img src="https://img.shields.io/badge/OpenAI-GPT--4-412991?logo=openai&logoColor=white" alt="OpenAI">
+  <img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white" alt="Bootstrap">
+  <img src="https://img.shields.io/badge/HTMX-1.9-3366CC?logo=htmx&logoColor=white" alt="HTMX">
   <img src="https://img.shields.io/badge/Deploy-Render-46E3B7?logo=render&logoColor=white" alt="Render">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Dark_Mode-Suportado-1a1d23?logo=dark-reader&logoColor=white" alt="Dark Mode">
+  <img src="https://img.shields.io/badge/LGPD-Compliant-00875A?logo=shield&logoColor=white" alt="LGPD">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?logo=opensourceinitiative&logoColor=white" alt="License">
 </p>
 
 ---
@@ -114,7 +122,9 @@ O sistema extrai habilidades de currículos usando GPT-4 e calcula compatibilida
 |------------|-----|
 | Bootstrap 5 | Framework CSS responsivo |
 | HTMX | Interatividade sem JavaScript pesado |
-| Chart.js | Gráficos do dashboard |
+| Chart.js | Gráficos do dashboard de analytics |
+| Bootstrap Icons | Iconografia consistente |
+| Dark Mode | Tema escuro com CSS variables |
 
 ### DevOps & Deploy
 | Ferramenta | Uso |
@@ -133,13 +143,35 @@ O sistema extrai habilidades de currículos usando GPT-4 e calcula compatibilida
 - **Extração de Skills com IA** - GPT-4 identifica habilidades técnicas e soft skills
 - **Grafo de Conhecimento** - Neo4j armazena e relaciona skills entre si
 - **Matching Inteligente** - Algoritmo de compatibilidade candidato ↔ vaga
+- **Busca de Candidatos Similares** - Encontra perfis semelhantes baseado em skills
 
-### Gestão
+### Gestão de Recrutamento
 - **Dashboard Kanban** - Pipeline visual de recrutamento com drag-and-drop
 - **Cadastro de Vagas** - Skills requeridas e peso de cada uma
+- **Sistema de Tags** - Categorize candidatos com etiquetas coloridas
+- **Comentários e Notas** - Adicione observações em cada candidato
 - **Auditoria de Matches** - Histórico completo das recomendações
 
+### Dashboard & Analytics
+- **Dashboard RH** - Métricas e KPIs do processo de recrutamento
+- **Gráficos Interativos** - Chart.js para visualização de dados
+- **Distribuição por Senioridade** - Análise do pool de candidatos
+- **Tendências Temporais** - Acompanhe a evolução ao longo do tempo
+- **Funil de Etapas** - Visualize a conversão entre etapas
+
+### Área do Candidato
+- **Portal do Candidato** - Área dedicada para acompanhar candidaturas
+- **Minhas Aplicações** - Visualize status de cada vaga aplicada
+- **Perfil Editável** - Atualize informações e habilidades
+
+### UX & Interface
+- **Dark Mode** - Tema escuro sincronizado em todo o sistema
+- **Design Responsivo** - Funciona em desktop, tablet e mobile
+- **Admin Customizado** - Painel administrativo estilizado
+- **HTMX** - Interatividade sem recarregar a página
+
 ### Segurança & Compliance
+- **Autenticação Completa** - Login, cadastro, recuperação de senha (django-allauth)
 - **LGPD Compliant** - CVs em bucket privado, acesso via presigned URL
 - **Logs sem PII** - Dados pessoais nunca são logados
 - **Credenciais Seguras** - Todas via variáveis de ambiente
@@ -323,7 +355,11 @@ hrtech/
 ├── core/                      # App principal
 │   ├── migrations/            # Migrations do banco
 │   ├── templates/core/        # Templates do app
-│   ├── models.py              # Candidato, Vaga, AuditoriaMatch
+│   │   ├── candidatos/        # Busca e similares
+│   │   ├── candidato/         # Área do candidato
+│   │   ├── vagas/             # CRUD de vagas
+│   │   └── partials/          # Componentes HTMX
+│   ├── models.py              # Candidato, Vaga, Tag, Comentario
 │   ├── views.py               # Views e lógica de negócio
 │   ├── tasks.py               # Tasks Celery (processar_cv)
 │   ├── neo4j_connection.py    # Singleton de conexão Neo4j
@@ -335,8 +371,15 @@ hrtech/
 │   ├── celery.py              # Configuração Celery
 │   └── wsgi.py                # Entry point produção
 │
-├── templates/                 # Templates globais (base.html)
-├── static/                    # CSS, JS, imagens
+├── templates/                 # Templates globais
+│   ├── base.html              # Layout base com dark mode
+│   ├── admin/                 # Admin customizado
+│   └── account/               # Templates de autenticação
+│
+├── static/                    # Arquivos estáticos
+│   ├── css/                   # CSS customizado (admin)
+│   └── js/                    # JavaScript (dark mode)
+│
 ├── staticfiles/               # Coletados pelo collectstatic
 │
 ├── Procfile                   # Start command (Render/Heroku)
@@ -381,11 +424,18 @@ python manage.py shell
 
 ## Roadmap
 
+- [x] ~~Autenticação com email~~ (django-allauth)
+- [x] ~~Dashboard de Analytics com gráficos~~
+- [x] ~~Sistema de Tags para candidatos~~
+- [x] ~~Área do Candidato~~
+- [x] ~~Dark Mode em todo o sistema~~
+- [x] ~~Admin customizado~~
 - [ ] Autenticação com Google/LinkedIn OAuth
 - [ ] API REST para integrações
 - [ ] Notificações por email (Celery Beat)
 - [ ] Relatórios exportáveis (PDF/Excel)
 - [ ] Multi-tenancy para empresas
+- [ ] Integração com LinkedIn para importar perfis
 
 ---
 
@@ -403,4 +453,6 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para de
 
 <p align="center">
   <sub>Desenvolvido com Django, Neo4j e OpenAI</sub>
+  <br>
+  <sub>🌙 Dark Mode | 📊 Analytics | 🤖 IA | 🔒 LGPD Compliant</sub>
 </p>
