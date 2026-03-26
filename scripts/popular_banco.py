@@ -21,9 +21,9 @@ Regras de Negócio Implementadas:
 - Anos de experiência correlacionados com senioridade
 
 Uso:
-    python manage.py shell < popular_banco.py
+    python manage.py shell < scripts/popular_banco.py
     # ou
-    python popular_banco.py  (com Django configurado)
+    python scripts/popular_banco.py  (com Django configurado)
 """
 
 import os

@@ -393,7 +393,7 @@ class Neo4jPersistenceTests(TestCase):
 
         # Verifica que a query contém as operações esperadas
         query = call_args[0][0]  # Primeiro argumento posicional
-        self.assertIn('MATCH (c:Candidato', query)
+        self.assertIn('MERGE (c:Candidato', query)
         self.assertIn('MERGE (a:Area', query)
         self.assertIn('MERGE (h:Habilidade', query)
         self.assertIn('TEM_HABILIDADE', query)

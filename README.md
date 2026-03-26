@@ -293,13 +293,16 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 
 # (Opcional) Popule com dados de teste
-python popular_banco.py
+python scripts/popular_banco.py
 
 # Inicie o servidor Django
 python manage.py runserver
 
 # Em outro terminal, inicie o Celery
-celery -A hrtech worker -l info
+celery -A hrtech worker -l info -Q default,openai
+
+# Em outro terminal, inicie o Celery Beat
+celery -A hrtech beat -l info
 ```
 
 Acesse: **http://localhost:8000**
@@ -332,6 +335,12 @@ NEO4J_USER         → neo4j
 NEO4J_PASSWORD     → (sua senha)
 CELERY_BROKER_URL  → (do Upstash Redis)
 OPENAI_API_KEY     → (sua chave)
+
+# setup_rh (opcional, recomendado)
+RH_ADMIN_USERNAME  → admin_rh
+RH_ADMIN_EMAIL     → rh@empresa.com
+RH_ADMIN_PASSWORD  → (senha segura)
+SITE_DOMAIN        → seu-app.onrender.com
 ```
 
 ### Build & Start Commands
@@ -341,9 +350,11 @@ OPENAI_API_KEY     → (sua chave)
 pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
 ```
 
-**Start Command:** *(já no Procfile)*
+**Process Types (Procfile):**
 ```bash
-gunicorn hrtech.wsgi --bind 0.0.0.0:$PORT --workers 2
+web: gunicorn hrtech.wsgi --bind 0.0.0.0:$PORT --workers 2
+worker: celery -A hrtech worker -l INFO -Q default,openai
+beat: celery -A hrtech beat -l INFO
 ```
 
 ---
@@ -352,6 +363,13 @@ gunicorn hrtech.wsgi --bind 0.0.0.0:$PORT --workers 2
 
 ```
 hrtech/
+├── docs/                      # Documentação técnica e relatórios
+│   ├── planning/              # Roadmaps e planos de execução
+│   └── reports/               # Relatórios de QA e funcionalidades
+│
+├── scripts/                   # Scripts utilitários (seed, manutenção)
+│   └── popular_banco.py       # Popula banco (PostgreSQL + Neo4j)
+│
 ├── core/                      # App principal
 │   ├── migrations/            # Migrations do banco
 │   ├── templates/core/        # Templates do app
@@ -363,7 +381,9 @@ hrtech/
 │   ├── views.py               # Views e lógica de negócio
 │   ├── tasks.py               # Tasks Celery (processar_cv)
 │   ├── neo4j_connection.py    # Singleton de conexão Neo4j
-│   └── openai_service.py      # Extração de skills via GPT-4
+│   ├── matching.py            # Motor de matching em 3 camadas
+│   ├── schemas.py             # Contrato Pydantic para OpenAI
+│   └── services/              # Integrações externas (S3/Email)
 │
 ├── hrtech/                    # Configurações do projeto
 │   ├── settings.py            # Settings com python-decouple
@@ -385,9 +405,14 @@ hrtech/
 ├── Procfile                   # Start command (Render/Heroku)
 ├── runtime.txt                # Versão Python (3.10.12)
 ├── requirements.txt           # Dependências Python
-├── .env.example               # Template de variáveis
+├── .env.example               # Template de variáveis de ambiente
 └── manage.py                  # CLI Django
 ```
+
+Documentação organizada:
+- Planejamento: `docs/planning/ROADMAP_MELHORIAS.md`
+- Relatórios: `docs/reports/RELATORIO_QA.md`
+- Exportações: `docs/reports/EXPORTS_DOCUMENTATION.md`
 
 ---
 

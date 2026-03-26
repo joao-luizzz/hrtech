@@ -30,6 +30,8 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # Desabilita OpenAI real
 OPENAI_API_KEY = 'sk-test-fake-key-for-testing'
+# Garante que testes usem mocks explícitos e não o mock mode do ambiente local
+OPENAI_MOCK_MODE = False
 
 # Password hasher mais rápido para testes
 PASSWORD_HASHERS = [

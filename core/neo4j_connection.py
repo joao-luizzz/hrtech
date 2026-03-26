@@ -84,10 +84,18 @@ def run_query(query: str, parameters: dict = None, database: str = "neo4j"):
         Lista de records
     """
     driver = get_neo4j_driver()
-    
-    with driver.session(database=database) as session:
-        result = session.run(query, parameters or {})
-        return [record.data() for record in result]
+
+    try:
+        with driver.session(database=database) as session:
+            result = session.run(query, parameters or {})
+            return [record.data() for record in result]
+    except Exception:
+        logger.exception(
+            "Erro ao executar query Neo4j (database=%s, params=%s)",
+            database,
+            bool(parameters),
+        )
+        raise
 
 
 def run_write_query(query: str, parameters: dict = None, database: str = "neo4j"):
@@ -103,9 +111,17 @@ def run_write_query(query: str, parameters: dict = None, database: str = "neo4j"
         ResultSummary com estatísticas da operação
     """
     driver = get_neo4j_driver()
-    
-    with driver.session(database=database) as session:
-        result = session.execute_write(
-            lambda tx: tx.run(query, parameters or {}).consume()
+
+    try:
+        with driver.session(database=database) as session:
+            result = session.execute_write(
+                lambda tx: tx.run(query, parameters or {}).consume()
+            )
+            return result
+    except Exception:
+        logger.exception(
+            "Erro ao executar write query Neo4j (database=%s, params=%s)",
+            database,
+            bool(parameters),
         )
-        return result
+        raise

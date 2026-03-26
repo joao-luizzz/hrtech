@@ -59,11 +59,11 @@ class EmailService:
                 fail_silently=False
             )
 
-            logger.info(f"Email enviado para {to_email}: {subject}")
+            logger.info("Email enviado com sucesso (template=%s)", template)
             return True
 
         except Exception as e:
-            logger.error(f"Erro ao enviar email para {to_email}: {e}")
+            logger.error("Erro ao enviar email (template=%s): %s", template, e)
             return False
 
     def notify_cv_processed(self, candidato) -> bool:

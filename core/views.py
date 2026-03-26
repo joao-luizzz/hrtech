@@ -418,8 +418,9 @@ def rodar_matching(request, vaga_id):
         )
     except Exception as e:
         logger.exception(f"Erro no matching para vaga {vaga_id}")
+        error_message = str(e) if settings.DEBUG else 'Erro interno ao executar matching. Tente novamente.'
         return render(request, 'core/partials/matching_error.html', {
-            'error': str(e),
+            'error': error_message,
             'vaga': vaga,
         }, status=500)
 
@@ -1150,8 +1151,8 @@ def api_stats(request):
         ORDER BY total DESC
         """
         area_data = run_query(query, {})
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Erro ao buscar areas no Neo4j para api_stats: %s", e)
 
     score_vagas = list(
         AuditoriaMatch.objects.values('vaga__titulo')
@@ -1248,7 +1249,7 @@ def adicionar_comentario(request, candidato_id):
         privado=privado
     )
 
-    logger.info(f"Comentário adicionado ao candidato {candidato_id} por {request.user.email}")
+    logger.info("Comentario adicionado ao candidato %s por usuario_id=%s", candidato_id, request.user.id)
 
     # Retorna o HTML do comentário para HTMX
     if request.headers.get('HX-Request'):
@@ -1273,8 +1274,8 @@ def listar_comentarios(request, candidato_id):
         Q(privado=False) | Q(autor=request.user)
     ).select_related('autor', 'vaga').order_by('-created_at')
 
-    # Vagas ativas para o formulário
-    vagas = Vaga.objects.filter(ativo=True).order_by('titulo')
+    # Vagas abertas para o formulário
+    vagas = Vaga.objects.filter(status=Vaga.Status.ABERTA).order_by('titulo')
 
     return render(request, 'core/comentarios/lista.html', {
         'candidato': candidato,
@@ -1585,7 +1586,7 @@ def exportar_candidatos_excel(request):
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-    logger.info(f"Exportação de candidatos por {request.user.email}: {candidatos.count()} registros")
+    logger.info("Exportacao de candidatos concluida por usuario_id=%s: %s registros", request.user.id, candidatos.count())
 
     return response
 

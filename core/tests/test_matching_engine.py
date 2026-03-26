@@ -16,7 +16,7 @@ Decisões:
 
 Para rodar:
     python manage.py test core
-    python manage.py test core.tests.MatchingEngineTests
+    python manage.py test core.tests.test_matching_engine.MatchingEngineTests
 """
 
 from datetime import datetime
@@ -531,8 +531,14 @@ class MatchingEngineIntegrationTests(TestCase):
             }
         ]
 
-        # Setup do Candidato PostgreSQL
-        mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
+        # Setup do Candidato PostgreSQL (engine usa filter em batch)
+        candidato_pg = MagicMock()
+        candidato_pg.id = 'uuid-test'
+        candidato_pg.nome = 'Test User'
+        candidato_pg.email = 'test@test.com'
+        candidato_pg.senioridade = 'pleno'
+        candidato_pg.disponivel = True
+        mock_candidato.objects.filter.return_value = [candidato_pg]
 
         # Setup do bulk_create
         mock_auditoria.objects.bulk_create.return_value = []

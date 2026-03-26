@@ -409,8 +409,12 @@ def processar_cv_task(self, candidato_id: str) -> dict:
             candidato = Candidato.objects.get(pk=candidato_id)
             candidato.status_cv = Candidato.StatusCV.ERRO
             candidato.save(update_fields=['status_cv', 'updated_at'])
-        except Exception:
-            pass
+        except Exception as status_error:
+            logger.exception(
+                "Falha ao atualizar status para ERRO apos max_retries (candidato_id=%s): %s",
+                candidato_id,
+                type(status_error).__name__,
+            )
         return {'status': 'error', 'reason': 'max_retries_exceeded'}
 
     except Exception as e:
@@ -419,8 +423,12 @@ def processar_cv_task(self, candidato_id: str) -> dict:
             candidato = Candidato.objects.get(pk=candidato_id)
             candidato.status_cv = Candidato.StatusCV.ERRO
             candidato.save(update_fields=['status_cv', 'updated_at'])
-        except Exception:
-            pass
+        except Exception as status_error:
+            logger.exception(
+                "Falha ao atualizar status para ERRO apos excecao inesperada (candidato_id=%s): %s",
+                candidato_id,
+                type(status_error).__name__,
+            )
         raise
 
 
