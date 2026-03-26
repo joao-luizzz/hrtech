@@ -2,6 +2,8 @@
 Migration para criar/corrigir usuário RH definitivo.
 Corrige problemas de email e garante que o usuário funcione com allauth.
 """
+import os
+
 from django.db import migrations
 from django.contrib.auth.hashers import make_password
 
@@ -11,37 +13,40 @@ def criar_usuario_rh_definitivo(apps, schema_editor):
     Profile = apps.get_model('core', 'Profile')
     Site = apps.get_model('sites', 'Site')
 
-    # Credenciais DEFINITIVAS
-    EMAIL = 'admin@hrtech.com'
-    USERNAME = 'admin@hrtech.com'  # Mesmo que email para evitar confusão
-    SENHA = 'Admin123!'
+    # Configuração via ambiente
+    EMAIL = os.getenv('RH_ADMIN_EMAIL', 'rh@empresa.com')
+    USERNAME = os.getenv('RH_ADMIN_USERNAME', EMAIL)
+    SENHA = os.getenv('RH_ADMIN_PASSWORD')
+    SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'localhost')
 
-    # Remove usuários antigos que podem estar causando conflito
-    User.objects.filter(username__in=['admin_rh', 'rh_admin', 'rh@empresa.com', 'rh@hrtech.com']).delete()
-    User.objects.filter(email__in=['rh@empresa.com', 'rh@hrtech.com', 'admin@hrtech.com']).delete()
+    user = None
 
-    # Cria usuário novo
-    user = User(
-        username=USERNAME,
-        email=EMAIL,
-        password=make_password(SENHA),
-        is_staff=True,
-        is_superuser=True,
-        is_active=True,
-    )
-    user.save()
-    print(f'✅ Usuário criado: {EMAIL} / {SENHA}')
+    # Cria/atualiza usuário apenas se senha estiver disponível
+    if not SENHA:
+        print('⚠️ RH_ADMIN_PASSWORD ausente. Criação/atualização de usuário RH ignorada.')
+    else:
+        user, _ = User.objects.update_or_create(
+            username=USERNAME,
+            defaults={
+                'email': EMAIL,
+                'password': make_password(SENHA),
+                'is_staff': True,
+                'is_superuser': True,
+                'is_active': True,
+            },
+        )
+        print('✅ Usuário RH criado/atualizado.')
 
-    # Cria Profile com role RH
-    Profile.objects.filter(user=user).delete()  # Remove profile antigo se existir
-    Profile.objects.create(user=user, role='rh')
-    print('✅ Profile RH criado!')
+    # Cria/garante Profile com role RH
+    if user:
+        Profile.objects.update_or_create(user=user, defaults={'role': 'rh'})
+        print('✅ Profile RH criado/atualizado.')
 
     # Configura Site
     Site.objects.update_or_create(
         id=1,
         defaults={
-            'domain': 'hrtech-h64w.onrender.com',
+            'domain': SITE_DOMAIN,
             'name': 'HRTech ATS'
         }
     )

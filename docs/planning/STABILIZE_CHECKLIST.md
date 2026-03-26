@@ -11,11 +11,12 @@ Objetivo: reduzir risco operacional e preparar a base para novas features.
   - RH_ADMIN_PASSWORD
   - SITE_DOMAIN
 - [ ] Revisar todos os comandos de management para evitar segredos no codigo.
+- [x] Revisar todos os comandos de management para evitar segredos no codigo.
 
 ## 2. Consistencia de dominio
 
 - [x] Corrigir filtro de vagas em comentarios para usar status (ABERTA).
-- [ ] Rodar busca de campos legados (ativo, is_active custom, etc.) e padronizar.
+- [x] Rodar busca de campos legados (ativo, is_active custom, etc.) e padronizar.
 - [ ] Consolidar enum de estados criticos de Vaga e Candidato com validacao central.
 
 ## 3. Operacao assincrona em producao
@@ -26,8 +27,8 @@ Objetivo: reduzir risco operacional e preparar a base para novas features.
 
 ## 4. Observabilidade minima
 
-- [ ] Incluir correlation id em logs de fluxo de CV e matching.
-- [ ] Padronizar logs de erro com contexto: candidato_id, vaga_id, task_id.
+- [x] Incluir correlation id em logs de fluxo de CV e matching.
+- [x] Padronizar logs de erro com contexto: candidato_id, vaga_id, task_id.
 - [ ] Definir dashboard basico de erros e jobs fantasmas.
 
 ## 5. Smoke tests obrigatorios pre-feature
@@ -50,6 +51,10 @@ Objetivo: reduzir risco operacional e preparar a base para novas features.
 - Suite de matching: 14 testes OK.
 - Suite pipeline mock: 36 testes OK.
 - System check Django: OK com 3 warnings deprecados do allauth (sem erro bloqueante).
+- Revisao de comandos de management: sem credenciais hardcoded remanescentes.
+- Busca de campo legado em runtime: sem uso de `ativo`/`is_active` fora de migrações históricas.
+- Middleware de correlacao implementado: `core/middleware.py` com header `X-Request-ID`.
+- Logs de excecao em views enriquecidos com `request_id` e ids de entidade quando aplicável.
 
 ## Criterio de conclusao da fase
 

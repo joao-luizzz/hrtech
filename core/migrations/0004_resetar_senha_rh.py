@@ -1,6 +1,8 @@
 """
 Migration para resetar senha do usuário RH.
 """
+import os
+
 from django.db import migrations
 from django.contrib.auth.hashers import make_password
 
@@ -8,29 +10,36 @@ from django.contrib.auth.hashers import make_password
 def resetar_senha(apps, schema_editor):
     User = apps.get_model('auth', 'User')
 
-    NOVA_SENHA = 'NovaSenha123!'
+    email = os.getenv('RH_ADMIN_EMAIL', 'rh@empresa.com')
+    username = os.getenv('RH_ADMIN_USERNAME', email)
+    nova_senha = os.getenv('RH_ADMIN_PASSWORD')
 
-    # Tenta encontrar o usuário por diferentes usernames
-    for username in ['admin_rh', 'rh@empresa.com', 'rh@hrtech.com']:
+    if not nova_senha:
+        print('⚠️ RH_ADMIN_PASSWORD ausente. Reset de senha ignorado.')
+        return
+
+    # Tenta encontrar o usuário pelos identificadores configurados
+    candidatos = [username, email]
+    for candidato in candidatos:
         try:
-            user = User.objects.get(username=username)
-            user.password = make_password(NOVA_SENHA)
+            user = User.objects.get(username=candidato)
+            user.password = make_password(nova_senha)
             user.save()
-            print(f'✅ Senha resetada para {username} - use: {NOVA_SENHA}')
+            print('✅ Senha de usuário RH atualizada.')
             return
         except User.DoesNotExist:
             continue
 
     # Se não encontrou, cria um novo
     user = User(
-        username='rh_admin',
-        email='rh@hrtech.com',
-        password=make_password(NOVA_SENHA),
+        username=username,
+        email=email,
+        password=make_password(nova_senha),
         is_staff=True,
         is_superuser=True,
     )
     user.save()
-    print(f'✅ Novo usuário rh_admin criado com senha: {NOVA_SENHA}')
+    print('✅ Novo usuário RH criado.')
 
 
 class Migration(migrations.Migration):

@@ -2,6 +2,8 @@
 Migration para criar usuário RH inicial e configurar Site.
 Roda automaticamente no deploy.
 """
+import os
+
 from django.db import migrations
 
 
@@ -10,32 +12,37 @@ def criar_usuario_rh(apps, schema_editor):
     Profile = apps.get_model('core', 'Profile')
     Site = apps.get_model('sites', 'Site')
 
-    # Configurações do usuário RH (ALTERE AQUI)
-    EMAIL = 'rh@hrtech.com'
-    USERNAME = 'admin_rh'
-    PASSWORD = 'SenhaSegura123!'  # MUDE DEPOIS DE LOGAR!
+    # Configuração via ambiente
+    EMAIL = os.getenv('RH_ADMIN_EMAIL', 'rh@empresa.com')
+    USERNAME = os.getenv('RH_ADMIN_USERNAME', 'admin_rh')
+    PASSWORD = os.getenv('RH_ADMIN_PASSWORD')
+    SITE_DOMAIN = os.getenv('SITE_DOMAIN', 'localhost')
 
-    # Cria usuário se não existir
+    # Cria usuário se não existir e houver senha no ambiente
     if not User.objects.filter(username=USERNAME).exists():
-        user = User.objects.create_superuser(
-            username=USERNAME,
-            email=EMAIL,
-            password=PASSWORD
-        )
-        # Cria Profile com role RH
-        Profile.objects.create(user=user, role='rh')
-        print(f'✅ Usuário {EMAIL} criado com perfil RH!')
+        if not PASSWORD:
+            print('⚠️ RH_ADMIN_PASSWORD ausente. Criação de usuário RH ignorada.')
+            user = None
+        else:
+            user = User.objects.create_superuser(
+                username=USERNAME,
+                email=EMAIL,
+                password=PASSWORD
+            )
+            # Cria Profile com role RH
+            Profile.objects.create(user=user, role='rh')
+            print('✅ Usuário RH criado com perfil RH.')
     else:
         user = User.objects.get(username=USERNAME)
         # Garante que o profile existe
         Profile.objects.get_or_create(user=user, defaults={'role': 'rh'})
-        print(f'⚠️ Usuário {USERNAME} já existe.')
+        print('⚠️ Usuário RH já existe.')
 
     # Configura Site para allauth
     Site.objects.update_or_create(
         id=1,
         defaults={
-            'domain': 'hrtech-h64w.onrender.com',
+            'domain': SITE_DOMAIN,
             'name': 'HRTech ATS'
         }
     )

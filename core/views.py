@@ -39,7 +39,7 @@ from core.models import (
 from core.tasks import processar_cv_task
 from core.matching import MatchingEngine, resultado_para_dict
 from core.neo4j_connection import run_query
-from core.decorators import rh_required, get_client_ip
+from core.decorators import rh_required, get_client_ip, get_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -417,7 +417,12 @@ def rodar_matching(request, vaga_id):
             limite=50
         )
     except Exception as e:
-        logger.exception(f"Erro no matching para vaga {vaga_id}")
+        logger.exception(
+            "Erro no matching (vaga_id=%s, request_id=%s): %s",
+            vaga_id,
+            get_request_id(request),
+            type(e).__name__,
+        )
         error_message = str(e) if settings.DEBUG else 'Erro interno ao executar matching. Tente novamente.'
         return render(request, 'core/partials/matching_error.html', {
             'error': error_message,
@@ -512,7 +517,13 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
         """
         habilidades_neo4j = run_query(query, {'uuid': str(candidato.id)})
     except Exception as e:
-        logger.warning(f"Erro ao buscar habilidades no Neo4j: {e}")
+        logger.warning(
+            "Erro ao buscar habilidades no Neo4j (vaga_id=%s, candidato_id=%s, request_id=%s): %s",
+            vaga_id,
+            candidato_id,
+            get_request_id(request),
+            type(e).__name__,
+        )
 
     is_htmx = request.headers.get('HX-Request') == 'true'
     template = 'core/partials/detalhe_match.html' if is_htmx else 'core/detalhe_match.html'
@@ -726,7 +737,11 @@ def buscar_candidatos(request):
                     candidatos = candidatos.filter(id__in=list(uuids_set))
 
         except Exception as e:
-            logger.warning(f"Erro na busca por skills: {e}")
+            logger.warning(
+                "Erro na busca por skills (request_id=%s): %s",
+                get_request_id(request),
+                type(e).__name__,
+            )
 
     # Ordenação
     valid_orderings = {
@@ -981,7 +996,12 @@ def buscar_candidatos_similares(request, candidato_id):
                 continue
 
     except Exception as e:
-        logger.error(f"Erro ao buscar candidatos similares: {e}")
+        logger.error(
+            "Erro ao buscar candidatos similares (candidato_id=%s, request_id=%s): %s",
+            candidato_id,
+            get_request_id(request),
+            type(e).__name__,
+        )
         candidatos_similares = []
 
     return render(request, 'core/candidatos/similares.html', {
@@ -1021,7 +1041,12 @@ def dashboard_candidato(request, candidato_id):
         """
         habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
     except Exception as e:
-        logger.warning(f"Erro ao buscar dados do Neo4j: {e}")
+        logger.warning(
+            "Erro ao buscar dados do Neo4j (candidato_id=%s, request_id=%s): %s",
+            candidato_id,
+            get_request_id(request),
+            type(e).__name__,
+        )
 
     matches = AuditoriaMatch.objects.filter(
         candidato=candidato
@@ -1062,7 +1087,12 @@ def habilidades_candidato_htmx(request, candidato_id):
             """
             habilidades = run_query(query, {'uuid': str(candidato.id)})
         except Exception as e:
-            logger.warning(f"Erro ao buscar habilidades: {e}")
+            logger.warning(
+                "Erro ao buscar habilidades (candidato_id=%s, request_id=%s): %s",
+                candidato_id,
+                get_request_id(request),
+                type(e).__name__,
+            )
 
     return render(request, 'core/partials/habilidades_extraidas.html', {
         'candidato': candidato,
@@ -1094,7 +1124,11 @@ def dashboard_geral(request):
         """
         area_data = run_query(query, {})
     except Exception as e:
-        logger.warning(f"Erro ao buscar áreas: {e}")
+        logger.warning(
+            "Erro ao buscar areas no Neo4j (request_id=%s): %s",
+            get_request_id(request),
+            type(e).__name__,
+        )
 
     vagas_status = list(
         Vaga.objects.values('status')
@@ -1152,7 +1186,11 @@ def api_stats(request):
         """
         area_data = run_query(query, {})
     except Exception as e:
-        logger.warning("Erro ao buscar areas no Neo4j para api_stats: %s", e)
+        logger.warning(
+            "Erro ao buscar areas no Neo4j para api_stats (request_id=%s): %s",
+            get_request_id(request),
+            type(e).__name__,
+        )
 
     score_vagas = list(
         AuditoriaMatch.objects.values('vaga__titulo')
@@ -1393,7 +1431,12 @@ def minha_area(request):
         """
         habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
     except Exception as e:
-        logger.warning(f"Erro ao buscar dados do Neo4j: {e}")
+        logger.warning(
+            "Erro ao buscar dados do Neo4j na minha_area (candidato_id=%s, request_id=%s): %s",
+            candidato.id,
+            get_request_id(request),
+            type(e).__name__,
+        )
 
     # Matches recentes
     matches = AuditoriaMatch.objects.filter(
@@ -1709,7 +1752,12 @@ def relatorio_candidato_print(request, candidato_id):
         """
         habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
     except Exception as e:
-        logger.warning(f"Erro ao buscar dados do Neo4j: {e}")
+        logger.warning(
+            "Erro ao buscar dados do Neo4j no relatorio (candidato_id=%s, request_id=%s): %s",
+            candidato.id,
+            get_request_id(request),
+            type(e).__name__,
+        )
 
     # Matches
     matches = AuditoriaMatch.objects.filter(

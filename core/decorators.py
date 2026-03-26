@@ -99,3 +99,10 @@ def get_client_ip(request):
     else:
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+
+def get_request_id(request):
+    """
+    Retorna request_id para correlação de logs.
+    """
+    return getattr(request, 'request_id', request.META.get('HTTP_X_REQUEST_ID', 'n/a'))

@@ -5,6 +5,22 @@
 ### Fase 1 - Stabilize (1-2 semanas)
 Objetivo: reduzir risco operacional e alinhar base para novas features.
 
+#### ✅ Concluído nesta sprint
+- Reorganização da raiz do projeto (docs/ e scripts/) com documentação atualizada.
+- Template de ambiente versionado em `.env.example`.
+- Correção de segurança no comando `setup_rh` sem credenciais hardcoded.
+- Definição de processos `web`, `worker` e `beat` no `Procfile`.
+- Correção de inconsistência de domínio em filtro de vagas por status.
+- Remoção de falhas silenciosas em exceções críticas (`tasks.py` e `views.py`).
+- Wrappers Neo4j com logs de erro e rethrow para rastreabilidade.
+- Suite de testes estabilizada (discovery e mocks) e testes core verdes.
+- Primeira rodada de hardening de logs para reduzir PII.
+- Refresh visual do Django Admin (dashboard mais legível e responsivo).
+
+#### 🔄 Em andamento
+- Fechamento da observabilidade mínima da fase (correlação de logs e contexto).
+- Execução dos smoke tests manuais de homologação.
+
 - Padronizar estados e campos críticos (ex.: uso consistente de status em Vaga/Candidato).
 - Fechar gaps de segurança imediatos (remover credenciais fixas de comandos administrativos).
 - Garantir operação assíncrona em produção (worker e beat separados no deploy).
