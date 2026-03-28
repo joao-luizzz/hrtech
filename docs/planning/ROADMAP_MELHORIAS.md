@@ -36,6 +36,14 @@ Checklist executável da fase:
 ### Fase 2 - Modularize (2-4 semanas)
 Objetivo: diminuir acoplamento e facilitar manutenção.
 
+#### ✅ Iniciado nesta sprint
+- Primeira extração para Service Layer no fluxo público de CV:
+  - validações de upload (nome/email/arquivo)
+  - rate limiting por IP/email
+  - geração e validação de token assinado para polling de status
+- Views permanecem como camada HTTP/orquestração, com regra de negócio migrando para `core/services/cv_upload_service.py`.
+- Regressão validada por testes automatizados (backend validations + smoke).
+
 - Extrair camadas de serviço do arquivo de views (casos de uso de matching, pipeline e buscas).
 - Organizar domínio por módulos funcionais (candidatos, vagas, matching, comunicação).
 - Introduzir contracts DTO/schema para fronteiras entre views, serviços e tasks.

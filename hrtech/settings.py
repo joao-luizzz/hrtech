@@ -36,11 +36,12 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 # Proteções adicionais para produção
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'SAMEORIGIN'  # Permitir iframe do mesmo domínio (admin-interface)
+    X_FRAME_OPTIONS = config('X_FRAME_OPTIONS', default='DENY')
     SECURE_HSTS_SECONDS = 31536000  # 1 ano
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
@@ -104,7 +105,7 @@ LOGIN_URL = 'account_login'
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' em produção se tiver SMTP
-ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_SESSION_REMEMBER = True
@@ -191,6 +192,29 @@ AWS_PRESIGNED_URL_TTL = config('AWS_PRESIGNED_URL_TTL', default=900, cast=int)  
 # Opções gratuitas: Upstash Redis, Redis Cloud free tier
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0' if DEBUG else None)
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0' if DEBUG else None)
+
+# Cache compartilhado para suporte a rate limiting distribuido no backend.
+CACHE_URL = config('CACHE_URL', default='')
+if not CACHE_URL and isinstance(CELERY_BROKER_URL, str) and CELERY_BROKER_URL.startswith(('redis://', 'rediss://')):
+    CACHE_URL = CELERY_BROKER_URL
+
+if CACHE_URL.startswith(('redis://', 'rediss://')):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': CACHE_URL,
+            'KEY_PREFIX': 'hrtech',
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'hrtech-local-cache',
+            'TIMEOUT': 300,
+        }
+    }
 
 # Configurações de serialização segura
 CELERY_ACCEPT_CONTENT = ['json']

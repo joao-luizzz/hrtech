@@ -27,6 +27,7 @@ Uso:
 
 import logging
 import uuid
+import hashlib
 from pathlib import Path
 
 import boto3
@@ -65,6 +66,12 @@ class S3Service:
             self.client = None
             logger.warning("S3 não configurado - usando storage local")
 
+    @staticmethod
+    def _safe_cv_ref(s3_key: str) -> str:
+        """Retorna referência não sensível para logs."""
+        digest = hashlib.sha256((s3_key or '').encode('utf-8')).hexdigest()[:10]
+        return f"cv_ref={digest}"
+
     def upload_cv(self, file, candidato_id: str) -> str:
         """
         Faz upload de um CV para o S3.
@@ -101,7 +108,7 @@ class S3Service:
                 }
             )
 
-            logger.info(f"CV uploaded para S3: {s3_key}")
+            logger.info("CV uploaded para S3 (%s)", self._safe_cv_ref(s3_key))
             return s3_key
 
         except ClientError as e:
@@ -122,7 +129,7 @@ class S3Service:
                 destination.write(chunk)
 
         s3_key = f"cvs/{candidato_id}/{filename}"
-        logger.info(f"CV salvo localmente: {cv_path}")
+        logger.info("CV salvo localmente (%s)", self._safe_cv_ref(s3_key))
         return s3_key
 
     def get_presigned_url(self, s3_key: str, expiration: int = None) -> str:
@@ -181,7 +188,7 @@ class S3Service:
                 Bucket=self.bucket_name,
                 Key=s3_key
             )
-            logger.info(f"CV deletado do S3: {s3_key}")
+            logger.info("CV deletado do S3 (%s)", self._safe_cv_ref(s3_key))
             return True
 
         except ClientError as e:
@@ -196,7 +203,7 @@ class S3Service:
             cv_path = Path(settings.MEDIA_ROOT) / s3_key
             if cv_path.exists():
                 cv_path.unlink()
-                logger.info(f"CV deletado localmente: {cv_path}")
+                logger.info("CV deletado localmente (%s)", self._safe_cv_ref(s3_key))
             return True
         except Exception as e:
             logger.error(f"Erro ao deletar CV local: {e}")

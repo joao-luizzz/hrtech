@@ -22,6 +22,7 @@ Razão: Simplicidade, funciona sem infra adicional
 {% if not finalizado %}
 {# Ainda processando - continua polling #}
 <div hx-get="{% url 'core:status_cv_htmx' candidato_id %}"
+    hx-headers='{"X-Status-Token": "{{ status_token|escapejs }}"}'
      hx-trigger="every 3s"
      hx-swap="outerHTML"
      class="p-4">

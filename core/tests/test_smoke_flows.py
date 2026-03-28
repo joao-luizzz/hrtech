@@ -9,7 +9,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import AuditoriaMatch, Candidato, HistoricoAcao, Vaga
+from core.models import AuditoriaMatch, Candidato, Comentario, Favorito, HistoricoAcao, Vaga
+from core.services.cv_upload_service import CVUploadService
 from hrtech.celery import app as celery_app
 
 
@@ -59,19 +60,35 @@ class UploadPollingSmokeTests(TestCase):
         self.assertEqual(candidato.status_cv, Candidato.StatusCV.RECEBIDO)
         mock_delay.assert_called_once_with(str(candidato.id))
 
-        status_recebido = self.client.get(reverse('core:status_cv_htmx', args=[str(candidato.id)]))
+        html = response.content.decode('utf-8')
+        self.assertNotIn('token=', html)
+        status_token = CVUploadService.generate_status_token(
+            candidato_id=str(candidato.id),
+            email=candidato.email,
+        )
+
+        status_recebido = self.client.get(
+            reverse('core:status_cv_htmx', args=[str(candidato.id)]),
+            HTTP_X_STATUS_TOKEN=status_token,
+        )
         self.assertEqual(status_recebido.status_code, 200)
         self.assertNotIn('HX-Trigger', status_recebido.headers)
 
         candidato.status_cv = Candidato.StatusCV.CONCLUIDO
         candidato.save(update_fields=['status_cv'])
-        status_concluido = self.client.get(reverse('core:status_cv_htmx', args=[str(candidato.id)]))
+        status_concluido = self.client.get(
+            reverse('core:status_cv_htmx', args=[str(candidato.id)]),
+            HTTP_X_STATUS_TOKEN=status_token,
+        )
         self.assertEqual(status_concluido.status_code, 200)
         self.assertEqual(status_concluido.headers.get('HX-Trigger'), 'processingComplete')
 
         candidato.status_cv = Candidato.StatusCV.ERRO
         candidato.save(update_fields=['status_cv'])
-        status_erro = self.client.get(reverse('core:status_cv_htmx', args=[str(candidato.id)]))
+        status_erro = self.client.get(
+            reverse('core:status_cv_htmx', args=[str(candidato.id)]),
+            HTTP_X_STATUS_TOKEN=status_token,
+        )
         self.assertEqual(status_erro.status_code, 200)
         self.assertEqual(status_erro.headers.get('HX-Trigger'), 'processingComplete')
 
@@ -107,20 +124,20 @@ class RHProtectedSmokeTests(TestCase):
             etapa_processo=Candidato.EtapaProcesso.TRIAGEM,
         )
 
-    @patch('core.views.resultado_para_dict')
-    @patch('core.views.MatchingEngine.executar_matching')
-    def test_matching_com_auditoria_de_acao(self, mock_matching, mock_resultado_dict):
-        mock_matching.return_value = [object()]
-        mock_resultado_dict.return_value = {
+    @patch('core.views.MatchingService.map_resultados_for_template')
+    @patch('core.views.MatchingService.run_matching')
+    def test_matching_com_auditoria_de_acao(self, mock_run_matching, mock_map_resultados):
+        mock_run_matching.return_value = [object()]
+        mock_map_resultados.return_value = ([{
             'candidato_id': str(self.candidato.id),
             'candidato_nome': self.candidato.nome,
             'score_final': 90.0,
-        }
+        }], 1)
 
         response = self.client.post(reverse('core:rodar_matching', args=[self.vaga.id]))
 
         self.assertEqual(response.status_code, 200)
-        mock_matching.assert_called_once_with(vaga_id=self.vaga.id, salvar_auditoria=True, limite=50)
+        mock_run_matching.assert_called_once_with(vaga_id=self.vaga.id, limite=50)
         self.assertTrue(
             HistoricoAcao.objects.filter(
                 usuario=self.user,
@@ -128,6 +145,13 @@ class RHProtectedSmokeTests(TestCase):
                 tipo_acao=HistoricoAcao.TipoAcao.MATCHING_EXECUTADO,
             ).exists()
         )
+
+    def test_pipeline_kanban_renderiza_sem_erro(self):
+        response = self.client.get(reverse('core:pipeline_kanban'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('pipeline', response.context)
+        self.assertIn('etapas', response.context)
 
     def test_mover_pipeline_kanban_registra_historico(self):
         response = self.client.post(reverse('core:mover_kanban'), data={
@@ -168,3 +192,90 @@ class RHProtectedSmokeTests(TestCase):
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             resp_ranking['Content-Type']
         )
+
+    def test_export_ranking_ignora_match_sem_candidato(self):
+        AuditoriaMatch.objects.create(
+            vaga=self.vaga,
+            candidato=None,
+            score=Decimal('70.00'),
+            snapshot_skills={'skills': ['Python']},
+            detalhes_calculo={'camada_1_score': 70, 'camada_2_score': 70, 'camada_3_score': 70},
+        )
+
+        response = self.client.get(reverse('core:exportar_ranking', args=[self.vaga.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            response['Content-Type']
+        )
+
+    def test_fluxo_comentarios_com_privacidade(self):
+        outro_user = User.objects.create_user(
+            username='rh_secundario',
+            email='rh-secundario@example.com',
+            password='pass1234',
+        )
+        outro_user.profile.role = outro_user.profile.Role.RH
+        outro_user.profile.save()
+
+        response_publico = self.client.post(
+            reverse('core:adicionar_comentario', args=[self.candidato.id]),
+            data={'texto': 'Comentario publico de smoke', 'tipo': 'nota'},
+        )
+        self.assertEqual(response_publico.status_code, 200)
+
+        response_privado = self.client.post(
+            reverse('core:adicionar_comentario', args=[self.candidato.id]),
+            data={'texto': 'Comentario privado de smoke', 'tipo': 'feedback', 'privado': 'on'},
+        )
+        self.assertEqual(response_privado.status_code, 200)
+
+        self.client.logout()
+        self.client.login(username='rh_secundario', password='pass1234')
+
+        response_lista = self.client.get(reverse('core:listar_comentarios', args=[self.candidato.id]))
+        self.assertEqual(response_lista.status_code, 200)
+        comentarios = list(response_lista.context['comentarios'])
+
+        self.assertEqual(len(comentarios), 1)
+        self.assertEqual(comentarios[0].texto, 'Comentario publico de smoke')
+
+    def test_excluir_comentario_bloqueia_nao_autor(self):
+        comentario = Comentario.objects.create(
+            candidato=self.candidato,
+            autor=self.user,
+            texto='Comentario para teste de permissao',
+            tipo='nota',
+        )
+
+        outro_user = User.objects.create_user(
+            username='rh_terceiro',
+            email='rh-terceiro@example.com',
+            password='pass1234',
+        )
+        outro_user.profile.role = outro_user.profile.Role.RH
+        outro_user.profile.save()
+
+        self.client.logout()
+        self.client.login(username='rh_terceiro', password='pass1234')
+
+        response = self.client.post(reverse('core:excluir_comentario', args=[comentario.id]))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Comentario.objects.filter(id=comentario.id).exists())
+
+    def test_toggle_e_lista_favoritos(self):
+        response_add = self.client.post(reverse('core:toggle_favorito', args=[self.candidato.id]))
+        self.assertEqual(response_add.status_code, 200)
+        self.assertTrue(response_add.json()['is_favorito'])
+        self.assertTrue(Favorito.objects.filter(usuario=self.user, candidato=self.candidato).exists())
+
+        response_lista = self.client.get(reverse('core:meus_favoritos'))
+        self.assertEqual(response_lista.status_code, 200)
+        favoritos = list(response_lista.context['favoritos'])
+        self.assertEqual(len(favoritos), 1)
+
+        response_remove = self.client.post(reverse('core:toggle_favorito', args=[self.candidato.id]))
+        self.assertEqual(response_remove.status_code, 200)
+        self.assertFalse(response_remove.json()['is_favorito'])
+        self.assertFalse(Favorito.objects.filter(usuario=self.user, candidato=self.candidato).exists())

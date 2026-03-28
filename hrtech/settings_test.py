@@ -33,6 +33,12 @@ OPENAI_API_KEY = 'sk-test-fake-key-for-testing'
 # Garante que testes usem mocks explícitos e não o mock mode do ambiente local
 OPENAI_MOCK_MODE = False
 
+# Hardening de producao desligado em testes para evitar redirecionamentos HTTP->HTTPS.
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_HSTS_SECONDS = 0
+
 # Password hasher mais rápido para testes
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
@@ -51,4 +57,12 @@ LOGGING = {
         'handlers': ['null'],
         'level': 'DEBUG',
     },
+}
+
+# Cache local em memoria para testes (sem dependencia de Redis).
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'hrtech-test-cache',
+    }
 }

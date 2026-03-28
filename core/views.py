@@ -26,30 +26,91 @@ from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.db.models import Count, Avg, Q
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.urls import reverse
 
 from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
     Comentario, Favorito, Profile
 )
 from core.tasks import processar_cv_task
-from core.matching import MatchingEngine, resultado_para_dict
 from core.neo4j_connection import run_query
 from core.decorators import rh_required, get_client_ip, get_request_id
+from core.services import (
+    CVUploadService,
+    MatchingService,
+    PipelineService,
+    CandidateSearchService,
+    ExportService,
+    EngagementService,
+    SavedFilterService,
+    CandidatePortalService,
+)
 
 logger = logging.getLogger(__name__)
 
-# =============================================================================
-# CONSTANTES
-# =============================================================================
-ALLOWED_EXTENSIONS = {'.pdf'}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_SKILLS_PER_VAGA_LIST = 50
+MAX_SKILL_NAME_LENGTH = 100
 
+
+def _user_can_access_candidate(user, candidato):
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    if hasattr(user, 'profile') and user.profile.is_rh:
+        return True
+    return getattr(user, 'candidato', None) == candidato
+
+
+def _parse_skills_payload(raw_payload, label):
+    try:
+        parsed = json.loads(raw_payload or '[]')
+    except json.JSONDecodeError:
+        return [], [f'{label} inválidas: JSON malformado.']
+
+    if not isinstance(parsed, list):
+        return [], [f'{label} inválidas: formato deve ser uma lista.']
+
+    if len(parsed) > MAX_SKILLS_PER_VAGA_LIST:
+        return [], [f'{label} inválidas: máximo de {MAX_SKILLS_PER_VAGA_LIST} itens.']
+
+    normalized = []
+    errors = []
+    for idx, item in enumerate(parsed, start=1):
+        if not isinstance(item, dict):
+            errors.append(f'{label} inválidas: item {idx} precisa ser um objeto.')
+            continue
+
+        nome = str(item.get('nome', '')).strip()
+        if not nome:
+            errors.append(f'{label} inválidas: item {idx} sem nome.')
+            continue
+        if len(nome) > MAX_SKILL_NAME_LENGTH:
+            errors.append(
+                f'{label} inválidas: item {idx} excede {MAX_SKILL_NAME_LENGTH} caracteres no nome.'
+            )
+            continue
+
+        nivel = item.get('nivel_minimo', 1)
+        try:
+            nivel = int(nivel)
+        except (TypeError, ValueError):
+            errors.append(f'{label} inválidas: item {idx} com nível mínimo inválido.')
+            continue
+
+        if nivel < 1 or nivel > 5:
+            errors.append(f'{label} inválidas: item {idx} com nível mínimo fora do intervalo 1-5.')
+            continue
+
+        normalized.append({'nome': nome, 'nivel_minimo': nivel})
+
+    return normalized, errors
 
 # =============================================================================
 # VIEWS PÚBLICAS
@@ -77,24 +138,19 @@ def processar_upload(request):
     nome = request.POST.get('nome', '').strip()
     email = request.POST.get('email', '').strip()
     cv_file = request.FILES.get('cv')
-
-    errors = []
-    if not nome:
-        errors.append('Nome é obrigatório')
-    if not email:
-        errors.append('Email é obrigatório')
-    if not cv_file:
-        errors.append('Arquivo de CV é obrigatório')
-
-    if cv_file:
-        ext = Path(cv_file.name).suffix.lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            errors.append(f'Tipo de arquivo não permitido: {ext}. Envie um PDF.')
-        if cv_file.size > MAX_FILE_SIZE:
-            errors.append(f'Arquivo muito grande. Máximo: {MAX_FILE_SIZE // (1024*1024)}MB')
+    errors = CVUploadService.validate_upload_payload(nome=nome, email=email, cv_file=cv_file)
 
     if errors:
         return render(request, 'core/partials/upload_errors.html', {'errors': errors}, status=400)
+
+    ip_address = get_client_ip(request) or 'unknown'
+    if CVUploadService.is_upload_rate_limited(ip_address=ip_address, email=email):
+        return render(
+            request,
+            'core/partials/upload_errors.html',
+            {'errors': ['Muitas tentativas de upload. Aguarde alguns minutos e tente novamente.']},
+            status=429,
+        )
 
     # Verifica se email já existe
     if Candidato.objects.filter(email=email).exists():
@@ -129,7 +185,7 @@ def processar_upload(request):
         usuario=request.user if request.user.is_authenticated else None,
         tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_CV_UPLOAD,
         candidato=candidato,
-        ip_address=get_client_ip(request)
+        ip_address=ip_address
     )
 
     logger.info(f"CV recebido para candidato {candidato.id}")
@@ -137,9 +193,15 @@ def processar_upload(request):
     # Dispara task Celery
     processar_cv_task.delay(str(candidato.id))
 
+    status_token = CVUploadService.generate_status_token(
+        candidato_id=str(candidato.id),
+        email=candidato.email,
+    )
+
     return render(request, 'core/partials/status_polling.html', {
         'candidato': candidato,
         'candidato_id': str(candidato.id),
+        'status_token': status_token,
     })
 
 
@@ -147,6 +209,14 @@ def processar_upload(request):
 def status_cv_htmx(request, candidato_id: str):
     """Retorna status atual do processamento (polling HTMX)."""
     candidato = get_object_or_404(Candidato, pk=candidato_id)
+    status_token = request.headers.get('X-Status-Token', '')
+
+    if not status_token or not CVUploadService.is_status_token_valid(
+        token=status_token,
+        candidato_id=str(candidato.id),
+        email=candidato.email,
+    ):
+        return HttpResponseForbidden('Token de status inválido.')
 
     finalizado = candidato.status_cv in [
         Candidato.StatusCV.CONCLUIDO,
@@ -156,6 +226,7 @@ def status_cv_htmx(request, candidato_id: str):
     response = render(request, 'core/partials/status_polling.html', {
         'candidato': candidato,
         'candidato_id': str(candidato.id),
+        'status_token': status_token,
         'finalizado': finalizado,
     })
 
@@ -295,19 +366,22 @@ def criar_vaga(request):
         # Skills (JSON)
         skills_obrigatorias = request.POST.get('skills_obrigatorias', '[]')
         skills_desejaveis = request.POST.get('skills_desejaveis', '[]')
-
-        try:
-            skills_obrigatorias = json.loads(skills_obrigatorias)
-            skills_desejaveis = json.loads(skills_desejaveis)
-        except json.JSONDecodeError:
-            skills_obrigatorias = []
-            skills_desejaveis = []
+        parsed_obrigatorias, errors_obrigatorias = _parse_skills_payload(
+            skills_obrigatorias,
+            'Skills obrigatórias',
+        )
+        parsed_desejaveis, errors_desejaveis = _parse_skills_payload(
+            skills_desejaveis,
+            'Skills desejáveis',
+        )
 
         errors = []
         if not titulo:
             errors.append('Título é obrigatório')
         if not area:
             errors.append('Área é obrigatória')
+        errors.extend(errors_obrigatorias)
+        errors.extend(errors_desejaveis)
 
         if errors:
             messages.error(request, ' '.join(errors))
@@ -323,8 +397,8 @@ def criar_vaga(request):
             area=area,
             senioridade_desejada=senioridade,
             status=status,
-            skills_obrigatorias=skills_obrigatorias,
-            skills_desejaveis=skills_desejaveis,
+            skills_obrigatorias=parsed_obrigatorias,
+            skills_desejaveis=parsed_desejaveis,
             criado_por=request.user,
         )
 
@@ -361,22 +435,28 @@ def editar_vaga(request, vaga_id):
 
         skills_obrigatorias = request.POST.get('skills_obrigatorias', '[]')
         skills_desejaveis = request.POST.get('skills_desejaveis', '[]')
-
-        try:
-            vaga.skills_obrigatorias = json.loads(skills_obrigatorias)
-            vaga.skills_desejaveis = json.loads(skills_desejaveis)
-        except json.JSONDecodeError:
-            pass
+        parsed_obrigatorias, errors_obrigatorias = _parse_skills_payload(
+            skills_obrigatorias,
+            'Skills obrigatórias',
+        )
+        parsed_desejaveis, errors_desejaveis = _parse_skills_payload(
+            skills_desejaveis,
+            'Skills desejáveis',
+        )
 
         errors = []
         if not vaga.titulo:
             errors.append('Título é obrigatório')
         if not vaga.area:
             errors.append('Área é obrigatória')
+        errors.extend(errors_obrigatorias)
+        errors.extend(errors_desejaveis)
 
         if errors:
             messages.error(request, ' '.join(errors))
         else:
+            vaga.skills_obrigatorias = parsed_obrigatorias
+            vaga.skills_desejaveis = parsed_desejaveis
             vaga.save()
 
             registrar_acao(
@@ -430,13 +510,8 @@ def rodar_matching(request, vaga_id):
     """Executa matching para uma vaga específica."""
     vaga = get_object_or_404(Vaga, pk=vaga_id)
 
-    engine = MatchingEngine()
     try:
-        resultados = engine.executar_matching(
-            vaga_id=vaga_id,
-            salvar_auditoria=True,
-            limite=50
-        )
+        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50)
     except Exception as e:
         logger.exception(
             "Erro no matching (vaga_id=%s, request_id=%s): %s",
@@ -458,12 +533,12 @@ def rodar_matching(request, vaga_id):
         ip_address=get_client_ip(request)
     )
 
-    resultados_dict = [resultado_para_dict(r) for r in resultados]
+    resultados_dict, total = MatchingService.map_resultados_for_template(resultados)
 
     return render(request, 'core/partials/ranking_candidatos.html', {
         'vaga': vaga,
         'resultados': resultados_dict,
-        'total': len(resultados_dict),
+        'total': total,
     })
 
 
@@ -473,31 +548,7 @@ def rodar_matching(request, vaga_id):
 def ranking_candidatos(request, vaga_id):
     """Página de ranking de candidatos para uma vaga."""
     vaga = get_object_or_404(Vaga, pk=vaga_id)
-
-    auditorias = AuditoriaMatch.objects.filter(
-        vaga=vaga
-    ).select_related('candidato').order_by('-score')[:50]
-
-    resultados = []
-    for auditoria in auditorias:
-        if auditoria.candidato:
-            detalhes = auditoria.detalhes_calculo or {}
-            resultados.append({
-                'candidato_id': str(auditoria.candidato.id),
-                'candidato_nome': auditoria.candidato.nome,
-                'candidato_email': auditoria.candidato.email,
-                'candidato_senioridade': auditoria.candidato.senioridade,
-                'candidato_disponivel': auditoria.candidato.disponivel,
-                'candidato_etapa': auditoria.candidato.etapa_processo,
-                'score_final': float(auditoria.score),
-                'breakdown': {
-                    'camada_1': detalhes.get('camada_1_score', 0),
-                    'camada_2': detalhes.get('camada_2_score', 0),
-                    'camada_3': detalhes.get('camada_3_score', 0),
-                },
-                'gap_analysis': detalhes.get('gap_analysis', {}),
-                'data_match': auditoria.created_at,
-            })
+    resultados = MatchingService.get_ranking_resultados(vaga)
 
     return render(request, 'core/ranking_candidatos.html', {
         'vaga': vaga,
@@ -514,10 +565,7 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
     vaga = get_object_or_404(Vaga, pk=vaga_id)
     candidato = get_object_or_404(Candidato, pk=candidato_id)
 
-    auditoria = AuditoriaMatch.objects.filter(
-        vaga=vaga,
-        candidato=candidato
-    ).order_by('-created_at').first()
+    auditoria = MatchingService.get_auditoria(vaga, candidato)
 
     if not auditoria:
         return render(request, 'core/partials/no_match.html', {
@@ -530,13 +578,7 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
 
     habilidades_neo4j = []
     try:
-        query = """
-        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
-        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
-               r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
-        ORDER BY r.nivel DESC
-        """
-        habilidades_neo4j = run_query(query, {'uuid': str(candidato.id)})
+        habilidades_neo4j = MatchingService.get_habilidades_neo4j(candidato_id=str(candidato.id))
     except Exception as e:
         logger.warning(
             "Erro ao buscar habilidades no Neo4j (vaga_id=%s, candidato_id=%s, request_id=%s): %s",
@@ -573,54 +615,11 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
 @require_GET
 def pipeline_kanban(request, vaga_id=None):
     """Pipeline Kanban para gerenciar candidatos."""
-    vaga = None
-    scores_map = {}
-
     if vaga_id:
-        vaga = get_object_or_404(Vaga, pk=vaga_id)
-        auditorias = AuditoriaMatch.objects.filter(vaga=vaga).select_related('candidato')
-        candidatos_ids = [a.candidato_id for a in auditorias if a.candidato_id]
-        candidatos = Candidato.objects.filter(id__in=candidatos_ids)
+        get_object_or_404(Vaga, pk=vaga_id)
 
-        for a in auditorias:
-            if a.candidato_id:
-                scores_map[str(a.candidato_id)] = float(a.score)
-    else:
-        candidatos = Candidato.objects.all()
-
-        for candidato in candidatos:
-            ultima_auditoria = AuditoriaMatch.objects.filter(
-                candidato=candidato
-            ).order_by('-created_at').first()
-            if ultima_auditoria:
-                scores_map[str(candidato.id)] = float(ultima_auditoria.score)
-
-    def make_items(qs):
-        items = []
-        for c in qs:
-            items.append({
-                'candidato': c,
-                'score': scores_map.get(str(c.id))
-            })
-        return items
-
-    # Agrupa por etapa do processo
-    pipeline = {
-        'triagem': make_items(candidatos.filter(etapa_processo='triagem')),
-        'entrevista_rh': make_items(candidatos.filter(etapa_processo='entrevista_rh')),
-        'teste_tecnico': make_items(candidatos.filter(etapa_processo='teste_tecnico')),
-        'entrevista_tecnica': make_items(candidatos.filter(etapa_processo='entrevista_tecnica')),
-        'proposta': make_items(candidatos.filter(etapa_processo='proposta')),
-        'contratado': make_items(candidatos.filter(etapa_processo='contratado')),
-        'rejeitado': make_items(candidatos.filter(etapa_processo__in=['rejeitado', 'desistiu'])),
-    }
-
-    return render(request, 'core/pipeline_kanban.html', {
-        'vaga': vaga,
-        'pipeline': pipeline,
-        'total': candidatos.count(),
-        'etapas': Candidato.EtapaProcesso.choices,
-    })
+    context = PipelineService.build_pipeline_data(vaga_id=vaga_id)
+    return render(request, 'core/pipeline_kanban.html', context)
 
 
 @login_required
@@ -635,14 +634,15 @@ def mover_kanban(request):
     if not candidato_id or not nova_etapa:
         return JsonResponse({'error': 'Parâmetros inválidos'}, status=400)
 
-    try:
-        candidato = Candidato.objects.get(pk=candidato_id)
-    except Candidato.DoesNotExist:
-        return JsonResponse({'error': 'Candidato não encontrado'}, status=404)
+    candidato, etapa_anterior, error = PipelineService.move_candidate_stage(
+        candidato_id=candidato_id,
+        nova_etapa=nova_etapa,
+    )
 
-    etapa_anterior = candidato.etapa_processo
-    candidato.etapa_processo = nova_etapa
-    candidato.save()
+    if error == 'Etapa inválida':
+        return JsonResponse({'error': error}, status=400)
+    if error == 'Candidato não encontrado':
+        return JsonResponse({'error': error}, status=404)
 
     registrar_acao(
         usuario=request.user,
@@ -666,117 +666,10 @@ def mover_kanban(request):
 @require_GET
 def buscar_candidatos(request):
     """Busca e filtros de candidatos com filtros avançados."""
-    candidatos = Candidato.objects.all()
-
-    # Filtros básicos
-    nome = request.GET.get('nome')
-    email = request.GET.get('email')
-    senioridade = request.GET.get('senioridade')
-    etapa = request.GET.get('etapa')
-    status_cv = request.GET.get('status_cv')
-
-    # Filtros avançados
-    disponivel = request.GET.get('disponivel')
-    skills = request.GET.get('skills')  # Múltiplas skills separadas por vírgula
-    skill_logic = request.GET.get('skill_logic', 'OR')  # AND ou OR
-    nivel_minimo = request.GET.get('nivel_minimo')  # Nível mínimo da skill
-    ordenar = request.GET.get('ordenar', '-created_at')  # Ordenação
-
-    # Validação de nivel_minimo
-    if nivel_minimo:
-        try:
-            nivel_minimo = int(nivel_minimo)
-            if nivel_minimo < 1 or nivel_minimo > 5:
-                logger.warning(f"nivel_minimo inválido: {nivel_minimo}. Deve ser entre 1 e 5.")
-                nivel_minimo = None
-        except (ValueError, TypeError):
-            logger.warning(f"nivel_minimo deve ser um número inteiro: {nivel_minimo}")
-            nivel_minimo = None
-
-    if nome:
-        candidatos = candidatos.filter(nome__icontains=nome)
-    if email:
-        candidatos = candidatos.filter(email__icontains=email)
-    if senioridade:
-        candidatos = candidatos.filter(senioridade=senioridade)
-    if etapa:
-        candidatos = candidatos.filter(etapa_processo=etapa)
-    if status_cv:
-        candidatos = candidatos.filter(status_cv=status_cv)
-    if disponivel:
-        candidatos = candidatos.filter(disponivel=(disponivel == 'sim'))
-
-    # Busca por múltiplas skills (no Neo4j)
-    if skills:
-        try:
-            skills_list = [s.strip() for s in skills.split(',') if s.strip()]
-
-            if skill_logic == 'AND':
-                # Candidatos que têm TODAS as skills
-                for skill in skills_list:
-                    if nivel_minimo:
-                        query = """
-                        MATCH (c:Candidato)-[r:TEM_HABILIDADE]->(h:Habilidade)
-                        WHERE toLower(h.nome) CONTAINS toLower($skill)
-                        AND r.nivel >= $nivel_minimo
-                        RETURN DISTINCT c.uuid as uuid
-                        """
-                        results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo})
-                    else:
-                        query = """
-                        MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
-                        WHERE toLower(h.nome) CONTAINS toLower($skill)
-                        RETURN DISTINCT c.uuid as uuid
-                        """
-                        results = run_query(query, {'skill': skill})
-
-                    uuids = [r['uuid'] for r in results]
-                    candidatos = candidatos.filter(id__in=uuids)
-            else:
-                # Candidatos que têm QUALQUER uma das skills (OR)
-                uuids_set = set()
-                for skill in skills_list:
-                    if nivel_minimo:
-                        query = """
-                        MATCH (c:Candidato)-[r:TEM_HABILIDADE]->(h:Habilidade)
-                        WHERE toLower(h.nome) CONTAINS toLower($skill)
-                        AND r.nivel >= $nivel_minimo
-                        RETURN DISTINCT c.uuid as uuid
-                        """
-                        results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo})
-                    else:
-                        query = """
-                        MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
-                        WHERE toLower(h.nome) CONTAINS toLower($skill)
-                        RETURN DISTINCT c.uuid as uuid
-                        """
-                        results = run_query(query, {'skill': skill})
-
-                    uuids_set.update([r['uuid'] for r in results])
-
-                if uuids_set:
-                    candidatos = candidatos.filter(id__in=list(uuids_set))
-
-        except Exception as e:
-            logger.warning(
-                "Erro na busca por skills (request_id=%s): %s",
-                get_request_id(request),
-                type(e).__name__,
-            )
-
-    # Ordenação
-    valid_orderings = {
-        'nome': 'nome',
-        '-nome': '-nome',
-        'created_at': 'created_at',
-        '-created_at': '-created_at',
-        'senioridade': 'senioridade',
-        '-senioridade': '-senioridade',
-    }
-    if ordenar in valid_orderings:
-        candidatos = candidatos.order_by(valid_orderings[ordenar])
-    else:
-        candidatos = candidatos.order_by('-created_at')
+    candidatos = CandidateSearchService.apply_filters(
+        query_params=request.GET,
+        request_id=get_request_id(request),
+    )
 
     # Paginação
     paginator = Paginator(candidatos, 20)
@@ -806,45 +699,21 @@ def salvar_filtro_view(request):
     - nome_filtro: Nome descritivo do filtro
     - parametros: JSON com os parâmetros do filtro (opcional, captura do GET atual)
     """
-    import json
-    from .models import FiltroSalvo
-
     nome_filtro = request.POST.get('nome_filtro', '').strip()
-
-    if not nome_filtro:
-        return JsonResponse({
-            'success': False,
-            'error': 'Nome do filtro é obrigatório'
-        }, status=400)
-
-    if len(nome_filtro) > 100:
-        return JsonResponse({
-            'success': False,
-            'error': 'Nome muito longo (máximo 100 caracteres)'
-        }, status=400)
-
-    # Capturar parâmetros do filtro (podem vir do POST ou usar os da URL)
     parametros_json = request.POST.get('parametros')
-    if parametros_json:
-        try:
-            parametros = json.loads(parametros_json)
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'success': False,
-                'error': 'Parâmetros inválidos'
-            }, status=400)
-    else:
-        # Usar parâmetros atuais da URL (exceto página)
-        parametros = {k: v for k, v in request.GET.items() if k != 'page'}
 
-    # Criar ou atualizar filtro
-    filtro, created = FiltroSalvo.objects.update_or_create(
-        usuario=request.user,
-        nome=nome_filtro,
-        defaults={
-            'parametros': parametros,
-        }
-    )
+    try:
+        filtro, created = SavedFilterService.save_filter(
+            user=request.user,
+            nome_filtro=nome_filtro,
+            parametros_json=parametros_json,
+            current_get_params=request.GET,
+        )
+    except ValueError as exc:
+        return JsonResponse({
+            'success': False,
+            'error': str(exc)
+        }, status=400)
 
     return JsonResponse({
         'success': True,
@@ -869,15 +738,11 @@ def listar_filtros_api(request):
         ]
     }
     """
-    from .models import FiltroSalvo
-
-    filtros = FiltroSalvo.objects.filter(usuario=request.user).values(
-        'id', 'nome', 'criado_em', 'vezes_usado', 'parametros'
-    )
+    filtros = SavedFilterService.list_filters(request.user)
 
     return JsonResponse({
         'success': True,
-        'filtros': list(filtros)
+        'filtros': filtros
     })
 
 
@@ -887,26 +752,12 @@ def listar_filtros_api(request):
 def carregar_filtro_view(request, filtro_id):
     """
     Carrega um filtro salvo e redireciona para a busca com os parâmetros.
-
-    Incrementa contador de uso.
     """
-    from .models import FiltroSalvo
     from django.http import HttpResponseRedirect
-    from urllib.parse import urlencode
-
-    filtro = get_object_or_404(FiltroSalvo, id=filtro_id, usuario=request.user)
-
-    # Incrementar contador de uso
-    filtro.vezes_usado += 1
-    filtro.save(update_fields=['vezes_usado'])
-
-    # Reconstruir URL com parâmetros
-    parametros = filtro.parametros
-    query_string = urlencode(parametros, doseq=True)
-
-    redirect_url = reverse('core:buscar_candidatos')
-    if query_string:
-        redirect_url += f'?{query_string}'
+    redirect_url = SavedFilterService.build_redirect_url(
+        user=request.user,
+        filtro_id=filtro_id,
+    )
 
     return HttpResponseRedirect(redirect_url)
 
@@ -920,11 +771,10 @@ def deletar_filtro_api(request, filtro_id):
 
     Aceita DELETE ou POST (para compatibilidade com forms HTML).
     """
-    from .models import FiltroSalvo
-
-    filtro = get_object_or_404(FiltroSalvo, id=filtro_id, usuario=request.user)
-    nome = filtro.nome
-    filtro.delete()
+    nome = SavedFilterService.delete_filter(
+        user=request.user,
+        filtro_id=filtro_id,
+    )
 
     return JsonResponse({
         'success': True,
@@ -950,80 +800,10 @@ def buscar_candidatos_similares(request, candidato_id):
 
     Returns top 10 candidatos mais similares.
     """
-    from .neo4j_connection import run_query
-
-    candidato_original = get_object_or_404(Candidato, pk=candidato_id)
-
-    # Query Cypher para encontrar candidatos similares
-    query = """
-    // Candidato de referência
-    MATCH (c_original:Candidato {uuid: $candidato_uuid})
-
-    // Encontrar outros candidatos
-    MATCH (c_similar:Candidato)
-    WHERE c_similar.uuid <> $candidato_uuid
-
-    // Calcular skills em comum
-    OPTIONAL MATCH (c_original)-[:TEM_HABILIDADE]->(h:Habilidade)<-[:TEM_HABILIDADE]-(c_similar)
-
-    // Calcular score de similaridade
-    WITH c_similar,
-         COUNT(DISTINCT h) AS skills_comuns,
-         c_original.senioridade AS senioridade_original,
-         c_original.anos_experiencia AS anos_exp_original
-
-    // Peso para senioridade próxima
-    WITH c_similar,
-         skills_comuns,
-         CASE
-            WHEN c_similar.senioridade = senioridade_original THEN 10
-            ELSE 0
-         END AS score_senioridade,
-         CASE
-            WHEN abs(c_similar.anos_experiencia - anos_exp_original) <= 2 THEN 5
-            WHEN abs(c_similar.anos_experiencia - anos_exp_original) <= 5 THEN 2
-            ELSE 0
-         END AS score_experiencia
-
-    // Score total (skills tem peso maior)
-    WITH c_similar,
-         (skills_comuns * 3) + score_senioridade + score_experiencia AS similarity_score,
-         skills_comuns
-
-    // Ordenar por similaridade e retornar top 10
-    WHERE similarity_score > 0
-    ORDER BY similarity_score DESC, skills_comuns DESC
-    LIMIT 10
-
-    RETURN c_similar.uuid AS uuid,
-           similarity_score,
-           skills_comuns
-    """
-
-    try:
-        resultados = run_query(query, {
-            'candidato_uuid': str(candidato_original.id)
-        })
-
-        # Buscar candidatos no PostgreSQL
-        candidatos_similares = []
-        for resultado in resultados:
-            try:
-                candidato = Candidato.objects.get(pk=resultado['uuid'])
-                candidato.similarity_score = resultado['similarity_score']
-                candidato.skills_comuns = resultado['skills_comuns']
-                candidatos_similares.append(candidato)
-            except Candidato.DoesNotExist:
-                continue
-
-    except Exception as e:
-        logger.error(
-            "Erro ao buscar candidatos similares (candidato_id=%s, request_id=%s): %s",
-            candidato_id,
-            get_request_id(request),
-            type(e).__name__,
-        )
-        candidatos_similares = []
+    candidato_original, candidatos_similares = CandidatePortalService.find_similar_candidates(
+        candidato_id=candidato_id,
+        request_id=get_request_id(request),
+    )
 
     return render(request, 'core/candidatos/similares.html', {
         'candidato_original': candidato_original,
@@ -1035,67 +815,31 @@ def buscar_candidatos_similares(request, candidato_id):
 # DASHBOARD DO CANDIDATO
 # =============================================================================
 
+@login_required
 @require_GET
 def dashboard_candidato(request, candidato_id):
     """Dashboard do candidato individual."""
     candidato = get_object_or_404(Candidato, pk=candidato_id)
 
-    # Se usuário está logado e é o próprio candidato OU é RH, pode ver
-    # Se não está logado, qualquer um pode ver (por enquanto)
+    if not _user_can_access_candidate(request.user, candidato):
+        return HttpResponseForbidden('Sem permissão para visualizar este candidato.')
 
-    habilidades = []
-    area_atuacao = None
-    try:
-        area_query = """
-        MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
-        RETURN a.nome as area
-        """
-        areas = run_query(area_query, {'uuid': str(candidato.id)})
-        if areas:
-            area_atuacao = areas[0]['area']
-
-        hab_query = """
-        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
-        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
-               r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
-        ORDER BY r.nivel DESC
-        """
-        habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
-    except Exception as e:
-        logger.warning(
-            "Erro ao buscar dados do Neo4j (candidato_id=%s, request_id=%s): %s",
-            candidato_id,
-            get_request_id(request),
-            type(e).__name__,
-        )
-
-    matches = AuditoriaMatch.objects.filter(
-        candidato=candidato
-    ).select_related('vaga').order_by('-created_at')[:10]
-
-    # Dados para RH
-    total_comentarios = 0
-    is_favorito = False
-    if request.user.is_authenticated:
-        total_comentarios = Comentario.objects.filter(candidato=candidato).count()
-        is_favorito = Favorito.objects.filter(
-            usuario=request.user, candidato=candidato
-        ).exists()
-
-    return render(request, 'core/dashboard_candidato.html', {
-        'candidato': candidato,
-        'habilidades': habilidades,
-        'area_atuacao': area_atuacao,
-        'matches': matches,
-        'total_comentarios': total_comentarios,
-        'is_favorito': is_favorito,
-    })
+    context = CandidatePortalService.build_dashboard_context(
+        candidato=candidato,
+        user=request.user,
+        request_id=get_request_id(request),
+    )
+    return render(request, 'core/dashboard_candidato.html', context)
 
 
+@login_required
 @require_GET
 def habilidades_candidato_htmx(request, candidato_id):
     """Retorna partial com habilidades extraídas."""
     candidato = get_object_or_404(Candidato, pk=candidato_id)
+
+    if not _user_can_access_candidate(request.user, candidato):
+        return HttpResponseForbidden('Sem permissão para visualizar este candidato.')
 
     habilidades = []
     if candidato.status_cv == Candidato.StatusCV.CONCLUIDO:
@@ -1285,28 +1029,22 @@ def meu_perfil(request):
 @csrf_protect
 def adicionar_comentario(request, candidato_id):
     """Adiciona um comentário a um candidato."""
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
-
     texto = request.POST.get('texto', '').strip()
     tipo = request.POST.get('tipo', 'nota')
     vaga_id = request.POST.get('vaga_id')
     privado = request.POST.get('privado') in ('on', '1', 'true')
 
-    if not texto:
-        return JsonResponse({'error': 'Texto é obrigatório'}, status=400)
-
-    vaga = None
-    if vaga_id:
-        vaga = Vaga.objects.filter(pk=vaga_id).first()
-
-    comentario = Comentario.objects.create(
-        candidato=candidato,
-        autor=request.user,
-        tipo=tipo,
-        texto=texto,
-        vaga=vaga,
-        privado=privado
-    )
+    try:
+        comentario = EngagementService.create_comment(
+            candidato_id=candidato_id,
+            autor=request.user,
+            texto=texto,
+            tipo=tipo,
+            vaga_id=vaga_id,
+            privado=privado,
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
 
     logger.info("Comentario adicionado ao candidato %s por usuario_id=%s", candidato_id, request.user.id)
 
@@ -1324,23 +1062,11 @@ def adicionar_comentario(request, candidato_id):
 @require_GET
 def listar_comentarios(request, candidato_id):
     """Lista comentários de um candidato."""
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
-
-    comentarios = Comentario.objects.filter(candidato=candidato)
-
-    # Filtra comentários privados (só mostra os próprios)
-    comentarios = comentarios.filter(
-        Q(privado=False) | Q(autor=request.user)
-    ).select_related('autor', 'vaga').order_by('-created_at')
-
-    # Vagas abertas para o formulário
-    vagas = Vaga.objects.filter(status=Vaga.Status.ABERTA).order_by('titulo')
-
-    return render(request, 'core/comentarios/lista.html', {
-        'candidato': candidato,
-        'comentarios': comentarios,
-        'vagas': vagas
-    })
+    context = EngagementService.list_comments_context(
+        candidato_id=candidato_id,
+        user=request.user,
+    )
+    return render(request, 'core/comentarios/lista.html', context)
 
 
 @login_required
@@ -1349,13 +1075,12 @@ def listar_comentarios(request, candidato_id):
 @csrf_protect
 def excluir_comentario(request, comentario_id):
     """Exclui um comentário (apenas o autor pode excluir)."""
-    comentario = get_object_or_404(Comentario, pk=comentario_id)
-
-    # Só o autor ou superuser pode excluir
-    if comentario.autor != request.user and not request.user.is_superuser:
+    deleted = EngagementService.delete_comment(
+        comentario_id=comentario_id,
+        user=request.user,
+    )
+    if not deleted:
         return JsonResponse({'error': 'Sem permissão'}, status=403)
-
-    comentario.delete()
 
     return JsonResponse({'success': True})
 
@@ -1370,25 +1095,12 @@ def excluir_comentario(request, comentario_id):
 @csrf_protect
 def toggle_favorito(request, candidato_id):
     """Adiciona ou remove candidato dos favoritos."""
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
     vaga_id = request.POST.get('vaga_id')
-
-    vaga = None
-    if vaga_id:
-        vaga = Vaga.objects.filter(pk=vaga_id).first()
-
-    favorito, created = Favorito.objects.get_or_create(
-        usuario=request.user,
-        candidato=candidato,
-        vaga=vaga
+    is_favorito = EngagementService.toggle_favorite(
+        candidato_id=candidato_id,
+        user=request.user,
+        vaga_id=vaga_id,
     )
-
-    if not created:
-        # Já existe, então remove
-        favorito.delete()
-        is_favorito = False
-    else:
-        is_favorito = True
 
     return JsonResponse({
         'success': True,
@@ -1401,9 +1113,7 @@ def toggle_favorito(request, candidato_id):
 @require_GET
 def meus_favoritos(request):
     """Lista candidatos favoritos do usuário."""
-    favoritos = Favorito.objects.filter(
-        usuario=request.user
-    ).select_related('candidato', 'vaga').order_by('-created_at')
+    favoritos = EngagementService.list_user_favorites(request.user)
 
     return render(request, 'core/favoritos/lista.html', {
         'favoritos': favoritos
@@ -1432,44 +1142,11 @@ def minha_area(request):
             'user': request.user
         })
 
-    # Busca dados do Neo4j
-    habilidades = []
-    area_atuacao = None
-    try:
-        area_query = """
-        MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
-        RETURN a.nome as area
-        """
-        areas = run_query(area_query, {'uuid': str(candidato.id)})
-        if areas:
-            area_atuacao = areas[0]['area']
-
-        hab_query = """
-        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
-        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
-               r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
-        ORDER BY r.nivel DESC
-        """
-        habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
-    except Exception as e:
-        logger.warning(
-            "Erro ao buscar dados do Neo4j na minha_area (candidato_id=%s, request_id=%s): %s",
-            candidato.id,
-            get_request_id(request),
-            type(e).__name__,
-        )
-
-    # Matches recentes
-    matches = AuditoriaMatch.objects.filter(
-        candidato=candidato
-    ).select_related('vaga').order_by('-created_at')[:10]
-
-    return render(request, 'core/candidato/minha_area.html', {
-        'candidato': candidato,
-        'habilidades': habilidades,
-        'area_atuacao': area_atuacao,
-        'matches': matches,
-    })
+    context = CandidatePortalService.build_minha_area_context(
+        candidato=candidato,
+        request_id=get_request_id(request),
+    )
+    return render(request, 'core/candidato/minha_area.html', context)
 
 
 @login_required
@@ -1481,36 +1158,22 @@ def vincular_candidato(request):
 
     Busca pelo email do usuário.
     """
-    if hasattr(request.user, 'candidato') and request.user.candidato:
+    status, candidato = CandidatePortalService.link_candidate_to_user(request.user)
+
+    if status == 'already_linked':
         messages.warning(request, 'Você já possui um perfil de candidato vinculado.')
         return redirect('core:minha_area')
 
-    # Tenta encontrar candidato pelo email do usuário
-    try:
-        candidato = Candidato.objects.get(email=request.user.email)
+    if status == 'already_taken':
+        messages.error(request, 'Este perfil de candidato já está vinculado a outra conta.')
+        return redirect('core:minha_area')
 
-        # Verifica se já não está vinculado a outro usuário
-        if candidato.user and candidato.user != request.user:
-            messages.error(request, 'Este perfil de candidato já está vinculado a outra conta.')
-            return redirect('core:minha_area')
-
-        # Vincula
-        candidato.user = request.user
-        candidato.save(update_fields=['user'])
-
-        # Atualiza o role do profile para candidato se necessário
-        if hasattr(request.user, 'profile'):
-            if request.user.profile.role == Profile.Role.CANDIDATO:
-                pass  # Já é candidato
-        else:
-            Profile.objects.create(user=request.user, role=Profile.Role.CANDIDATO)
-
+    if status == 'linked':
         messages.success(request, f'Perfil vinculado com sucesso! Bem-vindo(a), {candidato.nome}!')
         return redirect('core:minha_area')
 
-    except Candidato.DoesNotExist:
-        messages.info(request, 'Não encontramos um perfil de candidato com seu email. Envie seu CV para criar um.')
-        return redirect('core:upload_cv')
+    messages.info(request, 'Não encontramos um perfil de candidato com seu email. Envie seu CV para criar um.')
+    return redirect('core:upload_cv')
 
 
 @login_required
@@ -1525,30 +1188,8 @@ def minhas_aplicacoes(request):
         messages.warning(request, 'Você precisa vincular seu perfil de candidato primeiro.')
         return redirect('core:minha_area')
 
-    # Busca matches do candidato
-    matches = AuditoriaMatch.objects.filter(
-        candidato=candidato
-    ).select_related('vaga').order_by('-created_at')
-
-    # Agrupa por vaga
-    vagas_aplicadas = {}
-    for match in matches:
-        if match.vaga_id not in vagas_aplicadas:
-            vagas_aplicadas[match.vaga_id] = {
-                'vaga': match.vaga,
-                'melhor_score': match.score,
-                'ultimo_match': match.created_at,
-                'total_matches': 1
-            }
-        else:
-            vagas_aplicadas[match.vaga_id]['total_matches'] += 1
-            if match.score > vagas_aplicadas[match.vaga_id]['melhor_score']:
-                vagas_aplicadas[match.vaga_id]['melhor_score'] = match.score
-
-    return render(request, 'core/candidato/aplicacoes.html', {
-        'candidato': candidato,
-        'vagas_aplicadas': vagas_aplicadas.values()
-    })
+    context = CandidatePortalService.build_aplicacoes_context(candidato)
+    return render(request, 'core/candidato/aplicacoes.html', context)
 
 
 # =============================================================================
@@ -1564,88 +1205,22 @@ def exportar_candidatos_excel(request):
 
     Respeita os mesmos filtros da busca.
     """
-    import io
-    from datetime import datetime
     from django.http import HttpResponse
 
     try:
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl import Workbook  # noqa: F401
     except ImportError:
         messages.error(request, 'Módulo openpyxl não instalado. Execute: pip install openpyxl')
         return redirect('core:buscar_candidatos')
 
-    # Aplica os mesmos filtros da busca
-    candidatos = Candidato.objects.all().order_by('-created_at')
-
-    nome = request.GET.get('nome', '').strip()
-    email = request.GET.get('email', '').strip()
-    senioridade = request.GET.get('senioridade', '').strip()
-    etapa = request.GET.get('etapa', '').strip()
-    status_cv = request.GET.get('status_cv', '').strip()
-
-    if nome:
-        candidatos = candidatos.filter(nome__icontains=nome)
-    if email:
-        candidatos = candidatos.filter(email__icontains=email)
-    if senioridade:
-        candidatos = candidatos.filter(senioridade=senioridade)
-    if etapa:
-        candidatos = candidatos.filter(etapa_processo=etapa)
-    if status_cv:
-        candidatos = candidatos.filter(status_cv=status_cv)
-
-    # Cria workbook
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Candidatos"
-
-    # Estilos
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
-    header_alignment = Alignment(horizontal="center", vertical="center")
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+    candidatos = CandidateSearchService.apply_filters(
+        query_params=request.GET,
+        request_id=get_request_id(request),
     )
+    file_content, filename = ExportService.build_candidatos_workbook(candidatos)
 
-    # Cabeçalho
-    headers = ['Nome', 'Email', 'Telefone', 'Senioridade', 'Anos Exp.', 'Etapa', 'Status CV', 'Disponível', 'Cadastro']
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-
-    # Dados
-    for row, candidato in enumerate(candidatos, 2):
-        ws.cell(row=row, column=1, value=candidato.nome).border = thin_border
-        ws.cell(row=row, column=2, value=candidato.email).border = thin_border
-        ws.cell(row=row, column=3, value=candidato.telefone or '-').border = thin_border
-        ws.cell(row=row, column=4, value=candidato.get_senioridade_display()).border = thin_border
-        ws.cell(row=row, column=5, value=candidato.anos_experiencia).border = thin_border
-        ws.cell(row=row, column=6, value=candidato.get_etapa_processo_display()).border = thin_border
-        ws.cell(row=row, column=7, value=candidato.get_status_cv_display()).border = thin_border
-        ws.cell(row=row, column=8, value='Sim' if candidato.disponivel else 'Não').border = thin_border
-        ws.cell(row=row, column=9, value=candidato.created_at.strftime('%d/%m/%Y')).border = thin_border
-
-    # Ajusta largura das colunas
-    column_widths = [30, 35, 15, 12, 10, 20, 18, 12, 12]
-    for col, width in enumerate(column_widths, 1):
-        ws.column_dimensions[chr(64 + col)].width = width
-
-    # Salva em memória
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    # Response
-    filename = f"candidatos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
     response = HttpResponse(
-        output.read(),
+        file_content,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1662,13 +1237,10 @@ def exportar_ranking_excel(request, vaga_id):
     """
     Exporta ranking de candidatos para uma vaga específica.
     """
-    import io
-    from datetime import datetime
     from django.http import HttpResponse
 
     try:
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl import Workbook  # noqa: F401
     except ImportError:
         messages.error(request, 'Módulo openpyxl não instalado.')
         return redirect('core:ranking_candidatos', vaga_id=vaga_id)
@@ -1680,63 +1252,9 @@ def exportar_ranking_excel(request, vaga_id):
         vaga=vaga
     ).select_related('candidato').order_by('-score')
 
-    # Cria workbook
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Ranking"
-
-    # Estilos
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-
-    # Título da vaga
-    ws.cell(row=1, column=1, value=f"Ranking - {vaga.titulo}").font = Font(bold=True, size=14)
-    ws.merge_cells('A1:G1')
-    ws.cell(row=2, column=1, value=f"Área: {vaga.area} | Senioridade: {vaga.get_senioridade_desejada_display()}")
-    ws.merge_cells('A2:G2')
-
-    # Cabeçalho
-    headers = ['Posição', 'Nome', 'Email', 'Score', 'Senioridade', 'Etapa', 'Data Match']
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=4, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.border = thin_border
-
-    # Dados
-    for row, match in enumerate(matches, 5):
-        ws.cell(row=row, column=1, value=row - 4).border = thin_border
-        ws.cell(row=row, column=2, value=match.candidato.nome).border = thin_border
-        ws.cell(row=row, column=3, value=match.candidato.email).border = thin_border
-        cell_score = ws.cell(row=row, column=4, value=f"{match.score:.1f}%")
-        cell_score.border = thin_border
-        if match.score >= 80:
-            cell_score.fill = PatternFill(start_color="d1e7dd", end_color="d1e7dd", fill_type="solid")
-        elif match.score >= 60:
-            cell_score.fill = PatternFill(start_color="fff3cd", end_color="fff3cd", fill_type="solid")
-        ws.cell(row=row, column=5, value=match.candidato.get_senioridade_display()).border = thin_border
-        ws.cell(row=row, column=6, value=match.candidato.get_etapa_processo_display()).border = thin_border
-        ws.cell(row=row, column=7, value=match.created_at.strftime('%d/%m/%Y %H:%M')).border = thin_border
-
-    # Ajusta largura
-    column_widths = [10, 30, 35, 12, 12, 18, 18]
-    for col, width in enumerate(column_widths, 1):
-        ws.column_dimensions[chr(64 + col)].width = width
-
-    # Salva
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    filename = f"ranking_{vaga.id}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    file_content, filename = ExportService.build_ranking_workbook(vaga, matches)
     response = HttpResponse(
-        output.read(),
+        file_content,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1753,48 +1271,8 @@ def relatorio_candidato_print(request, candidato_id):
     """
     candidato = get_object_or_404(Candidato, pk=candidato_id)
 
-    # Busca dados do Neo4j
-    habilidades = []
-    area_atuacao = None
-    try:
-        area_query = """
-        MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
-        RETURN a.nome as area
-        """
-        areas = run_query(area_query, {'uuid': str(candidato.id)})
-        if areas:
-            area_atuacao = areas[0]['area']
-
-        hab_query = """
-        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
-        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
-               r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
-        ORDER BY r.nivel DESC
-        """
-        habilidades = run_query(hab_query, {'uuid': str(candidato.id)})
-    except Exception as e:
-        logger.warning(
-            "Erro ao buscar dados do Neo4j no relatorio (candidato_id=%s, request_id=%s): %s",
-            candidato.id,
-            get_request_id(request),
-            type(e).__name__,
-        )
-
-    # Matches
-    matches = AuditoriaMatch.objects.filter(
-        candidato=candidato
-    ).select_related('vaga').order_by('-created_at')[:10]
-
-    # Comentários
-    comentarios = Comentario.objects.filter(
+    context = CandidatePortalService.build_relatorio_context(
         candidato=candidato,
-        privado=False
-    ).select_related('autor', 'vaga').order_by('-created_at')[:5]
-
-    return render(request, 'core/relatorios/candidato_print.html', {
-        'candidato': candidato,
-        'habilidades': habilidades,
-        'area_atuacao': area_atuacao,
-        'matches': matches,
-        'comentarios': comentarios,
-    })
+        request_id=get_request_id(request),
+    )
+    return render(request, 'core/relatorios/candidato_print.html', context)
