@@ -31,6 +31,7 @@ from django.db.models import Count, Avg, Q
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.utils import timezone
 
 from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
@@ -174,10 +175,21 @@ def status_cv_htmx(request, candidato_id: str):
 def dashboard_rh(request):
     """Dashboard principal do RH."""
     from django.db.models import Count
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     import json
 
     vagas = Vaga.objects.all().order_by('-created_at')
+    ghost_job_minutes = getattr(settings, 'CV_GHOST_JOB_MINUTES', 30)
+    ghost_job_cutoff = timezone.now() - timedelta(minutes=ghost_job_minutes)
+    processing_statuses = [
+        Candidato.StatusCV.PROCESSANDO,
+        Candidato.StatusCV.EXTRAINDO,
+    ]
+
+    jobs_fantasmas_qs = Candidato.objects.filter(
+        status_cv__in=processing_statuses,
+        updated_at__lt=ghost_job_cutoff,
+    ).order_by('updated_at')
 
     stats = {
         'vagas_abertas': Vaga.objects.filter(status='aberta').count(),
@@ -185,6 +197,13 @@ def dashboard_rh(request):
         'candidatos_processados': Candidato.objects.filter(
             status_cv=Candidato.StatusCV.CONCLUIDO
         ).count(),
+        'candidatos_com_erro': Candidato.objects.filter(
+            status_cv=Candidato.StatusCV.ERRO
+        ).count(),
+        'jobs_em_processamento': Candidato.objects.filter(
+            status_cv__in=processing_statuses
+        ).count(),
+        'jobs_fantasmas': jobs_fantasmas_qs.count(),
         'matches_realizados': AuditoriaMatch.objects.count(),
     }
 
@@ -199,7 +218,7 @@ def dashboard_rh(request):
     senioridade_values = [item['count'] for item in senioridade_data]
 
     # Dados para gráficos - Candidatos nos últimos 6 meses
-    hoje = datetime.now()
+    hoje = timezone.now()
     meses_labels = []
     meses_values = []
     for i in range(5, -1, -1):
@@ -216,6 +235,8 @@ def dashboard_rh(request):
     return render(request, 'core/dashboard_rh.html', {
         'vagas': vagas,
         'stats': stats,
+        'jobs_fantasmas': list(jobs_fantasmas_qs[:10]),
+        'ghost_job_minutes': ghost_job_minutes,
         'etapas_labels': json.dumps(etapas_labels),
         'etapas_values': json.dumps(etapas_values),
         'senioridade_labels': json.dumps(senioridade_labels),

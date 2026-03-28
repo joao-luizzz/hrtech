@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: hrtech-web
+    runtime: python
+    plan: starter
+    buildCommand: ./build.sh
+    startCommand: gunicorn hrtech.wsgi --bind 0.0.0.0:$PORT --workers 2
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: hrtech.settings
+
+  - type: worker
+    name: hrtech-worker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A hrtech worker -l INFO -Q default,openai
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: hrtech.settings
+
+  - type: worker
+    name: hrtech-beat
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A hrtech beat -l INFO
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: hrtech.settings

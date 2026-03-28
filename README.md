@@ -134,6 +134,20 @@ O sistema extrai habilidades de currículos usando GPT-4 e calcula compatibilida
 | WhiteNoise | Serving de arquivos estáticos |
 | GitHub | Versionamento e CI/CD |
 
+### Deploy no Render (Blueprint)
+
+O projeto agora inclui o arquivo `render.yaml` na raiz com 3 servicos separados:
+
+- `hrtech-web` (Gunicorn)
+- `hrtech-worker` (Celery worker nas filas `default,openai`)
+- `hrtech-beat` (Celery Beat)
+
+Para usar no Render:
+
+1. No dashboard do Render, selecione **New +** -> **Blueprint**.
+2. Aponte para este repositorio.
+3. Revise as variaveis de ambiente obrigatorias antes do deploy.
+
 ---
 
 ## Funcionalidades
