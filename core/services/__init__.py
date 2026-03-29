@@ -17,6 +17,7 @@ from .export_service import ExportService
 from .engagement_service import EngagementService
 from .saved_filter_service import SavedFilterService
 from .candidate_portal_service import CandidatePortalService
+from .interview_neo4j_service import InterviewNeo4jService
 
 __all__ = [
 	'S3Service',
@@ -31,4 +32,5 @@ __all__ = [
 	'EngagementService',
 	'SavedFilterService',
 	'CandidatePortalService',
+	'InterviewNeo4jService',
 ]
