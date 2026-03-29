@@ -16,17 +16,15 @@ Regras de Segurança:
     4. Registro de ações no histórico
 """
 
-import uuid
 import json
 import logging
-from pathlib import Path
 from decimal import Decimal
 
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, StreamingHttpResponse
 from django.db.models import Count, Avg, Q
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -43,6 +41,7 @@ from core.neo4j_connection import run_query
 from core.decorators import rh_required, get_client_ip, get_request_id
 from core.services import (
     CVUploadService,
+    get_s3_service,
     MatchingService,
     PipelineService,
     CandidateSearchService,
@@ -164,19 +163,18 @@ def processar_upload(request):
     else:
         candidato = Candidato(nome=nome, email=email)
 
-    # Salva arquivo localmente
-    cv_uuid = str(candidato.id)
-    cv_dir = Path(settings.MEDIA_ROOT) / 'cvs' / cv_uuid
-    cv_dir.mkdir(parents=True, exist_ok=True)
+    s3 = get_s3_service()
+    try:
+        candidato.cv_s3_key = s3.upload_cv(cv_file, str(candidato.id))
+    except Exception:
+        logger.exception("Falha no upload do CV para storage remoto")
+        return render(
+            request,
+            'core/partials/upload_errors.html',
+            {'errors': ['Falha ao receber arquivo no momento. Tente novamente em alguns minutos.']},
+            status=503,
+        )
 
-    safe_filename = f"cv_{uuid.uuid4().hex[:8]}.pdf"
-    cv_path = cv_dir / safe_filename
-
-    with open(cv_path, 'wb+') as destination:
-        for chunk in cv_file.chunks():
-            destination.write(chunk)
-
-    candidato.cv_s3_key = f"cvs/{cv_uuid}/{safe_filename}"
     candidato.status_cv = Candidato.StatusCV.RECEBIDO
     candidato.save()
 
@@ -629,7 +627,7 @@ def pipeline_kanban(request, vaga_id=None):
 def mover_kanban(request):
     """Move candidato entre etapas do processo."""
     candidato_id = request.POST.get('candidato_id')
-    nova_etapa = request.POST.get('nova_etapa')
+    nova_etapa = request.POST.get('nova_etapa') or request.POST.get('novo_status')
 
     if not candidato_id or not nova_etapa:
         return JsonResponse({'error': 'Parâmetros inválidos'}, status=400)
@@ -637,20 +635,13 @@ def mover_kanban(request):
     candidato, etapa_anterior, error = PipelineService.move_candidate_stage(
         candidato_id=candidato_id,
         nova_etapa=nova_etapa,
+        usuario=request.user,
     )
 
     if error == 'Etapa inválida':
         return JsonResponse({'error': error}, status=400)
     if error == 'Candidato não encontrado':
         return JsonResponse({'error': error}, status=404)
-
-    registrar_acao(
-        usuario=request.user,
-        tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_ETAPA_ALTERADA,
-        candidato=candidato,
-        detalhes={'de': etapa_anterior, 'para': nova_etapa},
-        ip_address=get_client_ip(request)
-    )
 
     logger.info(f"Candidato {candidato_id} movido de {etapa_anterior} para {nova_etapa}")
 
@@ -707,7 +698,7 @@ def salvar_filtro_view(request):
             user=request.user,
             nome_filtro=nome_filtro,
             parametros_json=parametros_json,
-            current_get_params=request.GET,
+            current_get_params=None,  # Não usa request.GET em POST
         )
     except ValueError as exc:
         return JsonResponse({
@@ -1207,16 +1198,32 @@ def exportar_candidatos_excel(request):
     """
     from django.http import HttpResponse
 
+    formato = request.GET.get('formato', '').strip().lower()
+
+    candidatos = CandidateSearchService.apply_filters(
+        query_params=request.GET,
+        request_id=get_request_id(request),
+    )
+
+    if formato == 'csv':
+        filename = f"candidatos_{timezone.now().strftime('%Y%m%d_%H%M')}.csv"
+        response = StreamingHttpResponse(
+            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200)),
+            content_type='text/csv; charset=utf-8',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        logger.info(
+            "Exportacao CSV streaming de candidatos por usuario_id=%s",
+            request.user.id,
+        )
+        return response
+
     try:
         from openpyxl import Workbook  # noqa: F401
     except ImportError:
         messages.error(request, 'Módulo openpyxl não instalado. Execute: pip install openpyxl')
         return redirect('core:buscar_candidatos')
 
-    candidatos = CandidateSearchService.apply_filters(
-        query_params=request.GET,
-        request_id=get_request_id(request),
-    )
     file_content, filename = ExportService.build_candidatos_workbook(candidatos)
 
     response = HttpResponse(

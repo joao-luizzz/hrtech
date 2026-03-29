@@ -19,6 +19,8 @@ import re
 import json
 import random
 import logging
+import os
+import tempfile
 from datetime import timedelta
 from typing import Optional
 
@@ -29,13 +31,14 @@ from django.utils import timezone
 from pydantic import ValidationError
 
 # OpenAI
-from openai import OpenAI
+from openai import OpenAI, RateLimitError, APIConnectionError, APITimeoutError
 
 # PDF processing
 import pdfplumber
 
 from core.models import Candidato
 from core.neo4j_connection import run_write_query
+from core.services.s3_service import get_s3_service
 from core.schemas import CVParseado, SCHEMA_INSTRUCOES
 
 # =============================================================================
@@ -287,14 +290,7 @@ def _extrair_texto_ocr(cv_path: str) -> str:
 # TASKS CELERY
 # =============================================================================
 
-@shared_task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=300,
-    max_retries=3,
-    acks_late=True,
-)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def processar_cv_task(self, candidato_id: str) -> dict:
     """
     Task principal de processamento de CV.
@@ -324,10 +320,14 @@ def processar_cv_task(self, candidato_id: str) -> dict:
         candidato.status_cv = Candidato.StatusCV.PROCESSANDO
         candidato.save(update_fields=['status_cv', 'updated_at'])
 
-        cv_path = f"{settings.MEDIA_ROOT}/{candidato.cv_s3_key}"
-
+        temp_path = None
         try:
-            texto_bruto = extrair_texto_cv(cv_path)
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
+                temp_path = tmp_file.name
+
+            s3_service = get_s3_service()
+            s3_service.download_to_temp_file(candidato.cv_s3_key, temp_path)
+            texto_bruto = extrair_texto_cv(temp_path)
         except ValueError as e:
             candidato.status_cv = Candidato.StatusCV.ERRO
             candidato.save(update_fields=['status_cv', 'updated_at'])
@@ -338,6 +338,15 @@ def processar_cv_task(self, candidato_id: str) -> dict:
             candidato.save(update_fields=['status_cv', 'updated_at'])
             logger.error("Arquivo CV não encontrado")
             return {'status': 'error', 'reason': 'arquivo_nao_encontrado'}
+        except Exception as e:
+            logger.warning("Falha ao baixar CV do storage remoto (%s). Retry agendado.", type(e).__name__)
+            raise self.retry(exc=e)
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    logger.warning("Falha ao remover arquivo temporario do worker")
 
         if not texto_bruto or len(texto_bruto) < 50:
             candidato.status_cv = Candidato.StatusCV.ERRO
@@ -355,6 +364,9 @@ def processar_cv_task(self, candidato_id: str) -> dict:
 
         try:
             cv_parseado = chamar_openai_extracao(texto_limpo)
+        except (RateLimitError, APIConnectionError, APITimeoutError) as e:
+            logger.warning("Erro transiente OpenAI (%s). Reagendando retry.", type(e).__name__)
+            raise self.retry(exc=e)
         except ValidationError as e:
             logger.warning(f"Validação Pydantic falhou: {e.error_count()} erros")
             raise self.retry(exc=e, countdown=30)
@@ -372,20 +384,23 @@ def processar_cv_task(self, candidato_id: str) -> dict:
             default=0
         )
 
-        # Atualiza candidato no PostgreSQL
+        # Atualiza candidato no PostgreSQL (sem finalizar antes do Neo4j)
         candidato.senioridade = cv_parseado.senioridade_inferida
         candidato.anos_experiencia = int(anos_experiencia)
-        candidato.status_cv = Candidato.StatusCV.CONCLUIDO
-        candidato.save(update_fields=[
-            'senioridade', 'anos_experiencia', 'status_cv', 'updated_at'
-        ])
+        candidato.save(update_fields=['senioridade', 'anos_experiencia', 'updated_at'])
 
         # Salva habilidades no Neo4j
+
         salvar_habilidades_neo4j(
             candidato_uuid=str(candidato.id),
             area=cv_parseado.area_atuacao,
-            habilidades=cv_parseado.habilidades
+            habilidades=cv_parseado.habilidades,
+            senioridade=cv_parseado.senioridade_inferida,
+            anos_experiencia=int(anos_experiencia)
         )
+
+        candidato.status_cv = Candidato.StatusCV.CONCLUIDO
+        candidato.save(update_fields=['status_cv', 'updated_at'])
 
         logger.info(
             f"[Task {self.request.id}] CV processado: "
@@ -418,6 +433,7 @@ def processar_cv_task(self, candidato_id: str) -> dict:
         return {'status': 'error', 'reason': 'max_retries_exceeded'}
 
     except Exception as e:
+        # Apenas loga o erro, não altera status para ERRO (Celery fará retry)
         logger.exception(f"Erro inesperado: {type(e).__name__}")
         try:
             candidato = Candidato.objects.get(pk=candidato_id)
@@ -492,7 +508,9 @@ Retorne o JSON com as habilidades extraídas.
 def salvar_habilidades_neo4j(
     candidato_uuid: str,
     area: str,
-    habilidades: list
+    habilidades: list,
+    senioridade: str = None,
+    anos_experiencia: int = None
 ) -> None:
     """
     Persiste habilidades extraídas no grafo Neo4j.
@@ -511,6 +529,8 @@ def salvar_habilidades_neo4j(
     # MERGE no Candidato para criar o nó se não existir (upload via Django)
     query = """
     MERGE (c:Candidato {uuid: $candidato_uuid})
+    SET c.senioridade = $senioridade,
+        c.anos_experiencia = $anos_experiencia
 
     MERGE (a:Area {nome: $area})
     MERGE (c)-[:ATUA_EM]->(a)
@@ -544,6 +564,8 @@ def salvar_habilidades_neo4j(
         'candidato_uuid': candidato_uuid,
         'area': area,
         'habilidades': habilidades_dict,
+        'senioridade': senioridade,
+        'anos_experiencia': anos_experiencia,
     })
 
     logger.info("Habilidades salvas no Neo4j")

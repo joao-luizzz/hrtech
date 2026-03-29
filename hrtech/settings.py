@@ -157,7 +157,6 @@ DATABASES = {
         'CONN_MAX_AGE': 60,  # Reutiliza conexões por 60s
         'OPTIONS': {
             'connect_timeout': 10,
-            'sslmode': 'require',
         },
     }
 }
@@ -327,3 +326,6 @@ LOGGING = {
         },
     },
 }
+
+if not DEBUG:
+    DATABASES['default']['OPTIONS']['sslmode'] = 'require'

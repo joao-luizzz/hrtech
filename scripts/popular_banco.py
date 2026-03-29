@@ -28,6 +28,7 @@ Uso:
 
 import os
 import sys
+import argparse
 import random
 from datetime import datetime
 from decimal import Decimal
@@ -40,11 +41,12 @@ django.setup()
 
 from faker import Faker
 from core.models import Candidato, Vaga
-from core.neo4j_connection import get_neo4j_driver, run_write_query
+from core.neo4j_connection import get_neo4j_driver
 
 # Configuração
 fake = Faker('pt_BR')
 TOTAL_CANDIDATOS = 500
+VALID_SENIORIDADES = {'junior', 'pleno', 'senior'}
 
 # =============================================================================
 # DADOS DE REFERÊNCIA - Habilidades por Área
@@ -278,6 +280,9 @@ def criar_candidato_postgres(area: str, perfil: str, senioridade: str) -> Candid
     
     Retorna o objeto Candidato com UUID gerado.
     """
+    if senioridade not in VALID_SENIORIDADES:
+        raise ValueError(f"Senioridade inválida: {senioridade}")
+
     candidato = Candidato.objects.create(
         nome=fake.name(),
         email=fake.unique.email(),
@@ -302,42 +307,28 @@ def criar_candidato_neo4j(candidato_uuid: str, area: str, skills: list):
     driver = get_neo4j_driver()
     
     with driver.session() as session:
-        # Criar nó Candidato
         session.run("""
             MERGE (c:Candidato {uuid: $uuid})
-            SET c.created_at = datetime()
-        """, uuid=str(candidato_uuid))
-        
-        # Criar relação ATUA_EM com a Área
-        session.run("""
+            ON CREATE SET c.created_at = datetime()
             MERGE (a:Area {nome: $area})
-            WITH a
-            MATCH (c:Candidato {uuid: $uuid})
             MERGE (c)-[:ATUA_EM]->(a)
         """, uuid=str(candidato_uuid), area=area)
-        
-        # Criar nós Habilidade e relações TEM_HABILIDADE
-        for skill in skills:
-            session.run("""
-                MERGE (h:Habilidade {nome: $nome})
-                WITH h
-                MATCH (c:Candidato {uuid: $uuid})
-                MERGE (c)-[r:TEM_HABILIDADE]->(h)
-                SET r.nivel = $nivel,
-                    r.anos_experiencia = $anos_experiencia,
-                    r.ano_ultima_utilizacao = $ano_ultima_utilizacao,
-                    r.inferido = $inferido
-            """, 
-            uuid=str(candidato_uuid),
-            nome=skill['nome'],
-            nivel=skill['nivel'],
-            anos_experiencia=skill['anos_experiencia'],
-            ano_ultima_utilizacao=skill['ano_ultima_utilizacao'],
-            inferido=skill['inferido']
-            )
+
+        # Batch único para reduzir roundtrips de rede por candidato.
+        session.run("""
+            UNWIND $skills AS skill
+            MERGE (h:Habilidade {nome: skill.nome})
+            WITH h, skill
+            MATCH (c:Candidato {uuid: $uuid})
+            MERGE (c)-[r:TEM_HABILIDADE]->(h)
+            SET r.nivel = skill.nivel,
+                r.anos_experiencia = skill.anos_experiencia,
+                r.ano_ultima_utilizacao = skill.ano_ultima_utilizacao,
+                r.inferido = skill.inferido
+        """, uuid=str(candidato_uuid), skills=skills)
 
 
-def criar_relacoes_similaridade():
+def criar_relacoes_similaridade(force_recreate: bool = False):
     """
     Cria relações SIMILAR_A entre habilidades no Neo4j.
     
@@ -349,6 +340,20 @@ def criar_relacoes_similaridade():
     print("Criando relações de similaridade entre habilidades...")
     
     with driver.session() as session:
+        relacoes_existentes = session.run(
+            "MATCH ()-[r:SIMILAR_A]->() RETURN count(r) as total"
+        ).single()['total']
+
+        if relacoes_existentes and not force_recreate:
+            print(
+                "Relações SIMILAR_A já existem "
+                f"({relacoes_existentes}). Use --force-similarity para recriar."
+            )
+            return
+
+        if force_recreate and relacoes_existentes:
+            session.run("MATCH ()-[r:SIMILAR_A]->() DELETE r")
+
         # Para cada área
         for area, skills in HABILIDADES_POR_AREA.items():
             for skill_nome, info in skills.items():
@@ -376,6 +381,23 @@ def criar_relacoes_similaridade():
                     """, nome1=skill_nome, nome2=similar_nome, peso=peso)
     
     print("Relações de similaridade criadas!")
+
+
+def confirmar_limpeza_destrutiva(force: bool = False) -> bool:
+    """Solicita confirmação explícita antes de limpar o banco."""
+    assume_yes = os.getenv('POPULAR_BANCO_ASSUME_YES', '').lower() in {'1', 'true', 'yes', 'y', 's'}
+    if force or assume_yes:
+        return True
+
+    prompt = "Isso vai apagar dados do PostgreSQL e todo o grafo Neo4j. Confirma? [s/N]: "
+    try:
+        resposta = input(prompt).strip().lower()
+    except EOFError:
+        print("Execução abortada: confirmação não fornecida em modo não interativo.")
+        print("Defina POPULAR_BANCO_ASSUME_YES=1 ou use --yes para continuar.")
+        return False
+
+    return resposta in {'s', 'sim', 'y', 'yes'}
 
 
 def criar_vagas_exemplo():
@@ -472,7 +494,7 @@ def criar_vagas_exemplo():
         print(f"  ✓ {vaga.titulo}")
 
 
-def limpar_dados():
+def limpar_dados(force: bool = False) -> bool:
     """
     Limpa todos os dados existentes (PostgreSQL e Neo4j).
     
@@ -483,6 +505,10 @@ def limpar_dados():
     - Candidatos criados pelo script NÃO têm User associado
     - Se houver candidatos com User, o User permanecerá (órfão)
     """
+    if not confirmar_limpeza_destrutiva(force=force):
+        print("Operação cancelada pelo usuário.")
+        return False
+
     from core.models import AuditoriaMatch
     
     print("Limpando dados existentes...")
@@ -501,16 +527,18 @@ def limpar_dados():
         session.run("MATCH (n) DETACH DELETE n")
     
     print("Dados limpos!")
+    return True
 
 
-def popular_banco():
+def popular_banco(force_clear: bool = False, force_similarity: bool = False):
     """
     Função principal que popula PostgreSQL e Neo4j.
     
     Distribuição: 40% júnior, 35% pleno, 25% sênior
     """
     # Limpar dados existentes
-    limpar_dados()
+    if not limpar_dados(force=force_clear):
+        return
     
     # Distribuição de senioridade
     distribuicao = {
@@ -549,7 +577,7 @@ def popular_banco():
                 print(f"  ... {total_criados}/{TOTAL_CANDIDATOS} criados")
     
     # Criar relações de similaridade
-    criar_relacoes_similaridade()
+    criar_relacoes_similaridade(force_recreate=force_similarity)
     
     # Criar vagas de exemplo
     criar_vagas_exemplo()
@@ -578,4 +606,13 @@ def popular_banco():
 
 
 if __name__ == '__main__':
-    popular_banco()
+    parser = argparse.ArgumentParser(description='Popula PostgreSQL e Neo4j com dados fake para desenvolvimento.')
+    parser.add_argument('--yes', action='store_true', help='Confirma limpeza destrutiva sem prompt interativo.')
+    parser.add_argument(
+        '--force-similarity',
+        action='store_true',
+        help='Recria relações SIMILAR_A mesmo quando já existem.',
+    )
+
+    args = parser.parse_args()
+    popular_banco(force_clear=args.yes, force_similarity=args.force_similarity)

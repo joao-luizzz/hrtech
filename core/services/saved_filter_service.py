@@ -30,6 +30,8 @@ class SavedFilterService:
 
             return parametros
 
+        if not current_get_params:
+            return {}
         return {k: v for k, v in current_get_params.items() if k != 'page'}
 
     @classmethod

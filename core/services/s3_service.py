@@ -28,6 +28,7 @@ Uso:
 import logging
 import uuid
 import hashlib
+import shutil
 from pathlib import Path
 
 import boto3
@@ -62,8 +63,10 @@ class S3Service:
                 aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                 region_name=self.region
             )
+            self.s3 = self.client
         else:
             self.client = None
+            self.s3 = None
             logger.warning("S3 não configurado - usando storage local")
 
     @staticmethod
@@ -165,6 +168,32 @@ class S3Service:
 
         except ClientError as e:
             logger.error(f"Erro ao gerar presigned URL: {e}")
+            raise
+
+    def download_to_temp_file(self, s3_key: str, temp_path: str) -> str:
+        """
+        Baixa arquivo do S3 para um caminho temporário local.
+
+        Args:
+            s3_key: Chave do arquivo no S3
+            temp_path: Caminho absoluto local de destino
+
+        Returns:
+            Caminho local onde o arquivo foi salvo
+        """
+        if not self.enabled:
+            source_path = Path(settings.MEDIA_ROOT) / s3_key
+            Path(temp_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, temp_path)
+            logger.info("CV copiado do storage local para temp (%s)", self._safe_cv_ref(s3_key))
+            return temp_path
+
+        try:
+            self.s3.download_file(self.bucket_name, s3_key, temp_path)
+            logger.info("CV baixado do S3 para temp (%s)", self._safe_cv_ref(s3_key))
+            return temp_path
+        except ClientError as e:
+            logger.error(f"Erro ao baixar CV do S3: {e}")
             raise
 
     def delete_cv(self, s3_key: str) -> bool:

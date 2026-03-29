@@ -6,6 +6,7 @@ Centraliza geração de planilhas Excel para exportações do RH.
 """
 
 import io
+import csv
 from datetime import datetime
 
 from openpyxl import Workbook
@@ -13,6 +14,12 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
 class ExportService:
+    class _Echo:
+        """Objeto compatível com csv.writer para streaming."""
+
+        def write(self, value):
+            return value
+
     @staticmethod
     def _base_styles():
         header_font = Font(bold=True, color="FFFFFF")
@@ -116,3 +123,26 @@ class ExportService:
 
         filename = f"ranking_{vaga.id}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
         return output.read(), filename
+
+    @classmethod
+    def stream_candidatos_csv(cls, candidatos_iterator):
+        pseudo_buffer = cls._Echo()
+        writer = csv.writer(pseudo_buffer)
+
+        yield writer.writerow([
+            'Nome', 'Email', 'Telefone', 'Senioridade', 'Anos Exp.',
+            'Etapa', 'Status CV', 'Disponivel', 'Cadastro'
+        ])
+
+        for candidato in candidatos_iterator:
+            yield writer.writerow([
+                candidato.nome,
+                candidato.email,
+                candidato.telefone or '-',
+                candidato.get_senioridade_display(),
+                candidato.anos_experiencia,
+                candidato.get_etapa_processo_display(),
+                candidato.get_status_cv_display(),
+                'Sim' if candidato.disponivel else 'Nao',
+                candidato.created_at.strftime('%d/%m/%Y'),
+            ])

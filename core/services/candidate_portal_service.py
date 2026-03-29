@@ -8,7 +8,7 @@ Centraliza casos de uso de dashboard, área logada, similares e relatório do ca
 import logging
 
 from core.models import Candidato, AuditoriaMatch, Comentario, Favorito, Profile
-from core.neo4j_connection import run_query
+from core.neo4j_connection import Neo4jConnection
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +20,22 @@ class CandidatePortalService:
         area_atuacao = None
 
         try:
-            area_query = """
-            MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
-            RETURN a.nome as area
-            """
-            areas = run_query(area_query, {'uuid': str(candidato_id)})
-            if areas:
-                area_atuacao = areas[0]['area']
+            with Neo4jConnection() as conn:
+                area_query = """
+                MATCH (c:Candidato {uuid: $uuid})-[:ATUA_EM]->(a:Area)
+                RETURN a.nome as area
+                """
+                areas = conn.run_query(area_query, {'uuid': str(candidato_id)})
+                if areas:
+                    area_atuacao = areas[0]['area']
 
-            hab_query = """
-            MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
-            RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
-                   r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
-            ORDER BY r.nivel DESC
-            """
-            habilidades = run_query(hab_query, {'uuid': str(candidato_id)})
+                hab_query = """
+                MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
+                RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos,
+                       r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
+                ORDER BY r.nivel DESC
+                """
+                habilidades = conn.run_query(hab_query, {'uuid': str(candidato_id)})
         except Exception as exc:
             logger.warning(
                 "Erro ao buscar dados Neo4j (%s, candidato_id=%s, request_id=%s): %s",
@@ -204,7 +205,8 @@ class CandidatePortalService:
 
         candidatos_similares = []
         try:
-            resultados = run_query(query, {'candidato_uuid': str(candidato_original.id)})
+            with Neo4jConnection() as conn:
+                resultados = conn.run_query(query, {'candidato_uuid': str(candidato_original.id)})
             for resultado in resultados:
                 try:
                     candidato = Candidato.objects.get(pk=resultado['uuid'])

@@ -8,9 +8,14 @@ Centraliza os filtros e ordenação da busca de candidatos do RH.
 import logging
 
 from core.models import Candidato
-from core.neo4j_connection import run_query
+from core.neo4j_connection import Neo4jConnection
 
 logger = logging.getLogger(__name__)
+
+
+def run_query(query: str, parameters: dict = None):
+    with Neo4jConnection() as conn:
+        return conn.run_query(query, parameters)
 
 
 class CandidateSearchService:

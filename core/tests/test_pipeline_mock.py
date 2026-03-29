@@ -436,6 +436,12 @@ class StatusTransitionTests(TransactionTestCase):
 
     def setUp(self):
         """Cria candidato de teste com CV mockado."""
+        self.s3_patcher = patch('core.tasks.get_s3_service')
+        self.mock_get_s3 = self.s3_patcher.start()
+        self.mock_s3_service = MagicMock()
+        self.mock_get_s3.return_value = self.mock_s3_service
+        self.mock_s3_service.download_to_temp_file.return_value = '/tmp/test_cv.pdf'
+
         self.candidato = Candidato.objects.create(
             nome="Test User",
             email="test@pipeline.com",
@@ -444,6 +450,9 @@ class StatusTransitionTests(TransactionTestCase):
             cv_s3_key="test_cv.pdf",
             disponivel=True
         )
+
+    def tearDown(self):
+        self.s3_patcher.stop()
 
     @patch('core.tasks.salvar_habilidades_neo4j')
     @patch('core.tasks.chamar_openai_extracao')
@@ -640,6 +649,12 @@ class FullPipelineIntegrationTests(TransactionTestCase):
 
     def setUp(self):
         """Setup para testes de integração."""
+        self.s3_patcher = patch('core.tasks.get_s3_service')
+        self.mock_get_s3 = self.s3_patcher.start()
+        self.mock_s3_service = MagicMock()
+        self.mock_get_s3.return_value = self.mock_s3_service
+        self.mock_s3_service.download_to_temp_file.return_value = '/tmp/integration_test_cv.pdf'
+
         self.candidato = Candidato.objects.create(
             nome="Integration Test User",
             email="integration@test.com",
@@ -648,6 +663,9 @@ class FullPipelineIntegrationTests(TransactionTestCase):
             cv_s3_key="integration_test.pdf",
             disponivel=True
         )
+
+    def tearDown(self):
+        self.s3_patcher.stop()
 
     @patch('core.tasks.run_write_query')
     @patch('core.tasks.get_openai_client')

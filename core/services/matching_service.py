@@ -13,7 +13,7 @@ import logging
 
 from core.matching import MatchingEngine, resultado_para_dict
 from core.models import AuditoriaMatch
-from core.neo4j_connection import run_query
+from core.neo4j_connection import Neo4jConnection
 
 logger = logging.getLogger(__name__)
 
@@ -79,4 +79,5 @@ class MatchingService:
                r.ano_ultima_utilizacao as ano_uso, r.inferido as inferido
         ORDER BY r.nivel DESC
         """
-        return run_query(query, {'uuid': str(candidato_id)})
+        with Neo4jConnection() as conn:
+            return conn.run_query(query, {'uuid': str(candidato_id)})

@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 from decimal import Decimal
@@ -92,7 +91,8 @@ class UploadPollingSmokeTests(TestCase):
         self.assertEqual(status_erro.status_code, 200)
         self.assertEqual(status_erro.headers.get('HX-Trigger'), 'processingComplete')
 
-        self.assertTrue(os.path.exists(os.path.join(self.temp_media, 'cvs', str(candidato.id))))
+        self.assertTrue(candidato.cv_s3_key)
+        self.assertTrue(candidato.cv_s3_key.startswith(f"cvs/{candidato.id}/"))
 
 
 class RHProtectedSmokeTests(TestCase):
@@ -152,6 +152,10 @@ class RHProtectedSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('pipeline', response.context)
         self.assertIn('etapas', response.context)
+        self.assertSetEqual(
+            set(response.context['pipeline'].keys()),
+            {'novo', 'em_analise', 'aprovado', 'reprovado'},
+        )
 
     def test_mover_pipeline_kanban_registra_historico(self):
         response = self.client.post(reverse('core:mover_kanban'), data={
@@ -169,6 +173,16 @@ class RHProtectedSmokeTests(TestCase):
                 tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_ETAPA_ALTERADA,
             ).exists()
         )
+
+    def test_mover_pipeline_aceita_payload_legado_novo_status(self):
+        response = self.client.post(reverse('core:mover_kanban'), data={
+            'candidato_id': str(self.candidato.id),
+            'novo_status': 'aprovado',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.candidato.refresh_from_db()
+        self.assertEqual(self.candidato.etapa_processo, Candidato.EtapaProcesso.CONTRATADO)
 
     def test_exportacoes_candidatos_e_ranking(self):
         AuditoriaMatch.objects.create(
@@ -192,6 +206,17 @@ class RHProtectedSmokeTests(TestCase):
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             resp_ranking['Content-Type']
         )
+
+    def test_exportar_candidatos_csv_streaming(self):
+        response = self.client.get(reverse('core:exportar_candidatos') + '?formato=csv')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('text/csv', response['Content-Type'])
+        self.assertIn('attachment; filename="candidatos_', response['Content-Disposition'])
+
+        payload = b''.join(response.streaming_content)
+        self.assertIn(b'Nome,Email,Telefone,Senioridade,Anos Exp.,Etapa,Status CV,Disponivel,Cadastro', payload)
+        self.assertIn(b'Candidato Smoke', payload)
 
     def test_export_ranking_ignora_match_sem_candidato(self):
         AuditoriaMatch.objects.create(
