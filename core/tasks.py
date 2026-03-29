@@ -435,16 +435,7 @@ def processar_cv_task(self, candidato_id: str) -> dict:
     except Exception as e:
         # Apenas loga o erro, não altera status para ERRO (Celery fará retry)
         logger.exception(f"Erro inesperado: {type(e).__name__}")
-        try:
-            candidato = Candidato.objects.get(pk=candidato_id)
-            candidato.status_cv = Candidato.StatusCV.ERRO
-            candidato.save(update_fields=['status_cv', 'updated_at'])
-        except Exception as status_error:
-            logger.exception(
-                "Falha ao atualizar status para ERRO apos excecao inesperada (candidato_id=%s): %s",
-                candidato_id,
-                type(status_error).__name__,
-            )
+       
         raise
 
 
