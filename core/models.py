@@ -745,3 +745,109 @@ class FiltroSalvo(models.Model):
 
     def __str__(self):
         return f"🔍 {self.nome} ({self.usuario.email})"
+
+
+class InterviewQuestion(models.Model):
+    """
+    Perguntas de entrevista geradas pela IA para candidatos.
+
+    Estas perguntas são personalizadas baseadas nos gaps de skills
+    identificados entre o candidato e a vaga (via Neo4j).
+
+    Fluxo de uso:
+    1. RH clica "Gerar Entrevista AI" para uma vaga e candidato
+    2. Sistema identifica skill gaps usando Neo4j
+    3. OpenAI gera perguntas técnicas personalizadas
+    4. Perguntas são salvas aqui com audit trail
+    5. RH revisita perguntas, pode gerar novas versões
+
+    Campos audit:
+    - created_by: Quem disparou a geração (RH ou sistema)
+    - created_at: Timestamp de criação
+    - updated_at: Timestamp de última atualização
+    - is_active: Soft-delete (desabilitar geração anterior quando nova versão criada)
+
+    Constraint: Uma única versão ativa (is_active=True) por candidato.
+    Versões anteriores são marcadas como is_active=False.
+    """
+
+    class DifficultyLevel(models.TextChoices):
+        """Níveis de dificuldade das perguntas de entrevista."""
+        EASY = 'easy', 'Fácil'
+        MEDIUM = 'medium', 'Médio'
+        HARD = 'hard', 'Difícil'
+
+    # UUID como PK - padrão do projeto
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    # Relacionamento com candidato (FK obrigatória)
+    candidato = models.ForeignKey(
+        Candidato,
+        on_delete=models.CASCADE,
+        related_name='interview_questions',
+        help_text="Candidato para o qual a pergunta foi gerada"
+    )
+
+    # Conteúdo da pergunta
+    question_text = models.TextField(
+        help_text="Texto da pergunta técnica gerada pela IA"
+    )
+
+    # Nível de dificuldade
+    difficulty_level = models.CharField(
+        max_length=10,
+        choices=DifficultyLevel.choices,
+        default=DifficultyLevel.MEDIUM,
+        help_text="Nível de dificuldade da pergunta"
+    )
+
+    # Quem criou (RH ou sistema)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='interview_questions_created',
+        help_text="RH ou sistema que disparou a geração"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp de criação da pergunta"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Timestamp de última atualização"
+    )
+
+    # Soft-delete: marcar como inativa quando nova versão criada
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Ativa ou inativa (soft-delete para versioning)"
+    )
+
+    class Meta:
+        verbose_name = 'Interview Question'
+        verbose_name_plural = 'Interview Questions'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['candidato_id', 'is_active']),
+            models.Index(fields=['created_by_id']),
+            models.Index(fields=['is_active']),
+        ]
+        # Enforce one active set per candidate
+        constraints = [
+            models.UniqueConstraint(
+                fields=['candidato', 'is_active'],
+                condition=models.Q(is_active=True),
+                name='unique_active_questions_per_candidate'
+            )
+        ]
+
+    def __str__(self):
+        return f"Q: {self.question_text[:50]}... (Difficulty: {self.get_difficulty_level_display()})"
