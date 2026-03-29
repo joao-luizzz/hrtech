@@ -8,7 +8,7 @@ Registra os models no Django Admin para gerenciamento.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Candidato, Vaga, AuditoriaMatch, Profile, HistoricoAcao
+from .models import Candidato, Vaga, AuditoriaMatch, Profile, HistoricoAcao, InterviewQuestion
 
 
 # Inline para Profile no User
@@ -107,6 +107,39 @@ class HistoricoAcaoAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(InterviewQuestion)
+class InterviewQuestionAdmin(admin.ModelAdmin):
+    """
+    Admin interface for InterviewQuestion model.
+    
+    Displays all interview questions generated for candidates,
+    with filtering by difficulty, active status, and creation date.
+    """
+    list_display = ['question_text_short', 'difficulty_level', 'candidato', 'created_by', 'created_at', 'is_active']
+    list_filter = ['difficulty_level', 'is_active', 'created_at']
+    search_fields = ['question_text', 'candidato__nome']
+    readonly_fields = ['created_at', 'updated_at', 'id']
+    raw_id_fields = ['candidato', 'created_by']
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Content', {
+            'fields': ('id', 'question_text', 'difficulty_level')
+        }),
+        ('Metadata', {
+            'fields': ('candidato', 'created_by', 'created_at', 'updated_at')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+    )
+    
+    def question_text_short(self, obj):
+        """Display truncated question text in list view."""
+        return obj.question_text[:75] + '...' if len(obj.question_text) > 75 else obj.question_text
+    question_text_short.short_description = 'Question'
 
 
 # Customiza o título do admin
