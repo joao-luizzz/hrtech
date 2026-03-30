@@ -588,6 +588,12 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
             type(e).__name__,
         )
 
+    # Fetch active interview questions for this candidate
+    questions = InterviewQuestion.objects.filter(
+        candidato_id=candidato_id,
+        is_active=True
+    ).order_by('-created_at')
+
     is_htmx = request.headers.get('HX-Request') == 'true'
     template = 'core/partials/detalhe_match.html' if is_htmx else 'core/detalhe_match.html'
 
@@ -603,7 +609,9 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
         },
         'gap_analysis': gap_analysis,
         'habilidades': habilidades_neo4j,
+        'questions': questions,
     })
+
 
 
 # =============================================================================
@@ -657,12 +665,12 @@ def mover_kanban(request):
 @login_required
 @staff_required
 @require_http_methods(["POST"])
-def generate_interview_questions_htmx(request, candidate_id, vaga_id):
+def generate_interview_questions_htmx(request, vaga_id, candidate_id):
     """
     Generate interview questions for a candidate via HTMX POST request.
     
     Permission: Staff only (@staff_required decorator)
-    URL: /api/candidates/<candidate_id>/generate-questions/
+    URL: /api/vaga/<vaga_id>/candidates/<candidate_id>/generate-questions/
     
     Workflow:
     1. Verify user is staff (decorator)
@@ -677,14 +685,15 @@ def generate_interview_questions_htmx(request, candidate_id, vaga_id):
     
     Args:
         request: HTTP request object (must have user.is_staff=True)
+        vaga_id (int): ID of the job position
         candidate_id (str): UUID of the candidate
-        vaga_id (str): UUID of the job position
     
     Returns:
         HttpResponse: HTML fragment (success or error template)
     """
-    # Get candidate object (404 if not found)
+    # Get candidate and vaga objects (404 if not found)
     candidato = get_object_or_404(Candidato, pk=candidate_id)
+    vaga = get_object_or_404(Vaga, pk=vaga_id)
     
     # Verify user can access this candidate
     if not _user_can_access_candidate(request.user, candidato):

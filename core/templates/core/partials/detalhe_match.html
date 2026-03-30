@@ -155,4 +155,30 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Interview Questions Section -->
+    <div class="mt-4 pt-4 border-top" id="interview-questions-card">
+        <h6 class="mb-3"><i class="bi bi-chat-dots me-2"></i>Interview Questions</h6>
+        <div id="interview-questions-container">
+            {% if questions %}
+                <!-- Show questions if they exist -->
+                {% include 'core/partials/interview_questions_display.html' %}
+            {% else %}
+                <!-- Show button to generate -->
+                {% if request.user.is_staff %}
+                <button type="button"
+                        class="btn btn-sm btn-primary"
+                        hx-post="{% url 'core:generate_interview_questions_htmx' vaga.id candidato.id %}"
+                        hx-target="#interview-questions-container"
+                        hx-swap="innerHTML"
+                        hx-indicator="#interview-questions-spinner">
+                    <i class="bi bi-wand2"></i> Generate Questions
+                </button>
+                <div id="interview-questions-spinner" class="htmx-request spinner-border spinner-border-sm ms-2" style="display:none;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>

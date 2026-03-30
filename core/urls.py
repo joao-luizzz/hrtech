@@ -117,6 +117,11 @@ urlpatterns = [
     path('api/stats/', views.api_stats, name='api_stats'),
 
     # ==========================================================================
+    # INTERVIEW QUESTIONS API (PROTEGIDO)
+    # ==========================================================================
+    path('api/vaga/<int:vaga_id>/candidates/<str:candidate_id>/generate-questions/', views.generate_interview_questions_htmx, name='generate_interview_questions_htmx'),
+
+    # ==========================================================================
     # PERFIL DO USUÁRIO
     # ==========================================================================
     path('perfil/', views.meu_perfil, name='meu_perfil'),
