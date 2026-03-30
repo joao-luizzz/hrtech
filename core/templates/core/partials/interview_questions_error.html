@@ -1,0 +1,25 @@
+<!-- Partial: Interview Questions Error -->
+<!-- Shows error message with retry button -->
+
+<div id="interview-questions-error">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>
+        <strong>Unable to Generate Questions</strong>
+        <p class="mb-3">{{ error_message|default:"An error occurred while generating interview questions. Please try again." }}</p>
+        
+        <button type="button"
+                class="btn btn-sm btn-outline-danger"
+                hx-post="{% url 'core:generate_interview_questions_htmx' vaga.id candidato.id %}"
+                hx-target="#interview-questions-container"
+                hx-swap="innerHTML"
+                hx-indicator="#interview-questions-spinner">
+            <i class="bi bi-arrow-repeat me-1"></i> Try Again
+        </button>
+        
+        <button type="button" 
+                class="btn btn-sm btn-link text-danger" 
+                data-bs-dismiss="alert">
+            Dismiss
+        </button>
+    </div>
+</div>
