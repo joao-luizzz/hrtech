@@ -154,7 +154,8 @@ class InterviewOpenAIService:
         """
         self.openai_client = openai_client or OpenAI()
         self.neo4j_service = neo4j_service or InterviewNeo4jService()
-        self.driver = get_neo4j_driver()
+        # Lazy initialize driver to support testing
+        self._driver = None
 
     def get_candidate_questions(
         self,
