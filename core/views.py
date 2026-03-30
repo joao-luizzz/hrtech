@@ -34,11 +34,11 @@ from django.urls import reverse
 
 from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
-    Comentario, Favorito, Profile
+    Comentario, Favorito, Profile, InterviewQuestion
 )
 from core.tasks import processar_cv_task
 from core.neo4j_connection import run_query
-from core.decorators import rh_required, get_client_ip, get_request_id
+from core.decorators import rh_required, get_client_ip, get_request_id, staff_required
 from core.services import (
     CVUploadService,
     get_s3_service,
@@ -49,7 +49,9 @@ from core.services import (
     EngagementService,
     SavedFilterService,
     CandidatePortalService,
+    InterviewOpenAIService,
 )
+from core.services.interview_openai_service import APIException as InterviewAPIException
 
 logger = logging.getLogger(__name__)
 
@@ -646,6 +648,118 @@ def mover_kanban(request):
     logger.info(f"Candidato {candidato_id} movido de {etapa_anterior} para {nova_etapa}")
 
     return JsonResponse({'success': True, 'nova_etapa': nova_etapa})
+
+
+# =============================================================================
+# INTERVIEW QUESTIONS (HTMX)
+# =============================================================================
+
+@login_required
+@staff_required
+@require_http_methods(["POST"])
+def generate_interview_questions_htmx(request, candidate_id, vaga_id):
+    """
+    Generate interview questions for a candidate via HTMX POST request.
+    
+    Permission: Staff only (@staff_required decorator)
+    URL: /api/candidates/<candidate_id>/generate-questions/
+    
+    Workflow:
+    1. Verify user is staff (decorator)
+    2. Fetch candidate object
+    3. Extract force_regenerate parameter
+    4. Call InterviewOpenAIService.get_candidate_questions()
+    5. Return HTML fragment (success or error template)
+    
+    Response:
+    - Success (200): interview_questions_display.html with 3 questions
+    - Error (200): interview_questions_error.html with error message
+    
+    Args:
+        request: HTTP request object (must have user.is_staff=True)
+        candidate_id (str): UUID of the candidate
+        vaga_id (str): UUID of the job position
+    
+    Returns:
+        HttpResponse: HTML fragment (success or error template)
+    """
+    # Get candidate object (404 if not found)
+    candidato = get_object_or_404(Candidato, pk=candidate_id)
+    
+    # Verify user can access this candidate
+    if not _user_can_access_candidate(request.user, candidato):
+        logger.warning(
+            f"[Interview] Unauthorized access attempt for {candidate_id[:8]}... "
+            f"by user {request.user.username}"
+        )
+        return HttpResponseForbidden("You do not have permission to access this candidate.")
+    
+    # Extract force_regenerate parameter from POST data
+    force_regenerate = request.POST.get('force_regenerate', 'false').lower() == 'true'
+    
+    safe_candidate_id = str(candidate_id)[:8]
+    
+    # Call the service layer
+    service = InterviewOpenAIService()
+    try:
+        # Call service with candidate_id, vaga_id, and user info for audit
+        questions = service.get_candidate_questions(
+            candidate_id=str(candidate_id),
+            vaga_id=str(vaga_id),
+            created_by_user=request.user,
+            force_regenerate=force_regenerate
+        )
+        
+        logger.info(
+            f"[Interview] Generated {len(questions)} questions for {safe_candidate_id}... "
+            f"force_regenerate={force_regenerate}"
+        )
+        
+        # Convert service response to InterviewQuestion objects for template
+        # Service returns List[Dict], but template expects queryset/list of InterviewQuestion
+        active_questions = InterviewQuestion.objects.filter(
+            candidato_id=candidate_id,
+            is_active=True
+        ).order_by('-created_at')
+        
+        context = {
+            'candidato': candidato,
+            'questions': active_questions,
+        }
+        return render(request, 'core/partials/interview_questions_display.html', context)
+    
+    except TimeoutError as e:
+        logger.warning(
+            f"[Interview] Timeout generating questions for {safe_candidate_id}... "
+            f"error={str(e)}"
+        )
+        context = {
+            'error_message': 'Generation took too long. Please try again.',
+            'candidato': candidato,
+        }
+        return render(request, 'core/partials/interview_questions_error.html', context)
+    
+    except InterviewAPIException as e:
+        logger.error(
+            f"[Interview] API error generating questions for {safe_candidate_id}... "
+            f"error={str(e)}"
+        )
+        context = {
+            'error_message': 'OpenAI service unavailable. Please try again.',
+            'candidato': candidato,
+        }
+        return render(request, 'core/partials/interview_questions_error.html', context)
+    
+    except Exception as e:
+        logger.exception(
+            f"[Interview] Unexpected error generating questions for {safe_candidate_id}... "
+            f"error={str(e)}"
+        )
+        context = {
+            'error_message': 'An unexpected error occurred. Please try again.',
+            'candidato': candidato,
+        }
+        return render(request, 'core/partials/interview_questions_error.html', context)
 
 
 # =============================================================================
