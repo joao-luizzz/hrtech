@@ -1,0 +1,33 @@
+[run]
+branch = True
+omit =
+    */migrations/*
+    */tests/*
+    manage.py
+    hrtech/settings.py
+    hrtech/settings_test.py
+    hrtech/wsgi.py
+    hrtech/asgi.py
+    */venv/*
+    */site-packages/*
+    setup.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abstractproperty
+    if 0:
+    if False:
+    if not settings.DEBUG
+
+[html]
+directory = htmlcov
