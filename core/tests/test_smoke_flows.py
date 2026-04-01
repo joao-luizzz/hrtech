@@ -10,6 +10,7 @@ from django.urls import reverse
 
 from core.models import AuditoriaMatch, Candidato, Comentario, Favorito, HistoricoAcao, Vaga
 from core.services.cv_upload_service import CVUploadService
+from core.tests.tenant_helpers import create_test_organization
 from hrtech.celery import app as celery_app
 
 
@@ -106,6 +107,7 @@ class RHProtectedSmokeTests(TestCase):
         self.user.profile.save()
         self.client.login(username='rh_smoke', password='pass1234')
 
+        self.org = create_test_organization()
         self.vaga = Vaga.objects.create(
             titulo='Engenheiro Backend',
             area='Backend',
@@ -114,6 +116,7 @@ class RHProtectedSmokeTests(TestCase):
             skills_obrigatorias=[{'nome': 'Python', 'nivel_minimo': 3}],
             skills_desejaveis=[],
             criado_por=self.user,
+            organization=self.org,
         )
 
         self.candidato = Candidato.objects.create(
@@ -122,6 +125,7 @@ class RHProtectedSmokeTests(TestCase):
             senioridade=Candidato.Senioridade.PLENO,
             status_cv=Candidato.StatusCV.CONCLUIDO,
             etapa_processo=Candidato.EtapaProcesso.TRIAGEM,
+            organization=self.org,
         )
 
     @patch('core.views.MatchingService.map_resultados_for_template')
@@ -188,6 +192,7 @@ class RHProtectedSmokeTests(TestCase):
         AuditoriaMatch.objects.create(
             vaga=self.vaga,
             candidato=self.candidato,
+            organization=self.org,
             score=Decimal('82.50'),
             snapshot_skills={'skills': ['Python']},
             detalhes_calculo={'camada_1_score': 80, 'camada_2_score': 85, 'camada_3_score': 82},
@@ -222,6 +227,7 @@ class RHProtectedSmokeTests(TestCase):
         AuditoriaMatch.objects.create(
             vaga=self.vaga,
             candidato=None,
+            organization=self.org,
             score=Decimal('70.00'),
             snapshot_skills={'skills': ['Python']},
             detalhes_calculo={'camada_1_score': 70, 'camada_2_score': 70, 'camada_3_score': 70},

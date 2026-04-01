@@ -21,6 +21,7 @@ from django.db import transaction, IntegrityError
 
 from core.models import Candidato, Vaga, InterviewQuestion
 from core.services.interview_openai_service import InterviewOpenAIService
+from core.tests.tenant_helpers import create_test_organization
 
 
 # =============================================================================
@@ -88,19 +89,25 @@ class InterviewOpenAIIntegrationTests(TransactionTestCase):
         )
         self.recruiter.is_staff = True
         self.recruiter.save()
-        
+
+        self.org = create_test_organization()
         # Create test candidate
         self.candidato = Candidato.objects.create(
             nome='João Silva',
             email='joao@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=5,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
-        
+
         # Create test vaga (job position)
         self.vaga = Vaga.objects.create(
             titulo='Senior Python Developer',
+            area='Backend',
+            skills_obrigatorias=[],
+            skills_desejaveis=[],
+            organization=self.org,
         )
 
     @patch('core.services.interview_openai_service.InterviewNeo4jService')
@@ -460,21 +467,23 @@ class DatabaseIntegrityTests(TransactionTestCase):
 
     def setUp(self):
         """Create test fixtures."""
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome='Test Candidate',
             email='test@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=5,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
-        
+
         self.recruiter = User.objects.create_user(
             username='user@test.com',
             password='test123'
         )
         self.recruiter.is_staff = True
         self.recruiter.save()
-        
+
         self.service = InterviewOpenAIService()
 
     def test_unique_constraint_one_active_per_candidate(self):
@@ -637,18 +646,24 @@ class PermissionTests(TransactionTestCase):
 
     def setUp(self):
         """Create test fixtures."""
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome='Test Candidate',
             email='test@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=5,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
-        
+
         self.vaga = Vaga.objects.create(
-            titulo='Test Job'
+            titulo='Test Job',
+            area='Backend',
+            skills_obrigatorias=[],
+            skills_desejaveis=[],
+            organization=self.org,
         )
-        
+
         self.recruiter = User.objects.create_user(
             username='recruiter@test.com',
             password='test123'

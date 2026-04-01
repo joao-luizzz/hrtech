@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Candidato
+from core.tests.tenant_helpers import create_test_organization
 
 
 class DashboardObservabilityTests(TestCase):
@@ -18,12 +19,14 @@ class DashboardObservabilityTests(TestCase):
         self.user.profile.role = self.user.profile.Role.RH
         self.user.profile.save()
         self.client.login(username='rh_user', password='pass1234')
+        self.org = create_test_organization()
 
     def test_dashboard_rh_exibe_metricas_de_saude_operacional(self):
         ghost = Candidato.objects.create(
             nome='Candidato Fantasma',
             email='ghost@example.com',
             status_cv=Candidato.StatusCV.PROCESSANDO,
+            organization=self.org,
         )
         Candidato.objects.filter(pk=ghost.pk).update(
             updated_at=timezone.now() - timedelta(minutes=45)
@@ -33,12 +36,14 @@ class DashboardObservabilityTests(TestCase):
             nome='Candidato Em Erro',
             email='erro@example.com',
             status_cv=Candidato.StatusCV.ERRO,
+            organization=self.org,
         )
 
         Candidato.objects.create(
             nome='Candidato Processando Recente',
             email='recente@example.com',
             status_cv=Candidato.StatusCV.EXTRAINDO,
+            organization=self.org,
         )
 
         response = self.client.get(reverse('core:dashboard_rh'))
@@ -55,6 +60,7 @@ class DashboardObservabilityTests(TestCase):
             nome='Candidato Concluido',
             email='ok@example.com',
             status_cv=Candidato.StatusCV.CONCLUIDO,
+            organization=self.org,
         )
 
         response = self.client.get(reverse('core:dashboard_rh'))

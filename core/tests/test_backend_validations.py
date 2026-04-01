@@ -6,6 +6,7 @@ from django.urls import reverse
 from unittest.mock import patch
 
 from core.models import Candidato, Comentario, FiltroSalvo, Vaga
+from core.tests.tenant_helpers import create_test_organization
 from core.services.candidate_search_service import CandidateSearchService
 from core.services.cv_upload_service import CVUploadService
 
@@ -159,11 +160,13 @@ class KanbanBackendValidationTests(TestCase):
         self.user.profile.save()
         self.client.login(username='rh_validation', password='pass1234')
 
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome='Candidato Validação',
             email='candidato-validacao@example.com',
             status_cv=Candidato.StatusCV.CONCLUIDO,
             etapa_processo=Candidato.EtapaProcesso.TRIAGEM,
+            organization=self.org,
         )
 
     def test_mover_kanban_rejeita_etapa_invalida(self):
@@ -200,17 +203,20 @@ class SecurityHardeningRegressionTests(TestCase):
             password='pass1234',
         )
 
+        self.org = create_test_organization()
         self.candidato_a = Candidato.objects.create(
             nome='Candidato A',
             email='cand-a@example.com',
             user=self.candidato_user_a,
             status_cv=Candidato.StatusCV.CONCLUIDO,
+            organization=self.org,
         )
         self.candidato_b = Candidato.objects.create(
             nome='Candidato B',
             email='cand-b@example.com',
             user=self.candidato_user_b,
             status_cv=Candidato.StatusCV.CONCLUIDO,
+            organization=self.org,
         )
 
     def test_dashboard_candidato_exige_login(self):
@@ -243,6 +249,7 @@ class SecurityHardeningRegressionTests(TestCase):
         self.client.login(username='rh_hardening', password='pass1234')
         filtro = FiltroSalvo.objects.create(
             usuario=self.rh_user,
+            organization=self.org,
             nome='Filtro sem side effect',
             parametros={'senioridade': 'pleno'},
             vezes_usado=0,
@@ -297,6 +304,7 @@ class SecurityHardeningRegressionTests(TestCase):
         self.client.login(username='rh_hardening', password='pass1234')
         filtro = FiltroSalvo.objects.create(
             usuario=self.rh_user,
+            organization=self.org,
             nome='Filtro redirect',
             parametros={'skills': 'Python,Django', 'senioridade': 'pleno'},
         )
@@ -312,6 +320,7 @@ class SecurityHardeningRegressionTests(TestCase):
         self.client.login(username='rh_hardening', password='pass1234')
         filtro = FiltroSalvo.objects.create(
             usuario=self.rh_user,
+            organization=self.org,
             nome='Filtro deletar',
             parametros={'etapa': 'triagem'},
         )

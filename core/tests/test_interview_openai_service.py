@@ -31,6 +31,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 
 from core.models import Candidato, Vaga, InterviewQuestion
+from core.tests.tenant_helpers import create_test_organization
 from core.services.interview_openai_service import (
     InterviewOpenAIService,
     APIException,
@@ -150,18 +151,24 @@ class InterviewOpenAIServiceTests(TestCase):
 
     def setUp(self):
         """Create test fixtures."""
+        self.org = create_test_organization()
         # Create test candidate
         self.candidato = Candidato.objects.create(
             nome='João Silva',
             email='joao@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=5,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
-        
+
         # Create test vaga
         self.vaga = Vaga.objects.create(
             titulo='Senior Python Developer',
+            area='Backend',
+            skills_obrigatorias=[],
+            skills_desejaveis=[],
+            organization=self.org,
         )
         
         # Create test user
@@ -600,16 +607,22 @@ class EdgeCaseHandlingTests(TestCase):
 
     def setUp(self):
         """Create test fixtures."""
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome='Perfect Match Candidate',
             email='perfect@example.com',
             senioridade=Candidato.Senioridade.SENIOR,
             anos_experiencia=10,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
-        
+
         self.vaga = Vaga.objects.create(
-            titulo='Senior Python Developer'
+            titulo='Senior Python Developer',
+            area='Backend',
+            skills_obrigatorias=[],
+            skills_desejaveis=[],
+            organization=self.org,
         )
 
     @patch('core.services.interview_openai_service.InterviewNeo4jService')
@@ -829,21 +842,23 @@ class AtomicSaveTests(TransactionTestCase):
 
     def setUp(self):
         """Create test fixtures."""
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome='Test Candidate',
             email='test@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=5,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
-        
+
         self.staff_user = User.objects.create_user(
             username='user@test.com',
             password='test123'
         )
         self.staff_user.is_staff = True
         self.staff_user.save()
-        
+
         self.service = InterviewOpenAIService()
 
     def test_save_creates_three_questions(self):

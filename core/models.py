@@ -23,6 +23,111 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+class Organization(models.Model):
+    """
+    Tenant raiz do sistema multi-tenant.
+
+    UUID é usado como prefixo de namespace no Neo4j para isolamento de grafo.
+    O campo `dominio` é a chave de lookup no middleware de tenant.
+    """
+
+    class Plano(models.TextChoices):
+        TRIAL = 'trial', 'Trial (14 dias)'
+        STARTER = 'starter', 'Starter'
+        PRO = 'pro', 'Pro'
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="UUID do tenant — usado como prefixo no Neo4j",
+    )
+
+    nome = models.CharField(max_length=255)
+
+    # ── Billing / plano ───────────────────────────────────────────────────────
+    plano = models.CharField(
+        max_length=20,
+        choices=Plano.choices,
+        default=Plano.TRIAL,
+    )
+    trial_expira_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Preenchido automaticamente no onboarding (now + 14 dias)",
+    )
+    stripe_customer_id = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="ID do customer no Stripe para reconciliação de webhooks",
+    )
+
+    # ── Limites operacionais por plano ────────────────────────────────────────
+    max_candidatos = models.PositiveIntegerField(
+        default=50,
+        help_text="Limite de candidatos ativos. Trial=50, Starter=500, Pro=ilimitado",
+    )
+    max_vagas = models.PositiveIntegerField(
+        default=5,
+        help_text="Limite de vagas abertas simultâneas.",
+    )
+
+    # ── Controle de acesso ────────────────────────────────────────────────────
+    ativo = models.BooleanField(
+        default=True,
+        help_text="False bloqueia acesso sem deletar dados (inadimplência, suspensão)",
+    )
+    dominio = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="Subdomínio ou domínio customizado usado pelo TenantMiddleware",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Organização'
+        verbose_name_plural = 'Organizações'
+        ordering = ['nome']
+
+    def __str__(self):
+        return f"{self.nome} ({self.plano})"
+
+    # ── Properties de negócio ─────────────────────────────────────────────────
+
+    @property
+    def trial_ativo(self) -> bool:
+        """True somente se ainda estiver dentro do período de trial."""
+        if self.plano != self.Plano.TRIAL:
+            return False
+        from django.utils import timezone
+        return bool(self.trial_expira_em and self.trial_expira_em > timezone.now())
+
+    @property
+    def esta_ativo(self) -> bool:
+        """
+        Checagem consolidada de acesso.
+        Trial expirado = False. Conta suspensa = False.
+        Usar em middleware e guards de view.
+        """
+        if not self.ativo:
+            return False
+        if self.plano == self.Plano.TRIAL:
+            return self.trial_ativo
+        return True
+
+    @property
+    def neo4j_tenant_prefix(self) -> str:
+        """
+        Prefixo usado em todas as queries Cypher para isolamento de grafo.
+        Exemplo: MATCH (c:Candidato {tenant: $tenant_id})
+        """
+        return str(self.id)
+
+
 class Profile(models.Model):
     """
     Perfil estendido do usuário com role e configurações.
@@ -42,6 +147,15 @@ class Profile(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='profile'
+    )
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.SET_NULL,
+        related_name='membros',
+        null=True,
+        blank=True,
+        help_text="Organização à qual este usuário pertence. Null = superadmin global",
     )
 
     role = models.CharField(
@@ -144,10 +258,19 @@ class Candidato(models.Model):
         blank=True,
         related_name='candidato'
     )
-    
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='candidatos',
+        help_text="Tenant ao qual este candidato pertence",
+    )
+
     # Dados básicos
     nome = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
+    email = models.EmailField(
+        help_text="Único por organização (tenant), não globalmente",
+    )
     telefone = models.CharField(max_length=20, blank=True)
     
     # Perfil profissional
@@ -208,7 +331,13 @@ class Candidato(models.Model):
         verbose_name = 'Candidato'
         verbose_name_plural = 'Candidatos'
         ordering = ['-created_at']
-    
+        constraints = [
+            models.UniqueConstraint(
+                fields=['organization', 'email'],
+                name='candidato_organization_email_uniq',
+            ),
+        ]
+
     def __str__(self):
         return f"{self.nome} ({self.senioridade})"
 
@@ -272,7 +401,14 @@ class Vaga(models.Model):
         null=True,
         related_name='vagas_criadas'
     )
-    
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='vagas',
+        help_text="Tenant ao qual esta vaga pertence",
+    )
+
     status = models.CharField(
         max_length=10,
         choices=Status.choices,
@@ -319,7 +455,14 @@ class AuditoriaMatch(models.Model):
         null=True,
         related_name='auditorias'
     )
-    
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='auditorias',
+        help_text="Tenant — mantido mesmo se vaga/candidato forem deletados (LGPD)",
+    )
+
     # Score calculado (0-100)
     score = models.DecimalField(
         max_digits=5,
@@ -403,6 +546,14 @@ class HistoricoAcao(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         related_name='historico_acoes'
+    )
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='historico_acoes',
+        null=True,
+        blank=True,
     )
 
     tipo_acao = models.CharField(
@@ -634,6 +785,13 @@ class Tag(models.Model):
         related_name='tags_criadas'
     )
 
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='tags',
+        help_text="Tags são escopadas por tenant",
+    )
+
     # Tags podem ser globais (todos veem) ou privadas (só criador)
     global_tag = models.BooleanField(
         default=True,
@@ -647,7 +805,7 @@ class Tag(models.Model):
         verbose_name = 'Tag'
         verbose_name_plural = 'Tags'
         ordering = ['nome']
-        unique_together = ['nome', 'criado_por']
+        unique_together = [['nome', 'organization']]
 
     def __str__(self):
         return f"🏷️ {self.nome}"
@@ -710,6 +868,13 @@ class FiltroSalvo(models.Model):
         on_delete=models.CASCADE,
         related_name='filtros_salvos',
         help_text="Usuário que criou o filtro"
+    )
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='filtros_salvos',
+        help_text="Filtros salvos são escopados por tenant",
     )
 
     nome = models.CharField(

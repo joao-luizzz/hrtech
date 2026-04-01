@@ -35,6 +35,7 @@ from pydantic import ValidationError
 
 from core.models import Candidato
 from core.schemas import CVParseado, HabilidadeExtraida
+from core.tests.tenant_helpers import create_test_organization
 from core.tasks import (
     chamar_openai_extracao,
     salvar_habilidades_neo4j,
@@ -442,13 +443,15 @@ class StatusTransitionTests(TransactionTestCase):
         self.mock_get_s3.return_value = self.mock_s3_service
         self.mock_s3_service.download_to_temp_file.return_value = '/tmp/test_cv.pdf'
 
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome="Test User",
             email="test@pipeline.com",
             senioridade=Candidato.Senioridade.JUNIOR,
             status_cv=Candidato.StatusCV.RECEBIDO,
             cv_s3_key="test_cv.pdf",
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
 
     def tearDown(self):
@@ -655,13 +658,15 @@ class FullPipelineIntegrationTests(TransactionTestCase):
         self.mock_get_s3.return_value = self.mock_s3_service
         self.mock_s3_service.download_to_temp_file.return_value = '/tmp/integration_test_cv.pdf'
 
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome="Integration Test User",
             email="integration@test.com",
             senioridade=Candidato.Senioridade.JUNIOR,
             status_cv=Candidato.StatusCV.RECEBIDO,
             cv_s3_key="integration_test.pdf",
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
 
     def tearDown(self):

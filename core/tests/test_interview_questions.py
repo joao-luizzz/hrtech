@@ -23,6 +23,7 @@ from django.urls import reverse
 
 from core.models import Candidato, InterviewQuestion
 from core.services import InterviewNeo4jService
+from core.tests.tenant_helpers import create_test_organization
 from core.decorators import staff_required, can_access_interview_questions
 
 
@@ -67,13 +68,15 @@ class InterviewQuestionModelTests(TestCase):
 
     def setUp(self):
         """Create test fixtures for model tests."""
+        self.org = create_test_organization()
         # Create a test candidate
         self.candidato = Candidato.objects.create(
             nome='João Silva',
             email='joao@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=5,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
         
         # Create test users
@@ -553,13 +556,14 @@ class InterviewQuestionIntegrationTests(TestCase):
             password='pass1234',
             is_staff=True
         )
-        
+        self.org = create_test_organization()
         self.candidato = Candidato.objects.create(
             nome='Test Candidate',
             email='candidate@example.com',
             senioridade=Candidato.Senioridade.PLENO,
             anos_experiencia=3,
-            disponivel=True
+            disponivel=True,
+            organization=self.org,
         )
 
     def test_create_questions_then_mark_old_inactive(self):
