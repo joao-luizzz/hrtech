@@ -1,0 +1,209 @@
+You are working on HRTech, a Django 5 SaaS recruiting platform with multi-tenancy.
+The codebase is production-bound. Prioritize correctness, security, and maintainability over brevity.
+
+---
+
+## Stack
+
+- Python 3.10, Django 5, Gunicorn
+- PostgreSQL 15 (primary database)
+- Neo4j AuraDB (skills knowledge graph)
+- Redis (Celery broker + cache)
+- Celery 5 + Celery Beat (async tasks)
+- OpenAI API / gpt-4o-mini (CV parsing)
+- AWS S3 (CV storage via presigned URLs)
+- django-allauth (authentication)
+- Django REST Framework (API — in progress)
+- Deployed on Render (web + worker + beat processes)
+
+---
+
+## Architecture
+
+### Service layer (mandatory)
+- Business logic lives exclusively in `core/services/`
+- Views are HTTP-only: validate input, call service, return response
+- Never put ORM queries or Neo4j queries directly in views
+- Never put business logic in models (properties for simple derived values are ok)
+
+### Multi-tenancy (active implementation)
+- Every model has `organization = ForeignKey(Organization, ...)`
+- Every ORM query MUST filter by `request.tenant` (injected by TenantMiddleware)
+- Every Neo4j query MUST include `tenant: $tenant_id` parameter
+- Use `Organization.neo4j_tenant_prefix` to build the tenant param value
+- Never return cross-tenant data under any circumstance
+
+### Dual persistence
+- PostgreSQL: transactional data (Candidato, Vaga, AuditoriaMatch, etc.)
+- Neo4j: skills graph (Habilidade, Area, SIMILAR_A, TEM_HABILIDADE)
+- UUID is the sync key between both databases
+- Write to PostgreSQL first, then Neo4j — never the reverse
+
+---
+
+## Key files
+
+```
+core/
+  models.py          — Django ORM models (Organization is the tenant root)
+  views.py           — HTTP layer only, delegates everything to services
+  tasks.py           — Celery async tasks (CV processing pipeline)
+  matching.py        — 3-layer matching algorithm (do not refactor without explicit instruction)
+  neo4j_connection.py — Neo4j singleton driver + run_query / run_write_query
+  decorators.py      — @rh_required, @candidato_required, get_client_ip
+  middleware.py      — RequestIDMiddleware (X-Request-ID header)
+
+  services/
+    cv_upload_service.py      — upload validation, rate limiting, status token
+    matching_service.py       — matching orchestration for views
+    pipeline_service.py       — kanban pipeline, stage transitions
+    candidate_search_service.py — search filters (PG + Neo4j)
+    candidate_portal_service.py — candidate area, similar candidates
+    engagement_service.py     — comments, favorites
+    saved_filter_service.py   — saved search filters
+    export_service.py         — Excel/CSV exports
+    email_service.py          — transactional emails
+    s3_service.py             — CV upload/download/delete
+
+  tests/
+    test_matching_engine.py   — unit tests for matching algorithm
+    test_pipeline_mock.py     — CV pipeline with mocked OpenAI/Neo4j
+    test_smoke_flows.py       — integration smoke tests
+    test_backend_validations.py — security and validation tests
+    test_dashboard_observability.py — dashboard metrics tests
+
+hrtech/
+  settings.py        — python-decouple, all secrets via env vars
+  settings_test.py   — test overrides (target: migrate to PG Docker)
+  celery.py          — queues: default + openai, beat schedule
+```
+
+---
+
+## Mandatory rules — never violate these
+
+### Security
+- NEVER hardcode credentials, tokens, secrets, or API keys
+- ALWAYS use `python-decouple`: `config('VAR_NAME')`
+- NEVER log PII: email, CPF, RG, CV content, phone numbers
+- ALWAYS validate and sanitize user input before any operation
+- ALWAYS use `get_or_create` instead of `exists() + get()` (race condition safety)
+- ALWAYS use `@csrf_protect` on POST views that are not API endpoints
+- NEVER expose stack traces in production (DEBUG=False handles this)
+
+### Multi-tenancy
+- EVERY new model needs `organization = ForeignKey(Organization, on_delete=models.CASCADE)`
+- EVERY ORM queryset must be scoped: `.filter(organization=request.tenant)`
+- EVERY Neo4j query must include `{tenant: $tenant_id}` in all MATCH clauses
+- NEVER query without tenant scope, even in management commands
+
+### LGPD compliance
+- CVs are stored in S3 (private bucket) — access only via presigned URLs (15min TTL)
+- Strip PII from CV text before sending to OpenAI: use `limpar_dados_pessoais()`
+- AuditoriaMatch uses SET_NULL on candidato/vaga FKs intentionally — preserve audit trail
+- Never log CV content, candidate email, or personal data at any log level
+
+### Code patterns
+- New business logic → new or existing service in `core/services/`
+- New Celery task → `core/tasks.py`, use `@shared_task(bind=True, acks_late=True)`
+- New model → needs migration, admin registration, and __str__ method
+- New view → needs `@login_required` + role decorator + `@require_GET/POST`
+- Every new feature needs a corresponding test in `core/tests/`
+
+### Django ORM
+- Use `select_related` and `prefetch_related` — never allow N+1 queries
+- Use `update_fields=[...]` on `.save()` when updating specific fields only
+- Use `bulk_create` and `bulk_update` for batch operations
+- Cache expensive aggregations: `cache.get/set` with short TTL (60s for dashboard stats)
+- Use `transaction.atomic()` for multi-step writes
+
+### Neo4j
+- Use `MERGE` not `CREATE` to avoid duplicate nodes
+- Always parameterize queries — never f-string values into Cypher
+- Use `run_query()` for reads, `run_write_query()` for writes
+- Connection is a singleton — do not instantiate the driver directly
+- Log errors with `logger.exception()` and re-raise — never swallow Neo4j errors silently
+
+---
+
+## Matching algorithm — handle with care
+
+`core/matching.py` implements a 3-layer algorithm:
+- Layer 1 (60%): direct skill match with temporal decay (0.85^years_inactive)
+- Layer 2 (25%): similarity match via Neo4j SIMILAR_A relationships
+- Layer 3 (15%): profile compatibility (area + seniority)
+
+Do NOT refactor this file unless explicitly instructed.
+Do NOT change weights (PESO_CAMADA_*) without explicit instruction.
+Do NOT change FATOR_DECAIMENTO without explicit instruction.
+Current version: VERSAO_ALGORITMO = "2.0.0"
+
+---
+
+## Testing
+
+- Mock ALL external dependencies: Neo4j, OpenAI, S3, Celery
+- Use `@patch('core.tasks.run_write_query')` pattern for Neo4j writes
+- Use `@patch('core.tasks.get_openai_client')` for OpenAI calls
+- Use `TransactionTestCase` when testing Celery tasks with `.apply()`
+- Tests run with `--settings=hrtech.settings_test`
+- Target: migrate settings_test from SQLite to PostgreSQL Docker
+- Never use `distinct('field')` — works in PG but breaks SQLite test runner
+
+---
+
+## CV processing pipeline
+
+Upload → RECEBIDO → PROCESSANDO (pdfplumber/OCR) → EXTRAINDO (OpenAI) → CONCLUIDO/ERRO
+
+- Pipeline runs entirely in Celery worker (queue: openai)
+- Status polling via HTMX every 3s using signed token (X-Status-Token header)
+- Ghost job cleanup: `varrer_jobs_fantasmas` beat task runs hourly
+- Rate limit: 20 OpenAI calls/min (configured in celery.py)
+- MOCK_MODE: set OPENAI_MOCK_MODE=True in .env to skip OpenAI calls in dev
+
+---
+
+## API conventions (DRF — in progress)
+
+- Authentication: JWT per tenant
+- All endpoints scoped by tenant from token
+- Rate limiting: per API key, not per IP
+- Versioning: /api/v1/
+- Response format: `{success: bool, data: ..., error: str | null}`
+
+---
+
+## Kanban pipeline mapping
+
+Frontend columns → real EtapaProcesso values:
+- `novo`       → TRIAGEM
+- `em_analise` → ENTREVISTA_RH, TESTE_TECNICO, ENTREVISTA_TECNICA, PROPOSTA
+- `aprovado`   → CONTRATADO
+- `reprovado`  → REJEITADO, DESISTIU
+
+Always use `PipelineService.KANBAN_TO_ETAPA` and `ETAPA_TO_KANBAN` for mapping.
+Never hardcode column names in views or templates.
+
+---
+
+## What NOT to generate automatically
+
+- Django migrations — always run `makemigrations` manually after model review
+- Neo4j schema changes — coordinate with existing graph structure
+- Changes to `core/matching.py` weights or algorithm structure
+- Changes to `AuditoriaMatch` model (LGPD audit trail — immutable by design)
+- Stripe webhook handlers — require explicit security review
+- Any code that bypasses tenant scoping
+
+---
+
+## Current sprint focus
+
+Multi-tenancy implementation:
+1. Organization model with billing fields (done)
+2. FK `organization` on all models: Candidato, Vaga, AuditoriaMatch, Tag, FiltroSalvo, HistoricoAcao, Profile (in progress)
+3. TenantMiddleware — resolve Organization from subdomain/header → inject request.tenant
+4. TenantManager — custom ORM manager that auto-filters by organization
+5. Update all services to scope queries by organization
+6. Update all Neo4j queries to include tenant param
