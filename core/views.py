@@ -213,7 +213,9 @@ def processar_upload(request):
         ip_address=ip_address
     )
 
-    logger.info(f"CV recebido para candidato {candidato.id}")
+    # SECURITY: Mascarar UUID em logs (LGPD)
+    safe_id = str(candidato.id)[:8] + "..."
+    logger.info(f"CV recebido para candidato {safe_id}")
 
     # Dispara task Celery
     processar_cv_task.delay(str(candidato.id))
@@ -1116,20 +1118,28 @@ def habilidades_candidato_htmx(request, candidato_id):
 @require_GET
 def dashboard_geral(request):
     """Dashboard geral com estatísticas."""
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    
     senioridade_data = list(
-        Candidato.objects.values('senioridade')
+        Candidato.objects.filter(organization=user_org).values('senioridade')
         .annotate(total=Count('id'))
         .order_by('senioridade')
     )
 
     area_data = []
     try:
+        # SECURITY: Filtrar por organization no Neo4j
+        # Nota: Neo4j precisa ter organization como propriedade do nó Candidato
         query = """
         MATCH (c:Candidato)-[:ATUA_EM]->(a:Area)
+        WHERE c.organization_id = $org_id
         RETURN a.nome as area, count(c) as total
         ORDER BY total DESC
         """
-        area_data = run_query(query, {})
+        org_id = str(user_org.id) if user_org else None
+        if org_id:
+            area_data = run_query(query, {'org_id': org_id})
     except Exception as e:
         logger.warning(
             "Erro ao buscar areas no Neo4j (request_id=%s): %s",
@@ -1138,24 +1148,25 @@ def dashboard_geral(request):
         )
 
     vagas_status = list(
-        Vaga.objects.values('status')
+        Vaga.objects.filter(organization=user_org).values('status')
         .annotate(total=Count('id'))
         .order_by('status')
     )
 
     score_por_vaga = list(
-        AuditoriaMatch.objects.values('vaga__titulo')
+        AuditoriaMatch.objects.filter(vaga__organization=user_org).values('vaga__titulo')
         .annotate(score_medio=Avg('score'))
         .order_by('-score_medio')[:10]
     )
 
     stats = {
-        'total_candidatos': Candidato.objects.count(),
-        'total_vagas': Vaga.objects.count(),
-        'vagas_abertas': Vaga.objects.filter(status='aberta').count(),
-        'matches_total': AuditoriaMatch.objects.count(),
-        'score_medio_geral': AuditoriaMatch.objects.aggregate(avg=Avg('score'))['avg'] or 0,
+        'total_candidatos': Candidato.objects.filter(organization=user_org).count(),
+        'total_vagas': Vaga.objects.filter(organization=user_org).count(),
+        'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
+        'matches_total': AuditoriaMatch.objects.filter(vaga__organization=user_org).count(),
+        'score_medio_geral': AuditoriaMatch.objects.filter(vaga__organization=user_org).aggregate(avg=Avg('score'))['avg'] or 0,
         'candidatos_processados': Candidato.objects.filter(
+            organization=user_org,
             status_cv=Candidato.StatusCV.CONCLUIDO
         ).count(),
     }
@@ -1179,19 +1190,26 @@ def dashboard_geral(request):
 @require_GET
 def api_stats(request):
     """API JSON para Chart.js."""
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    
     senioridade = list(
-        Candidato.objects.values('senioridade')
+        Candidato.objects.filter(organization=user_org).values('senioridade')
         .annotate(total=Count('id'))
     )
 
     area_data = []
     try:
+        # SECURITY: Filtrar por organization no Neo4j
         query = """
         MATCH (c:Candidato)-[:ATUA_EM]->(a:Area)
+        WHERE c.organization_id = $org_id
         RETURN a.nome as area, count(c) as total
         ORDER BY total DESC
         """
-        area_data = run_query(query, {})
+        org_id = str(user_org.id) if user_org else None
+        if org_id:
+            area_data = run_query(query, {'org_id': org_id})
     except Exception as e:
         logger.warning(
             "Erro ao buscar areas no Neo4j para api_stats (request_id=%s): %s",
@@ -1200,7 +1218,7 @@ def api_stats(request):
         )
 
     score_vagas = list(
-        AuditoriaMatch.objects.values('vaga__titulo')
+        AuditoriaMatch.objects.filter(vaga__organization=user_org).values('vaga__titulo')
         .annotate(score_medio=Avg('score'))
         .order_by('-score_medio')[:10]
     )
@@ -1466,15 +1484,18 @@ def exportar_candidatos_excel(request):
 
     formato = request.GET.get('formato', '').strip().lower()
 
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
     candidatos = CandidateSearchService.apply_filters(
         query_params=request.GET,
         request_id=get_request_id(request),
+        organization=user_org,
     )
 
     if formato == 'csv':
         filename = f"candidatos_{timezone.now().strftime('%Y%m%d_%H%M')}.csv"
         response = StreamingHttpResponse(
-            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200)),
+            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200), mask_pii=True),
             content_type='text/csv; charset=utf-8',
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1490,7 +1511,7 @@ def exportar_candidatos_excel(request):
         messages.error(request, 'Módulo openpyxl não instalado. Execute: pip install openpyxl')
         return redirect('core:buscar_candidatos')
 
-    file_content, filename = ExportService.build_candidatos_workbook(candidatos)
+    file_content, filename = ExportService.build_candidatos_workbook(candidatos, mask_pii=True)
 
     response = HttpResponse(
         file_content,
@@ -1526,7 +1547,8 @@ def exportar_ranking_excel(request, vaga_id):
         vaga=vaga
     ).select_related('candidato').order_by('-score')
 
-    file_content, filename = ExportService.build_ranking_workbook(vaga, matches)
+    # SECURITY: Mascarar PII nos exports (LGPD compliance)
+    file_content, filename = ExportService.build_ranking_workbook(vaga, matches, mask_pii=True)
     response = HttpResponse(
         file_content,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1551,3 +1573,249 @@ def relatorio_candidato_print(request, candidato_id):
         request_id=get_request_id(request),
     )
     return render(request, 'core/relatorios/candidato_print.html', context)
+
+
+# =============================================================================
+# LGPD - DIREITO AO ESQUECIMENTO (Art. 18)
+# =============================================================================
+
+@login_required
+@rh_required
+@require_POST
+@csrf_protect
+@rate_limit(limit=5, window=300)  # SECURITY: 5 exclusões por 5 minutos (operação destrutiva)
+def lgpd_excluir_candidato(request, candidato_id):
+    """
+    Exclui todos os dados de um candidato (LGPD Art. 18 - Direito ao Esquecimento).
+    
+    SECURITY:
+    - Requer autenticação RH
+    - Verifica tenant isolation (organization)
+    - Rate limited para prevenir abuso
+    - Registra auditoria antes da exclusão
+    - Remove dados de: PostgreSQL, Neo4j, S3
+    
+    Returns:
+        JsonResponse com status da exclusão
+    """
+    from core.services import get_s3_service
+    
+    user_org = _get_user_organization(request.user)
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+    
+    # Captura dados para auditoria ANTES da exclusão
+    audit_data = {
+        'candidato_id': str(candidato.id)[:8] + '...',  # Mascarado
+        'email_hash': hash(candidato.email) % 10000,  # Hash para verificação sem expor email
+        'motivo': request.POST.get('motivo', 'Solicitação LGPD'),
+        'solicitante_id': request.user.id,
+    }
+    
+    errors = []
+    
+    # 1. Excluir do Neo4j (grafo de habilidades)
+    try:
+        from core.neo4j_connection import run_query
+        delete_query = """
+        MATCH (c:Candidato {uuid: $uuid})
+        DETACH DELETE c
+        """
+        run_query(delete_query, {'uuid': str(candidato.id)})
+        logger.info("LGPD: Neo4j data deleted for candidato (audit: %s)", audit_data)
+    except Exception as e:
+        errors.append(f"Neo4j: {type(e).__name__}")
+        logger.error("LGPD: Failed to delete Neo4j data: %s", type(e).__name__)
+    
+    # 2. Excluir CV do S3
+    if candidato.cv_s3_key:
+        try:
+            s3 = get_s3_service()
+            s3.delete_file(candidato.cv_s3_key)
+            logger.info("LGPD: S3 file deleted for candidato (audit: %s)", audit_data)
+        except Exception as e:
+            errors.append(f"S3: {type(e).__name__}")
+            logger.error("LGPD: Failed to delete S3 file: %s", type(e).__name__)
+    
+    # 3. Excluir registros relacionados no PostgreSQL
+    try:
+        # Comentários
+        Comentario.objects.filter(candidato=candidato).delete()
+        # Favoritos
+        Favorito.objects.filter(candidato=candidato).delete()
+        # Auditorias de match
+        AuditoriaMatch.objects.filter(candidato=candidato).delete()
+        # Interview questions
+        InterviewQuestion.objects.filter(candidate_id=str(candidato.id)).delete()
+        
+        logger.info("LGPD: Related records deleted for candidato (audit: %s)", audit_data)
+    except Exception as e:
+        errors.append(f"Related records: {type(e).__name__}")
+        logger.error("LGPD: Failed to delete related records: %s", type(e).__name__)
+    
+    # 4. Registrar ação de exclusão LGPD no histórico (antes de deletar candidato)
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_DELETADO,
+        detalhes={
+            'lgpd_request': True,
+            'audit': audit_data,
+            'errors': errors if errors else None,
+        },
+        ip_address=get_client_ip(request)
+    )
+    
+    # 5. Excluir o candidato do PostgreSQL
+    try:
+        candidato.delete()
+        logger.info("LGPD: Candidato deleted successfully (audit: %s)", audit_data)
+    except Exception as e:
+        errors.append(f"Candidato: {type(e).__name__}")
+        logger.error("LGPD: Failed to delete candidato: %s", type(e).__name__)
+        return JsonResponse({
+            'success': False,
+            'error': 'Falha ao excluir candidato. Contate o suporte.',
+            'partial_errors': errors,
+        }, status=500)
+    
+    if errors:
+        return JsonResponse({
+            'success': True,
+            'warning': 'Candidato excluído com alguns erros parciais.',
+            'partial_errors': errors,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Dados do candidato excluídos com sucesso (LGPD Art. 18).',
+    })
+
+
+@login_required
+@require_POST
+@csrf_protect
+@rate_limit(limit=3, window=3600)  # SECURITY: 3 solicitações por hora
+def lgpd_solicitar_exclusao(request):
+    """
+    Permite que o próprio candidato solicite exclusão de seus dados.
+    
+    LGPD Art. 18 - Direito do titular solicitar exclusão.
+    
+    Fluxo:
+    1. Candidato logado solicita exclusão
+    2. Sistema verifica que é o próprio candidato
+    3. Marca candidato para exclusão (não exclui imediatamente)
+    4. RH pode confirmar ou contestar em 72h
+    5. Se não contestado, exclusão automática
+    """
+    candidato = getattr(request.user, 'candidato', None)
+    
+    if not candidato:
+        return JsonResponse({
+            'success': False,
+            'error': 'Você não possui um perfil de candidato vinculado.',
+        }, status=400)
+    
+    motivo = request.POST.get('motivo', '').strip()
+    if not motivo:
+        return JsonResponse({
+            'success': False,
+            'error': 'Por favor, informe o motivo da solicitação.',
+        }, status=400)
+    
+    # Marca candidato como pendente de exclusão
+    candidato.lgpd_exclusao_solicitada = True
+    candidato.lgpd_exclusao_motivo = motivo[:500]  # Limita tamanho
+    candidato.lgpd_exclusao_data = timezone.now()
+    candidato.save(update_fields=['lgpd_exclusao_solicitada', 'lgpd_exclusao_motivo', 'lgpd_exclusao_data'])
+    
+    # Registra solicitação no histórico
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_SOLICITACAO,
+        candidato=candidato,
+        detalhes={
+            'motivo': motivo[:100],  # Resumido no log
+            'tipo': 'exclusao',
+        },
+        ip_address=get_client_ip(request)
+    )
+    
+    logger.info(
+        "LGPD: Exclusion request from candidato (user_id=%s)",
+        request.user.id,
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Sua solicitação foi registrada. Seus dados serão excluídos em até 72 horas, conforme LGPD.',
+    })
+
+
+@login_required
+@require_GET
+def lgpd_exportar_dados(request):
+    """
+    Exporta todos os dados do candidato (LGPD Art. 18 - Direito de Portabilidade).
+    
+    Retorna JSON com todos os dados pessoais do candidato.
+    """
+    candidato = getattr(request.user, 'candidato', None)
+    
+    if not candidato:
+        return JsonResponse({
+            'success': False,
+            'error': 'Você não possui um perfil de candidato vinculado.',
+        }, status=400)
+    
+    # Busca habilidades do Neo4j
+    habilidades = []
+    try:
+        query = """
+        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
+        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos
+        ORDER BY r.nivel DESC
+        """
+        habilidades = run_query(query, {'uuid': str(candidato.id)})
+    except Exception:
+        pass
+    
+    # Monta export de dados
+    dados = {
+        'meta': {
+            'exportado_em': timezone.now().isoformat(),
+            'formato': 'LGPD Art. 18 - Portabilidade',
+        },
+        'dados_pessoais': {
+            'nome': candidato.nome,
+            'email': candidato.email,
+            'telefone': candidato.telefone,
+            'senioridade': candidato.get_senioridade_display(),
+            'anos_experiencia': candidato.anos_experiencia,
+            'disponivel': candidato.disponivel,
+            'created_at': candidato.created_at.isoformat(),
+        },
+        'habilidades': [
+            {
+                'nome': h['nome'],
+                'nivel': h['nivel'],
+                'anos': h.get('anos', 0),
+            }
+            for h in habilidades
+        ],
+        'historico_processo': {
+            'etapa_atual': candidato.get_etapa_processo_display(),
+            'status_cv': candidato.get_status_cv_display(),
+        },
+    }
+    
+    # Registra exportação
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_EXPORT,
+        candidato=candidato,
+        ip_address=get_client_ip(request)
+    )
+    
+    response = JsonResponse(dados, json_dumps_params={'indent': 2, 'ensure_ascii': False})
+    response['Content-Disposition'] = f'attachment; filename="meus_dados_lgpd_{timezone.now().strftime("%Y%m%d")}.json"'
+    return response
