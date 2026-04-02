@@ -57,6 +57,7 @@ from openai import OpenAI, APIError, APITimeoutError, RateLimitError as OpenAIRa
 
 from core.models import InterviewQuestion, Candidato, Vaga
 from core.services.interview_neo4j_service import InterviewNeo4jService
+from core.services.interview_cache_service import InterviewCacheService
 from core.neo4j_connection import get_neo4j_driver
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,11 @@ class ValidationException(Exception):
     pass
 
 
+class ConcurrentGenerationError(Exception):
+    """Raised when another generation is already in progress for the same candidate."""
+    pass
+
+
 # =============================================================================
 # SERVICE CLASS
 # =============================================================================
@@ -141,19 +147,21 @@ class InterviewOpenAIService:
         driver: Neo4j driver for direct queries if needed
     """
 
-    def __init__(self, openai_client=None, neo4j_service=None):
+    def __init__(self, openai_client=None, neo4j_service=None, cache_service=None):
         """
         Initialize service with optional dependency injection.
         
         Args:
             openai_client: OpenAI client instance (default: new client from env)
             neo4j_service: Neo4j service instance (default: InterviewNeo4jService)
+            cache_service: Cache service instance (default: InterviewCacheService)
         
         Raises:
             ValueError: If OpenAI API key is not available in environment
         """
         self.openai_client = openai_client or OpenAI()
         self.neo4j_service = neo4j_service or InterviewNeo4jService()
+        self.cache_service = cache_service or InterviewCacheService()
         # Lazy initialize driver to support testing
         self._driver = None
 
@@ -207,12 +215,23 @@ class InterviewOpenAIService:
         # Truncate candidate_id for safe logging (first 8 chars)
         safe_candidate_id = candidate_id[:8] if candidate_id else 'unknown'
         
-        # Step 1: Check cache if not forcing regeneration
+        # Step 1: Check Redis cache first (L1 - fast)
         if not force_regenerate:
-            logger.info(f"[{safe_candidate_id}] Checking cache for questions")
+            logger.info(f"[{safe_candidate_id}] Checking Redis cache for questions")
+            redis_cached = self.cache_service.get_cached_questions(candidate_id)
+            if redis_cached:
+                logger.info(f"[{safe_candidate_id}] Redis cache HIT - returning {len(redis_cached)} questions")
+                return redis_cached
+            
+            logger.debug(f"[{safe_candidate_id}] Redis cache MISS - checking PostgreSQL")
+        
+        # Step 2: Check PostgreSQL cache (L2 - slower but persistent)
+        if not force_regenerate:
             cached_questions = self._get_cached_questions(candidate_id)
             if cached_questions:
-                logger.info(f"[{safe_candidate_id}] Cache hit - returning {len(cached_questions)} questions")
+                logger.info(f"[{safe_candidate_id}] PostgreSQL cache HIT - returning {len(cached_questions)} questions")
+                # Populate Redis cache for next time
+                self.cache_service.set_cached_questions(candidate_id, cached_questions)
                 return cached_questions
         
         logger.info(f"[{safe_candidate_id}] Cache miss or forced regeneration - calling OpenAI")
@@ -230,7 +249,7 @@ class InterviewOpenAIService:
                 vaga_context=vaga_context
             )
             
-            # Step 4: Save questions atomically
+            # Step 4: Save questions atomically to PostgreSQL
             self._save_questions_atomic(
                 candidate_id=candidate_id,
                 created_by_user=created_by_user,
@@ -238,7 +257,10 @@ class InterviewOpenAIService:
                 vaga_id=vaga_id
             )
             
-            logger.info(f"[{safe_candidate_id}] Successfully generated and saved {len(questions)} questions")
+            # Step 5: Populate Redis cache (L1) for fast future access
+            self.cache_service.set_cached_questions(candidate_id, questions)
+            
+            logger.info(f"[{safe_candidate_id}] Successfully generated, saved, and cached {len(questions)} questions")
             return questions
             
         except TimeoutError:
@@ -548,6 +570,9 @@ class InterviewOpenAIService:
                 ]
                 
                 created = InterviewQuestion.objects.bulk_create(question_objects)
+                
+                # Invalidate Redis cache after successful save (will be repopulated by caller)
+                self.cache_service.invalidate_cache(candidate_id)
                 logger.info(f"[{safe_candidate_id}] Created {len(created)} new questions in DB")
                 
                 return created
@@ -807,3 +832,89 @@ OUTPUT FORMAT (JSON ONLY, no other text):
             logger.warning(f"Token counting failed: {type(e).__name__}: {str(e)}")
             # Return rough estimate if exact count fails
             return len(text.split()) * 1.3  # Rough approximation
+    
+    # =========================================================================
+    # DISTRIBUTED LOCK METHODS (Prevent Concurrent Generations)
+    # =========================================================================
+    
+    def _acquire_generation_lock(self, candidate_id: str) -> bool:
+        """
+        Try to acquire a distributed lock for question generation.
+        
+        Uses Redis SET NX EX (set if not exists with expiration) for atomicity.
+        Lock automatically expires after 20s to prevent deadlocks if process crashes.
+        
+        Args:
+            candidate_id (str): UUID of candidate
+        
+        Returns:
+            bool: True if lock acquired, False if already locked
+        
+        Notes:
+            - Lock key: interview:lock:{candidate_id}
+            - TTL: 20 seconds (slightly more than OPENAI_TIMEOUT of 15s)
+            - Atomic operation (Redis guarantees no race condition)
+            - Auto-expires as fail-safe
+        
+        Example:
+            >>> service = InterviewOpenAIService()
+            >>> if service._acquire_generation_lock('550e8400...'):
+            ...     try:
+            ...         # ... generate questions ...
+            ...     finally:
+            ...         service._release_generation_lock('550e8400...')
+        """
+        lock_key = f"interview:lock:{candidate_id}"
+        lock_ttl = 20  # seconds (must be > OPENAI_TIMEOUT)
+        safe_candidate_id = candidate_id[:8] if candidate_id else 'unknown'
+        
+        try:
+            # Try to set lock with TTL (atomic operation)
+            # Returns True if key didn't exist (lock acquired)
+            # Returns False if key already exists (lock held by another process)
+            lock_acquired = self.cache_service.cache.add(lock_key, True, timeout=lock_ttl)
+            
+            if lock_acquired:
+                logger.debug(f"[{safe_candidate_id}] Lock ACQUIRED (key: {lock_key}, TTL: {lock_ttl}s)")
+                return True
+            else:
+                logger.warning(f"[{safe_candidate_id}] Lock FAILED - already held (key: {lock_key})")
+                return False
+                
+        except Exception as e:
+            logger.error(f"[{safe_candidate_id}] Error acquiring lock: {type(e).__name__}: {str(e)}")
+            # Fail-open: allow generation if lock mechanism fails
+            return True
+    
+    def _release_generation_lock(self, candidate_id: str) -> None:
+        """
+        Release distributed lock after generation completes or fails.
+        
+        Should ALWAYS be called in a finally block to ensure cleanup.
+        
+        Args:
+            candidate_id (str): UUID of candidate
+        
+        Notes:
+            - Safe to call even if lock doesn't exist
+            - Safe to call even if lock was acquired by another process
+            - Logs success/failure for debugging
+        
+        Example:
+            >>> service = InterviewOpenAIService()
+            >>> lock_acquired = service._acquire_generation_lock('550e8400...')
+            >>> try:
+            ...     # ... generate questions ...
+            ... finally:
+            ...     service._release_generation_lock('550e8400...')
+        """
+        lock_key = f"interview:lock:{candidate_id}"
+        safe_candidate_id = candidate_id[:8] if candidate_id else 'unknown'
+        
+        try:
+            self.cache_service.cache.delete(lock_key)
+            logger.debug(f"[{safe_candidate_id}] Lock RELEASED (key: {lock_key})")
+            
+        except Exception as e:
+            logger.error(f"[{safe_candidate_id}] Error releasing lock: {type(e).__name__}: {str(e)}")
+            # Non-critical: lock will expire automatically after TTL

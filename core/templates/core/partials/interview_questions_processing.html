@@ -1,0 +1,47 @@
+<!-- 
+Interview Questions Processing State Template
+=============================================
+
+Displayed when questions are currently being generated or another generation is in progress.
+
+Features:
+- Bootstrap 5 spinner animation
+- User-friendly message in Portuguese
+- HTMX polling (checks every 2s if generation finished)
+- Automatically swaps to display template when ready
+
+Context variables:
+- candidato: Candidato object
+- vaga: Vaga object
+- message (optional): Custom message (default: "Gerando perguntas...")
+-->
+
+<div class="alert alert-info d-flex align-items-center" role="alert" id="questions-container">
+    <!-- Spinner icon -->
+    <div class="spinner-border spinner-border-sm me-3" role="status">
+        <span class="visually-hidden">Carregando...</span>
+    </div>
+    
+    <!-- Message -->
+    <div class="flex-grow-1">
+        <strong>{{ message|default:"Gerando perguntas..." }}</strong>
+        <p class="mb-0 small text-muted">
+            Aguarde enquanto nossa IA cria perguntas personalizadas baseadas no perfil do candidato.
+        </p>
+    </div>
+</div>
+
+<!-- 
+HTMX Polling Configuration
+==========================
+Reloads the same endpoint every 2 seconds until generation completes.
+When complete, server returns interview_questions_display.html which replaces this template.
+-->
+<div 
+    hx-post="{% url 'generate_interview_questions_htmx' vaga.id candidato.id %}"
+    hx-trigger="every 2s"
+    hx-target="#questions-container"
+    hx-swap="outerHTML"
+    hx-vals='{"force_regenerate": "false"}'
+>
+</div>
