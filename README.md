@@ -186,9 +186,18 @@ Para usar no Render:
 
 ### Segurança & Compliance
 - **Autenticação Completa** - Login, cadastro, recuperação de senha (django-allauth)
-- **LGPD Compliant** - CVs em bucket privado, acesso via presigned URL
+- **Multi-Tenant Isolation** - Dados isolados por organização (tenant)
+- **Rate Limiting** - Proteção contra DoS em endpoints críticos
+- **LGPD Compliant** - CVs em bucket privado, exclusão de dados sob demanda
+- **PII Masking** - Exportações com dados pessoais mascarados
 - **Logs sem PII** - Dados pessoais nunca são logados
 - **Credenciais Seguras** - Todas via variáveis de ambiente
+
+### LGPD (Lei Geral de Proteção de Dados)
+- **Exclusão de Dados** - Endpoint para exclusão completa (PostgreSQL, Neo4j, S3)
+- **Solicitação de Exclusão** - Auto-serviço para candidatos
+- **Exportação de Dados** - Portabilidade completa do perfil
+- **Auditoria** - Histórico de todas as ações sobre dados pessoais
 
 ---
 
@@ -440,6 +449,10 @@ Documentação organizada:
 | Headers | HSTS, X-Frame-Options DENY, XSS Filter |
 | Storage | S3 bucket privado, acesso via presigned URL (15min TTL) |
 | Logs | LGPD compliant - nunca logam conteúdo de CVs |
+| **Multi-Tenant** | Isolamento de dados por organização em todas as queries |
+| **Rate Limiting** | Proteção contra DoS (10-30 req/min em endpoints críticos) |
+| **PII Masking** | Exportações mascaram email, telefone e nome |
+| **LGPD Endpoints** | Exclusão, solicitação e exportação de dados pessoais |
 
 ---
 
@@ -469,11 +482,14 @@ python manage.py shell
 - [x] ~~Área do Candidato~~
 - [x] ~~Dark Mode em todo o sistema~~
 - [x] ~~Admin customizado~~
+- [x] ~~Multi-tenancy para empresas~~
+- [x] ~~LGPD Compliance (exclusão e exportação de dados)~~
+- [x] ~~Rate Limiting em endpoints críticos~~
+- [x] ~~PII Masking em exportações~~
 - [ ] Autenticação com Google/LinkedIn OAuth
 - [ ] API REST para integrações
 - [ ] Notificações por email (Celery Beat)
 - [ ] Relatórios exportáveis (PDF/Excel)
-- [ ] Multi-tenancy para empresas
 - [ ] Integração com LinkedIn para importar perfis
 
 ---
