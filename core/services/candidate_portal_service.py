@@ -164,8 +164,12 @@ class CandidatePortalService:
         }
 
     @staticmethod
-    def find_similar_candidates(candidato_id, request_id='n/a'):
-        candidato_original = Candidato.objects.get(pk=candidato_id)
+    def find_similar_candidates(candidato_id, request_id='n/a', organization=None):
+        # SECURITY: Filtrar por organization para tenant isolation
+        if organization:
+            candidato_original = Candidato.objects.get(pk=candidato_id, organization=organization)
+        else:
+            candidato_original = Candidato.objects.get(pk=candidato_id)
 
         query = """
         MATCH (c_original:Candidato {uuid: $candidato_uuid})

@@ -174,15 +174,17 @@ class MatchingEngine:
         >>> print(f"Encontrados {len(resultados)} candidatos")
     """
 
-    def __init__(self, score_minimo: float = SCORE_MINIMO):
+    def __init__(self, score_minimo: float = SCORE_MINIMO, organization=None):
         """
         Inicializa o engine.
 
         Args:
             score_minimo: Score mínimo para incluir candidato nos resultados.
                          Default: 40.0
+            organization: Tenant para filtrar vagas (SECURITY: required para multi-tenant)
         """
         self.score_minimo = score_minimo
+        self.organization = organization  # SECURITY: Tenant isolation
         logger.debug(f"MatchingEngine inicializado (versão {VERSAO_ALGORITMO})")
 
     def executar_matching(
@@ -211,7 +213,11 @@ class MatchingEngine:
         logger.info(f"Iniciando matching para vaga_id={vaga_id}")
 
         # 1. Buscar vaga no PostgreSQL
-        vaga = Vaga.objects.get(pk=vaga_id)
+        # SECURITY: Filtrar por organization para tenant isolation
+        if self.organization:
+            vaga = Vaga.objects.get(pk=vaga_id, organization=self.organization)
+        else:
+            vaga = Vaga.objects.get(pk=vaga_id)
         logger.debug(f"Vaga encontrada: {vaga.titulo}")
 
         # 2. Extrair skills da vaga

@@ -560,7 +560,8 @@ def rodar_matching(request, vaga_id):
     vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
     try:
-        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50)
+        # SECURITY: Passar organization para tenant isolation no MatchingEngine
+        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50, organization=user_org)
     except Exception as e:
         logger.exception(
             "Erro no matching (vaga_id=%s, request_id=%s): %s",
@@ -598,7 +599,8 @@ def ranking_candidatos(request, vaga_id):
     """Página de ranking de candidatos para uma vaga."""
     user_org = _get_user_organization(request.user)
     vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
-    resultados = MatchingService.get_ranking_resultados(vaga)
+    # SECURITY: Passar organization para tenant isolation
+    resultados = MatchingService.get_ranking_resultados(vaga, organization=user_org)
 
     return render(request, 'core/ranking_candidatos.html', {
         'vaga': vaga,
@@ -640,8 +642,10 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
         )
 
     # Fetch active interview questions for this candidate
+    # SECURITY: Filter by candidato__organization to ensure tenant isolation
     questions = InterviewQuestion.objects.filter(
         candidato_id=candidato_id,
+        candidato__organization=user_org,
         is_active=True
     ).order_by('-created_at')
 
@@ -705,6 +709,7 @@ def mover_kanban(request):
         candidato_id=candidato_id,
         nova_etapa=nova_etapa,
         usuario=request.user,
+        organization=user_org,  # SECURITY: Passar org para validação dupla no service
     )
 
     if error == 'Etapa inválida':
@@ -813,11 +818,13 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
     service = InterviewOpenAIService()
     try:
         # Call service with candidate_id, vaga_id, and user info for audit
+        # SECURITY: Pass organization for tenant isolation in service layer
         questions = service.get_candidate_questions(
             candidate_id=str(candidate_id),
             vaga_id=str(vaga_id),
             created_by_user=request.user,
-            force_regenerate=force_regenerate
+            force_regenerate=force_regenerate,
+            organization=user_org
         )
         
         logger.info(
@@ -827,8 +834,10 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
         
         # Convert service response to InterviewQuestion objects for template
         # Service returns List[Dict], but template expects queryset/list of InterviewQuestion
+        # SECURITY: Filter by candidato__organization to ensure tenant isolation
         active_questions = InterviewQuestion.objects.filter(
             candidato_id=candidate_id,
+            candidato__organization=user_org,
             is_active=True
         ).order_by('-created_at')
         
@@ -1034,9 +1043,12 @@ def buscar_candidatos_similares(request, candidato_id):
 
     Returns top 10 candidatos mais similares.
     """
+    # SECURITY: Passar organization para tenant isolation
+    user_org = _get_user_organization(request.user)
     candidato_original, candidatos_similares = CandidatePortalService.find_similar_candidates(
         candidato_id=candidato_id,
         request_id=get_request_id(request),
+        organization=user_org,
     )
 
     return render(request, 'core/candidatos/similares.html', {
@@ -1260,7 +1272,12 @@ def historico_acoes(request):
     if tipo:
         acoes = acoes.filter(tipo_acao=tipo)
     if usuario_id:
-        acoes = acoes.filter(usuario_id=usuario_id)
+        # SECURITY: Validar que usuario_id pertence à mesma organization
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        if User.objects.filter(id=usuario_id, profile__organization=user_org).exists():
+            acoes = acoes.filter(usuario_id=usuario_id)
+        # Ignora filtro se usuario não pertence à org (evita IDOR)
 
     paginator = Paginator(acoes, 50)
     page = request.GET.get('page', 1)

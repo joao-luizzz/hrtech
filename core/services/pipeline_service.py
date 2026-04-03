@@ -100,7 +100,7 @@ class PipelineService:
         }
 
     @staticmethod
-    def move_candidate_stage(candidato_id: str, nova_etapa: str, usuario=None):
+    def move_candidate_stage(candidato_id: str, nova_etapa: str, usuario=None, organization=None):
         # Frontend legado envia status de coluna; convertemos para etapa real.
         nova_etapa = PipelineService.KANBAN_TO_ETAPA.get(nova_etapa, nova_etapa)
         etapas_validas = {etapa for etapa, _ in Candidato.EtapaProcesso.choices}
@@ -108,7 +108,11 @@ class PipelineService:
             return None, None, 'Etapa inválida'
 
         try:
-            candidato = Candidato.objects.get(pk=candidato_id)
+            # SECURITY: Filtrar por organization para evitar IDOR
+            if organization:
+                candidato = Candidato.objects.get(pk=candidato_id, organization=organization)
+            else:
+                candidato = Candidato.objects.get(pk=candidato_id)
         except Candidato.DoesNotExist:
             return None, None, 'Candidato não encontrado'
 

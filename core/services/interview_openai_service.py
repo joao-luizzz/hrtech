@@ -170,7 +170,8 @@ class InterviewOpenAIService:
         candidate_id: str,
         vaga_id: str,
         created_by_user: Optional[User] = None,
-        force_regenerate: bool = False
+        force_regenerate: bool = False,
+        organization=None  # SECURITY: Tenant isolation
     ) -> List[Dict]:
         """
         Main entry point for interview question generation with intelligent caching.
@@ -240,7 +241,7 @@ class InterviewOpenAIService:
             # Step 2: Fetch skill gaps from Neo4j
             skill_gaps_data = self._get_skill_gaps(candidate_id, vaga_id)
             skill_gaps = skill_gaps_data.get('gaps', []) if skill_gaps_data else []
-            vaga_context = self._build_vaga_context(vaga_id)
+            vaga_context = self._build_vaga_context(vaga_id, organization=organization)
             
             # Step 3: Generate questions from OpenAI
             questions = self._generate_questions_openai(
@@ -345,7 +346,7 @@ class InterviewOpenAIService:
             logger.error(f"Neo4j error fetching skill gaps: {type(e).__name__}: {str(e)}")
             return {}
 
-    def _build_vaga_context(self, vaga_id: str) -> Dict:
+    def _build_vaga_context(self, vaga_id: str, organization=None) -> Dict:
         """
         Build context information about the job position.
         
@@ -353,6 +354,7 @@ class InterviewOpenAIService:
         
         Args:
             vaga_id (str): UUID of job position
+            organization: Organization for tenant isolation (SECURITY)
         
         Returns:
             Dict with fields:
@@ -365,7 +367,11 @@ class InterviewOpenAIService:
             - Used in prompt construction
         """
         try:
-            vaga = Vaga.objects.get(id=vaga_id)
+            # SECURITY: Filtrar por organization para tenant isolation
+            if organization:
+                vaga = Vaga.objects.get(id=vaga_id, organization=organization)
+            else:
+                vaga = Vaga.objects.get(id=vaga_id)
             return {
                 'titulo': vaga.titulo,
                 'senioridade_minima': vaga.senioridade_minima if hasattr(vaga, 'senioridade_minima') else 'Pleno',
