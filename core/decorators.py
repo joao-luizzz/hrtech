@@ -16,9 +16,68 @@ from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required as django_login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 
 logger = logging.getLogger(__name__)
+
+
+def rate_limit(limit: int = 10, window: int = 60, key_func=None):
+    """
+    Decorator para rate limiting de views.
+    
+    Args:
+        limit: Número máximo de requisições permitidas no período
+        window: Janela de tempo em segundos
+        key_func: Função que retorna a chave de rate limit (default: IP + user_id)
+    
+    Uso:
+        @login_required
+        @rate_limit(limit=5, window=60)  # 5 req/min
+        def minha_view(request):
+            ...
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            from core.services import RateLimitService
+            
+            # Gera chave de rate limit
+            if key_func:
+                rate_key = key_func(request, *args, **kwargs)
+            else:
+                # Default: combina view name + IP + user_id
+                ip = get_client_ip(request)
+                user_id = request.user.id if request.user.is_authenticated else 'anon'
+                rate_key = f"{view_func.__name__}:{ip}:{user_id}"
+            
+            # Verifica rate limit
+            rate_limiter = RateLimitService()
+            result = rate_limiter.check_and_increment(rate_key, limit=limit, window_seconds=window)
+            
+            if not result['allowed']:
+                request_id = get_request_id(request)
+                logger.warning(
+                    "[RateLimit] Blocked request to %s (key=%s, retry_after=%ds, request_id=%s)",
+                    view_func.__name__,
+                    rate_key[:50],  # Trunca para log
+                    result['retry_after'],
+                    request_id,
+                )
+                
+                # Retorna JSON para AJAX/HTMX, HTML para requests normais
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('HX-Request'):
+                    return JsonResponse({
+                        'error': 'Muitas requisições. Tente novamente em alguns segundos.',
+                        'retry_after': result['retry_after'],
+                    }, status=429)
+                
+                return HttpResponseForbidden(
+                    f"Muitas requisições. Tente novamente em {result['retry_after']} segundos."
+                )
+            
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def rh_required(view_func):

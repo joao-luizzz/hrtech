@@ -152,4 +152,11 @@ urlpatterns = [
     path('rh/exportar/candidatos/', views.exportar_candidatos_excel, name='exportar_candidatos'),
     path('rh/exportar/ranking/<int:vaga_id>/', views.exportar_ranking_excel, name='exportar_ranking'),
     path('rh/relatorio/candidato/<str:candidato_id>/', views.relatorio_candidato_print, name='relatorio_candidato'),
+
+    # ==========================================================================
+    # LGPD - DIREITO AO ESQUECIMENTO (Art. 18)
+    # ==========================================================================
+    path('rh/lgpd/excluir/<str:candidato_id>/', views.lgpd_excluir_candidato, name='lgpd_excluir'),
+    path('minha-area/lgpd/solicitar-exclusao/', views.lgpd_solicitar_exclusao, name='lgpd_solicitar_exclusao'),
+    path('minha-area/lgpd/exportar-dados/', views.lgpd_exportar_dados, name='lgpd_exportar_dados'),
 ]

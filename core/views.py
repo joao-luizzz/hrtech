@@ -38,7 +38,7 @@ from core.models import (
 )
 from core.tasks import processar_cv_task
 from core.neo4j_connection import run_query
-from core.decorators import rh_required, get_client_ip, get_request_id, staff_required
+from core.decorators import rh_required, get_client_ip, get_request_id, staff_required, rate_limit
 from core.services import (
     CVUploadService,
     get_s3_service,
@@ -50,8 +50,9 @@ from core.services import (
     SavedFilterService,
     CandidatePortalService,
     InterviewOpenAIService,
+    RateLimitService,
 )
-from core.services.interview_openai_service import APIException as InterviewAPIException
+from core.services.interview_openai_service import APIException as InterviewAPIException, ConcurrentGenerationError
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +61,37 @@ MAX_SKILL_NAME_LENGTH = 100
 
 
 def _user_can_access_candidate(user, candidato):
+    """
+    Verifica se o usuário pode acessar um candidato.
+    
+    Regras de acesso (tenant isolation):
+    - Superuser: acesso global
+    - RH: só candidatos da mesma organization
+    - Candidato: só o próprio perfil
+    """
     if not user.is_authenticated:
         return False
     if user.is_superuser:
         return True
-    if hasattr(user, 'profile') and user.profile.is_rh:
+    
+    # Verifica se é o próprio candidato
+    if getattr(user, 'candidato', None) == candidato:
         return True
-    return getattr(user, 'candidato', None) == candidato
+    
+    # RH só pode ver candidatos da mesma organization
+    if hasattr(user, 'profile') and user.profile.is_rh:
+        user_org = getattr(user.profile, 'organization', None)
+        candidato_org = getattr(candidato, 'organization', None)
+        return user_org is not None and user_org == candidato_org
+    
+    return False
+
+
+def _get_user_organization(user):
+    """Retorna a organization do usuário ou None."""
+    if hasattr(user, 'profile'):
+        return getattr(user.profile, 'organization', None)
+    return None
 
 
 def _parse_skills_payload(raw_payload, label):
@@ -188,7 +213,9 @@ def processar_upload(request):
         ip_address=ip_address
     )
 
-    logger.info(f"CV recebido para candidato {candidato.id}")
+    # SECURITY: Mascarar UUID em logs (LGPD)
+    safe_id = str(candidato.id)[:8] + "..."
+    logger.info(f"CV recebido para candidato {safe_id}")
 
     # Dispara task Celery
     processar_cv_task.delay(str(candidato.id))
@@ -208,6 +235,8 @@ def processar_upload(request):
 @require_GET
 def status_cv_htmx(request, candidato_id: str):
     """Retorna status atual do processamento (polling HTMX)."""
+    # Busca com filtro de organization para tenant isolation
+    # Candidatos públicos (sem autenticação) usam token de status para validação
     candidato = get_object_or_404(Candidato, pk=candidato_id)
     status_token = request.headers.get('X-Status-Token', '')
 
@@ -249,7 +278,9 @@ def dashboard_rh(request):
     from datetime import timedelta
     import json
 
-    vagas = Vaga.objects.all().order_by('-created_at')
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    vagas = Vaga.objects.filter(organization=user_org).order_by('-created_at')
     ghost_job_minutes = getattr(settings, 'CV_GHOST_JOB_MINUTES', 30)
     ghost_job_cutoff = timezone.now() - timedelta(minutes=ghost_job_minutes)
     processing_statuses = [
@@ -258,33 +289,39 @@ def dashboard_rh(request):
     ]
 
     jobs_fantasmas_qs = Candidato.objects.filter(
+        organization=user_org,
         status_cv__in=processing_statuses,
         updated_at__lt=ghost_job_cutoff,
     ).order_by('updated_at')
 
     stats = {
-        'vagas_abertas': Vaga.objects.filter(status='aberta').count(),
-        'candidatos_total': Candidato.objects.count(),
+        'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
+        'candidatos_total': Candidato.objects.filter(organization=user_org).count(),
         'candidatos_processados': Candidato.objects.filter(
+            organization=user_org,
             status_cv=Candidato.StatusCV.CONCLUIDO
         ).count(),
         'candidatos_com_erro': Candidato.objects.filter(
+            organization=user_org,
             status_cv=Candidato.StatusCV.ERRO
         ).count(),
         'jobs_em_processamento': Candidato.objects.filter(
+            organization=user_org,
             status_cv__in=processing_statuses
         ).count(),
         'jobs_fantasmas': jobs_fantasmas_qs.count(),
-        'matches_realizados': AuditoriaMatch.objects.count(),
+        'matches_realizados': AuditoriaMatch.objects.filter(
+            vaga__organization=user_org
+        ).count(),
     }
 
     # Dados para gráficos - Candidatos por Etapa do Processo
-    etapas_data = Candidato.objects.values('etapa_processo').annotate(count=Count('id')).order_by('etapa_processo')
+    etapas_data = Candidato.objects.filter(organization=user_org).values('etapa_processo').annotate(count=Count('id')).order_by('etapa_processo')
     etapas_labels = [dict(Candidato.EtapaProcesso.choices).get(item['etapa_processo'], item['etapa_processo']) for item in etapas_data]
     etapas_values = [item['count'] for item in etapas_data]
 
     # Dados para gráficos - Candidatos por Senioridade
-    senioridade_data = Candidato.objects.values('senioridade').annotate(count=Count('id')).order_by('senioridade')
+    senioridade_data = Candidato.objects.filter(organization=user_org).values('senioridade').annotate(count=Count('id')).order_by('senioridade')
     senioridade_labels = [dict(Candidato.Senioridade.choices).get(item['senioridade'], item['senioridade']) for item in senioridade_data]
     senioridade_values = [item['count'] for item in senioridade_data]
 
@@ -299,7 +336,7 @@ def dashboard_rh(request):
         else:
             data_fim = hoje
 
-        count = Candidato.objects.filter(created_at__gte=data_inicio, created_at__lt=data_fim).count()
+        count = Candidato.objects.filter(organization=user_org, created_at__gte=data_inicio, created_at__lt=data_fim).count()
         meses_labels.append(data_inicio.strftime('%B'))
         meses_values.append(count)
 
@@ -326,7 +363,9 @@ def dashboard_rh(request):
 @require_GET
 def lista_vagas(request):
     """Lista todas as vagas com filtros."""
-    vagas = Vaga.objects.all().order_by('-created_at')
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    vagas = Vaga.objects.filter(organization=user_org).order_by('-created_at')
 
     # Filtros
     status = request.GET.get('status')
@@ -356,6 +395,9 @@ def lista_vagas(request):
 @require_http_methods(["GET", "POST"])
 def criar_vaga(request):
     """Cria uma nova vaga."""
+    # SECURITY: Obter organization do usuário para atribuir à vaga
+    user_org = _get_user_organization(request.user)
+    
     if request.method == 'POST':
         titulo = request.POST.get('titulo', '').strip()
         descricao = request.POST.get('descricao', '').strip()
@@ -380,6 +422,8 @@ def criar_vaga(request):
             errors.append('Título é obrigatório')
         if not area:
             errors.append('Área é obrigatória')
+        if not user_org:
+            errors.append('Usuário não pertence a nenhuma organização')
         errors.extend(errors_obrigatorias)
         errors.extend(errors_desejaveis)
 
@@ -400,6 +444,7 @@ def criar_vaga(request):
             skills_obrigatorias=parsed_obrigatorias,
             skills_desejaveis=parsed_desejaveis,
             criado_por=request.user,
+            organization=user_org,  # SECURITY: Atribuir organization
         )
 
         # Registra ação
@@ -424,7 +469,8 @@ def criar_vaga(request):
 @require_http_methods(["GET", "POST"])
 def editar_vaga(request, vaga_id):
     """Edita uma vaga existente."""
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
+    user_org = _get_user_organization(request.user)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
     if request.method == 'POST':
         vaga.titulo = request.POST.get('titulo', '').strip()
@@ -483,7 +529,8 @@ def editar_vaga(request, vaga_id):
 @csrf_protect
 def excluir_vaga(request, vaga_id):
     """Exclui uma vaga."""
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
+    user_org = _get_user_organization(request.user)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
     titulo = vaga.titulo
 
     registrar_acao(
@@ -506,12 +553,15 @@ def excluir_vaga(request, vaga_id):
 @rh_required
 @require_POST
 @csrf_protect
+@rate_limit(limit=10, window=60)  # SECURITY: 10 matchings por minuto (operação cara)
 def rodar_matching(request, vaga_id):
     """Executa matching para uma vaga específica."""
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
+    user_org = _get_user_organization(request.user)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
     try:
-        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50)
+        # SECURITY: Passar organization para tenant isolation no MatchingEngine
+        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50, organization=user_org)
     except Exception as e:
         logger.exception(
             "Erro no matching (vaga_id=%s, request_id=%s): %s",
@@ -547,8 +597,10 @@ def rodar_matching(request, vaga_id):
 @require_GET
 def ranking_candidatos(request, vaga_id):
     """Página de ranking de candidatos para uma vaga."""
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
-    resultados = MatchingService.get_ranking_resultados(vaga)
+    user_org = _get_user_organization(request.user)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
+    # SECURITY: Passar organization para tenant isolation
+    resultados = MatchingService.get_ranking_resultados(vaga, organization=user_org)
 
     return render(request, 'core/ranking_candidatos.html', {
         'vaga': vaga,
@@ -562,8 +614,9 @@ def ranking_candidatos(request, vaga_id):
 @require_GET
 def detalhe_candidato_match(request, vaga_id, candidato_id):
     """Detalhes do match de um candidato."""
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
+    user_org = _get_user_organization(request.user)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
 
     auditoria = MatchingService.get_auditoria(vaga, candidato)
 
@@ -589,8 +642,10 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
         )
 
     # Fetch active interview questions for this candidate
+    # SECURITY: Filter by candidato__organization to ensure tenant isolation
     questions = InterviewQuestion.objects.filter(
         candidato_id=candidato_id,
+        candidato__organization=user_org,
         is_active=True
     ).order_by('-created_at')
 
@@ -623,10 +678,12 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
 @require_GET
 def pipeline_kanban(request, vaga_id=None):
     """Pipeline Kanban para gerenciar candidatos."""
+    user_org = _get_user_organization(request.user)
     if vaga_id:
-        get_object_or_404(Vaga, pk=vaga_id)
+        get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
-    context = PipelineService.build_pipeline_data(vaga_id=vaga_id)
+    # SECURITY: Passar organization para tenant isolation
+    context = PipelineService.build_pipeline_data(vaga_id=vaga_id, organization=user_org)
     return render(request, 'core/pipeline_kanban.html', context)
 
 
@@ -642,10 +699,17 @@ def mover_kanban(request):
     if not candidato_id or not nova_etapa:
         return JsonResponse({'error': 'Parâmetros inválidos'}, status=400)
 
+    # SECURITY: Verificar tenant isolation antes de mover
+    user_org = _get_user_organization(request.user)
+    candidato = Candidato.objects.filter(pk=candidato_id, organization=user_org).first()
+    if not candidato:
+        return JsonResponse({'error': 'Candidato não encontrado'}, status=404)
+
     candidato, etapa_anterior, error = PipelineService.move_candidate_stage(
         candidato_id=candidato_id,
         nova_etapa=nova_etapa,
         usuario=request.user,
+        organization=user_org,  # SECURITY: Passar org para validação dupla no service
     )
 
     if error == 'Etapa inválida':
@@ -653,7 +717,8 @@ def mover_kanban(request):
     if error == 'Candidato não encontrado':
         return JsonResponse({'error': error}, status=404)
 
-    logger.info(f"Candidato {candidato_id} movido de {etapa_anterior} para {nova_etapa}")
+    # SECURITY: Não logar UUID completo do candidato (LGPD)
+    logger.info(f"Candidato movido de {etapa_anterior} para {nova_etapa} por user_id={request.user.id}")
 
     return JsonResponse({'success': True, 'nova_etapa': nova_etapa})
 
@@ -674,13 +739,16 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
     
     Workflow:
     1. Verify user is staff (decorator)
-    2. Fetch candidate object
-    3. Extract force_regenerate parameter
-    4. Call InterviewOpenAIService.get_candidate_questions()
-    5. Return HTML fragment (success or error template)
+    2. Check rate limit (90s cooldown per candidate/user pair)
+    3. Fetch candidate and vaga objects
+    4. Extract force_regenerate parameter
+    5. Call InterviewOpenAIService.get_candidate_questions()
+    6. Return HTML fragment (success, error, or processing template)
     
     Response:
     - Success (200): interview_questions_display.html with 3 questions
+    - Rate limited (200): interview_questions_error.html with cooldown message
+    - Concurrent generation (200): interview_questions_processing.html
     - Error (200): interview_questions_error.html with error message
     
     Args:
@@ -689,11 +757,12 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
         candidate_id (str): UUID of the candidate
     
     Returns:
-        HttpResponse: HTML fragment (success or error template)
+        HttpResponse: HTML fragment (success, error, or processing template)
     """
-    # Get candidate and vaga objects (404 if not found)
-    candidato = get_object_or_404(Candidato, pk=candidate_id)
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
+    # Get candidate and vaga objects with tenant isolation (404 if not found or wrong org)
+    user_org = _get_user_organization(request.user)
+    candidato = get_object_or_404(Candidato, pk=candidate_id, organization=user_org)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
     
     # Verify user can access this candidate
     if not _user_can_access_candidate(request.user, candidato):
@@ -708,15 +777,54 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
     
     safe_candidate_id = str(candidate_id)[:8]
     
-    # Call the service layer
+    # =========================================================================
+    # RATE LIMITING CHECK (90s cooldown between regenerations)
+    # =========================================================================
+    # Only apply rate limit if NOT force regenerate (first generation is always allowed)
+    if force_regenerate:
+        # Build unique rate limit key: interview:regen:{candidate_id}:{user_id}
+        rate_key = f"interview:regen:{candidate_id}:{request.user.id}"
+        
+        # Check and increment rate limit
+        rate_limiter = RateLimitService()
+        rate_check = rate_limiter.check_and_increment(
+            key=rate_key,
+            limit=1,  # Only 1 regeneration allowed
+            window_seconds=90  # 90 second cooldown
+        )
+        
+        if not rate_check['allowed']:
+            retry_after = rate_check['retry_after']
+            logger.info(
+                f"[Interview] Rate limited: {safe_candidate_id}... "
+                f"by user {request.user.username} (retry in {retry_after}s)"
+            )
+            context = {
+                'error_message': f'Aguarde {retry_after} segundos antes de regerar as perguntas.',
+                'candidato': candidato,
+                'vaga': vaga,
+                'retry_after': retry_after,
+            }
+            return render(request, 'core/partials/interview_questions_error.html', context)
+        
+        logger.debug(
+            f"[Interview] Rate limit OK for {safe_candidate_id}... "
+            f"({rate_check['remaining']} regens remaining in window)"
+        )
+    
+    # =========================================================================
+    # CALL SERVICE LAYER
+    # =========================================================================
     service = InterviewOpenAIService()
     try:
         # Call service with candidate_id, vaga_id, and user info for audit
+        # SECURITY: Pass organization for tenant isolation in service layer
         questions = service.get_candidate_questions(
             candidate_id=str(candidate_id),
             vaga_id=str(vaga_id),
             created_by_user=request.user,
-            force_regenerate=force_regenerate
+            force_regenerate=force_regenerate,
+            organization=user_org
         )
         
         logger.info(
@@ -726,16 +834,32 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
         
         # Convert service response to InterviewQuestion objects for template
         # Service returns List[Dict], but template expects queryset/list of InterviewQuestion
+        # SECURITY: Filter by candidato__organization to ensure tenant isolation
         active_questions = InterviewQuestion.objects.filter(
             candidato_id=candidate_id,
+            candidato__organization=user_org,
             is_active=True
         ).order_by('-created_at')
         
         context = {
             'candidato': candidato,
+            'vaga': vaga,
             'questions': active_questions,
         }
         return render(request, 'core/partials/interview_questions_display.html', context)
+    
+    except ConcurrentGenerationError as e:
+        # Another generation is in progress - show processing state
+        logger.info(
+            f"[Interview] Concurrent generation detected for {safe_candidate_id}... "
+            f"by user {request.user.username}"
+        )
+        context = {
+            'candidato': candidato,
+            'vaga': vaga,
+            'message': 'Geração em andamento. Aguarde...',
+        }
+        return render(request, 'core/partials/interview_questions_processing.html', context)
     
     except TimeoutError as e:
         logger.warning(
@@ -743,8 +867,9 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
             f"error={str(e)}"
         )
         context = {
-            'error_message': 'Generation took too long. Please try again.',
+            'error_message': 'A geração demorou muito. Por favor, tente novamente.',
             'candidato': candidato,
+            'vaga': vaga,
         }
         return render(request, 'core/partials/interview_questions_error.html', context)
     
@@ -778,11 +903,15 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
 @login_required
 @rh_required
 @require_GET
+@rate_limit(limit=30, window=60)  # SECURITY: 30 buscas por minuto
 def buscar_candidatos(request):
     """Busca e filtros de candidatos com filtros avançados."""
+    # SECURITY: Passar organization para filtro de tenant isolation
+    user_org = _get_user_organization(request.user)
     candidatos = CandidateSearchService.apply_filters(
         query_params=request.GET,
         request_id=get_request_id(request),
+        organization=user_org,
     )
 
     # Paginação
@@ -914,9 +1043,12 @@ def buscar_candidatos_similares(request, candidato_id):
 
     Returns top 10 candidatos mais similares.
     """
+    # SECURITY: Passar organization para tenant isolation
+    user_org = _get_user_organization(request.user)
     candidato_original, candidatos_similares = CandidatePortalService.find_similar_candidates(
         candidato_id=candidato_id,
         request_id=get_request_id(request),
+        organization=user_org,
     )
 
     return render(request, 'core/candidatos/similares.html', {
@@ -933,7 +1065,12 @@ def buscar_candidatos_similares(request, candidato_id):
 @require_GET
 def dashboard_candidato(request, candidato_id):
     """Dashboard do candidato individual."""
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
+    # Para RH: filtrar por organization. Para candidato: permite acesso ao próprio.
+    user_org = _get_user_organization(request.user)
+    if hasattr(request.user, 'profile') and request.user.profile.is_rh:
+        candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+    else:
+        candidato = get_object_or_404(Candidato, pk=candidato_id)
 
     if not _user_can_access_candidate(request.user, candidato):
         return HttpResponseForbidden('Sem permissão para visualizar este candidato.')
@@ -950,7 +1087,12 @@ def dashboard_candidato(request, candidato_id):
 @require_GET
 def habilidades_candidato_htmx(request, candidato_id):
     """Retorna partial com habilidades extraídas."""
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
+    # Para RH: filtrar por organization. Para candidato: permite acesso ao próprio.
+    user_org = _get_user_organization(request.user)
+    if hasattr(request.user, 'profile') and request.user.profile.is_rh:
+        candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+    else:
+        candidato = get_object_or_404(Candidato, pk=candidato_id)
 
     if not _user_can_access_candidate(request.user, candidato):
         return HttpResponseForbidden('Sem permissão para visualizar este candidato.')
@@ -988,20 +1130,28 @@ def habilidades_candidato_htmx(request, candidato_id):
 @require_GET
 def dashboard_geral(request):
     """Dashboard geral com estatísticas."""
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    
     senioridade_data = list(
-        Candidato.objects.values('senioridade')
+        Candidato.objects.filter(organization=user_org).values('senioridade')
         .annotate(total=Count('id'))
         .order_by('senioridade')
     )
 
     area_data = []
     try:
+        # SECURITY: Filtrar por organization no Neo4j
+        # Nota: Neo4j precisa ter organization como propriedade do nó Candidato
         query = """
         MATCH (c:Candidato)-[:ATUA_EM]->(a:Area)
+        WHERE c.organization_id = $org_id
         RETURN a.nome as area, count(c) as total
         ORDER BY total DESC
         """
-        area_data = run_query(query, {})
+        org_id = str(user_org.id) if user_org else None
+        if org_id:
+            area_data = run_query(query, {'org_id': org_id})
     except Exception as e:
         logger.warning(
             "Erro ao buscar areas no Neo4j (request_id=%s): %s",
@@ -1010,24 +1160,25 @@ def dashboard_geral(request):
         )
 
     vagas_status = list(
-        Vaga.objects.values('status')
+        Vaga.objects.filter(organization=user_org).values('status')
         .annotate(total=Count('id'))
         .order_by('status')
     )
 
     score_por_vaga = list(
-        AuditoriaMatch.objects.values('vaga__titulo')
+        AuditoriaMatch.objects.filter(vaga__organization=user_org).values('vaga__titulo')
         .annotate(score_medio=Avg('score'))
         .order_by('-score_medio')[:10]
     )
 
     stats = {
-        'total_candidatos': Candidato.objects.count(),
-        'total_vagas': Vaga.objects.count(),
-        'vagas_abertas': Vaga.objects.filter(status='aberta').count(),
-        'matches_total': AuditoriaMatch.objects.count(),
-        'score_medio_geral': AuditoriaMatch.objects.aggregate(avg=Avg('score'))['avg'] or 0,
+        'total_candidatos': Candidato.objects.filter(organization=user_org).count(),
+        'total_vagas': Vaga.objects.filter(organization=user_org).count(),
+        'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
+        'matches_total': AuditoriaMatch.objects.filter(vaga__organization=user_org).count(),
+        'score_medio_geral': AuditoriaMatch.objects.filter(vaga__organization=user_org).aggregate(avg=Avg('score'))['avg'] or 0,
         'candidatos_processados': Candidato.objects.filter(
+            organization=user_org,
             status_cv=Candidato.StatusCV.CONCLUIDO
         ).count(),
     }
@@ -1051,19 +1202,26 @@ def dashboard_geral(request):
 @require_GET
 def api_stats(request):
     """API JSON para Chart.js."""
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    
     senioridade = list(
-        Candidato.objects.values('senioridade')
+        Candidato.objects.filter(organization=user_org).values('senioridade')
         .annotate(total=Count('id'))
     )
 
     area_data = []
     try:
+        # SECURITY: Filtrar por organization no Neo4j
         query = """
         MATCH (c:Candidato)-[:ATUA_EM]->(a:Area)
+        WHERE c.organization_id = $org_id
         RETURN a.nome as area, count(c) as total
         ORDER BY total DESC
         """
-        area_data = run_query(query, {})
+        org_id = str(user_org.id) if user_org else None
+        if org_id:
+            area_data = run_query(query, {'org_id': org_id})
     except Exception as e:
         logger.warning(
             "Erro ao buscar areas no Neo4j para api_stats (request_id=%s): %s",
@@ -1072,7 +1230,7 @@ def api_stats(request):
         )
 
     score_vagas = list(
-        AuditoriaMatch.objects.values('vaga__titulo')
+        AuditoriaMatch.objects.filter(vaga__organization=user_org).values('vaga__titulo')
         .annotate(score_medio=Avg('score'))
         .order_by('-score_medio')[:10]
     )
@@ -1099,7 +1257,11 @@ def api_stats(request):
 @require_GET
 def historico_acoes(request):
     """Lista histórico de ações do sistema."""
-    acoes = HistoricoAcao.objects.all().select_related(
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
+    acoes = HistoricoAcao.objects.filter(
+        Q(vaga__organization=user_org) | Q(candidato__organization=user_org) | Q(vaga__isnull=True, candidato__isnull=True, usuario__profile__organization=user_org)
+    ).select_related(
         'usuario', 'candidato', 'vaga'
     ).order_by('-created_at')
 
@@ -1110,7 +1272,12 @@ def historico_acoes(request):
     if tipo:
         acoes = acoes.filter(tipo_acao=tipo)
     if usuario_id:
-        acoes = acoes.filter(usuario_id=usuario_id)
+        # SECURITY: Validar que usuario_id pertence à mesma organization
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        if User.objects.filter(id=usuario_id, profile__organization=user_org).exists():
+            acoes = acoes.filter(usuario_id=usuario_id)
+        # Ignora filtro se usuario não pertence à org (evita IDOR)
 
     paginator = Paginator(acoes, 50)
     page = request.GET.get('page', 1)
@@ -1141,8 +1308,13 @@ def meu_perfil(request):
 @rh_required
 @require_POST
 @csrf_protect
+@rate_limit(limit=20, window=60)  # SECURITY: 20 comentários por minuto
 def adicionar_comentario(request, candidato_id):
     """Adiciona um comentário a um candidato."""
+    # SECURITY: Verificar tenant isolation
+    user_org = _get_user_organization(request.user)
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+    
     texto = request.POST.get('texto', '').strip()
     tipo = request.POST.get('tipo', 'nota')
     vaga_id = request.POST.get('vaga_id')
@@ -1150,7 +1322,7 @@ def adicionar_comentario(request, candidato_id):
 
     try:
         comentario = EngagementService.create_comment(
-            candidato_id=candidato_id,
+            candidato_id=str(candidato.id),
             autor=request.user,
             texto=texto,
             tipo=tipo,
@@ -1160,7 +1332,8 @@ def adicionar_comentario(request, candidato_id):
     except ValueError as exc:
         return JsonResponse({'error': str(exc)}, status=400)
 
-    logger.info("Comentario adicionado ao candidato %s por usuario_id=%s", candidato_id, request.user.id)
+    # SECURITY: Não logar UUID completo do candidato (LGPD)
+    logger.info("Comentario adicionado por usuario_id=%s", request.user.id)
 
     # Retorna o HTML do comentário para HTMX
     if request.headers.get('HX-Request'):
@@ -1207,11 +1380,16 @@ def excluir_comentario(request, comentario_id):
 @rh_required
 @require_POST
 @csrf_protect
+@rate_limit(limit=30, window=60)  # SECURITY: 30 toggles por minuto
 def toggle_favorito(request, candidato_id):
     """Adiciona ou remove candidato dos favoritos."""
+    # SECURITY: Verificar tenant isolation
+    user_org = _get_user_organization(request.user)
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+    
     vaga_id = request.POST.get('vaga_id')
     is_favorito = EngagementService.toggle_favorite(
-        candidato_id=candidato_id,
+        candidato_id=str(candidato.id),
         user=request.user,
         vaga_id=vaga_id,
     )
@@ -1323,15 +1501,18 @@ def exportar_candidatos_excel(request):
 
     formato = request.GET.get('formato', '').strip().lower()
 
+    # SECURITY: Filtrar por organization para tenant isolation
+    user_org = _get_user_organization(request.user)
     candidatos = CandidateSearchService.apply_filters(
         query_params=request.GET,
         request_id=get_request_id(request),
+        organization=user_org,
     )
 
     if formato == 'csv':
         filename = f"candidatos_{timezone.now().strftime('%Y%m%d_%H%M')}.csv"
         response = StreamingHttpResponse(
-            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200)),
+            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200), mask_pii=True),
             content_type='text/csv; charset=utf-8',
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1347,7 +1528,7 @@ def exportar_candidatos_excel(request):
         messages.error(request, 'Módulo openpyxl não instalado. Execute: pip install openpyxl')
         return redirect('core:buscar_candidatos')
 
-    file_content, filename = ExportService.build_candidatos_workbook(candidatos)
+    file_content, filename = ExportService.build_candidatos_workbook(candidatos, mask_pii=True)
 
     response = HttpResponse(
         file_content,
@@ -1375,14 +1556,16 @@ def exportar_ranking_excel(request, vaga_id):
         messages.error(request, 'Módulo openpyxl não instalado.')
         return redirect('core:ranking_candidatos', vaga_id=vaga_id)
 
-    vaga = get_object_or_404(Vaga, pk=vaga_id)
+    user_org = _get_user_organization(request.user)
+    vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
     # Busca matches
     matches = AuditoriaMatch.objects.filter(
         vaga=vaga
     ).select_related('candidato').order_by('-score')
 
-    file_content, filename = ExportService.build_ranking_workbook(vaga, matches)
+    # SECURITY: Mascarar PII nos exports (LGPD compliance)
+    file_content, filename = ExportService.build_ranking_workbook(vaga, matches, mask_pii=True)
     response = HttpResponse(
         file_content,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1399,10 +1582,257 @@ def relatorio_candidato_print(request, candidato_id):
     """
     Página de relatório do candidato para impressão/PDF.
     """
-    candidato = get_object_or_404(Candidato, pk=candidato_id)
+    user_org = _get_user_organization(request.user)
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
 
     context = CandidatePortalService.build_relatorio_context(
         candidato=candidato,
         request_id=get_request_id(request),
     )
     return render(request, 'core/relatorios/candidato_print.html', context)
+
+
+# =============================================================================
+# LGPD - DIREITO AO ESQUECIMENTO (Art. 18)
+# =============================================================================
+
+@login_required
+@rh_required
+@require_POST
+@csrf_protect
+@rate_limit(limit=5, window=300)  # SECURITY: 5 exclusões por 5 minutos (operação destrutiva)
+def lgpd_excluir_candidato(request, candidato_id):
+    """
+    Exclui todos os dados de um candidato (LGPD Art. 18 - Direito ao Esquecimento).
+    
+    SECURITY:
+    - Requer autenticação RH
+    - Verifica tenant isolation (organization)
+    - Rate limited para prevenir abuso
+    - Registra auditoria antes da exclusão
+    - Remove dados de: PostgreSQL, Neo4j, S3
+    
+    Returns:
+        JsonResponse com status da exclusão
+    """
+    from core.services import get_s3_service
+    
+    user_org = _get_user_organization(request.user)
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+    
+    # Captura dados para auditoria ANTES da exclusão
+    audit_data = {
+        'candidato_id': str(candidato.id)[:8] + '...',  # Mascarado
+        'email_hash': hash(candidato.email) % 10000,  # Hash para verificação sem expor email
+        'motivo': request.POST.get('motivo', 'Solicitação LGPD'),
+        'solicitante_id': request.user.id,
+    }
+    
+    errors = []
+    
+    # 1. Excluir do Neo4j (grafo de habilidades)
+    try:
+        from core.neo4j_connection import run_query
+        delete_query = """
+        MATCH (c:Candidato {uuid: $uuid})
+        DETACH DELETE c
+        """
+        run_query(delete_query, {'uuid': str(candidato.id)})
+        logger.info("LGPD: Neo4j data deleted for candidato (audit: %s)", audit_data)
+    except Exception as e:
+        errors.append(f"Neo4j: {type(e).__name__}")
+        logger.error("LGPD: Failed to delete Neo4j data: %s", type(e).__name__)
+    
+    # 2. Excluir CV do S3
+    if candidato.cv_s3_key:
+        try:
+            s3 = get_s3_service()
+            s3.delete_file(candidato.cv_s3_key)
+            logger.info("LGPD: S3 file deleted for candidato (audit: %s)", audit_data)
+        except Exception as e:
+            errors.append(f"S3: {type(e).__name__}")
+            logger.error("LGPD: Failed to delete S3 file: %s", type(e).__name__)
+    
+    # 3. Excluir registros relacionados no PostgreSQL
+    try:
+        # Comentários
+        Comentario.objects.filter(candidato=candidato).delete()
+        # Favoritos
+        Favorito.objects.filter(candidato=candidato).delete()
+        # Auditorias de match
+        AuditoriaMatch.objects.filter(candidato=candidato).delete()
+        # Interview questions
+        InterviewQuestion.objects.filter(candidate_id=str(candidato.id)).delete()
+        
+        logger.info("LGPD: Related records deleted for candidato (audit: %s)", audit_data)
+    except Exception as e:
+        errors.append(f"Related records: {type(e).__name__}")
+        logger.error("LGPD: Failed to delete related records: %s", type(e).__name__)
+    
+    # 4. Registrar ação de exclusão LGPD no histórico (antes de deletar candidato)
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_DELETADO,
+        detalhes={
+            'lgpd_request': True,
+            'audit': audit_data,
+            'errors': errors if errors else None,
+        },
+        ip_address=get_client_ip(request)
+    )
+    
+    # 5. Excluir o candidato do PostgreSQL
+    try:
+        candidato.delete()
+        logger.info("LGPD: Candidato deleted successfully (audit: %s)", audit_data)
+    except Exception as e:
+        errors.append(f"Candidato: {type(e).__name__}")
+        logger.error("LGPD: Failed to delete candidato: %s", type(e).__name__)
+        return JsonResponse({
+            'success': False,
+            'error': 'Falha ao excluir candidato. Contate o suporte.',
+            'partial_errors': errors,
+        }, status=500)
+    
+    if errors:
+        return JsonResponse({
+            'success': True,
+            'warning': 'Candidato excluído com alguns erros parciais.',
+            'partial_errors': errors,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Dados do candidato excluídos com sucesso (LGPD Art. 18).',
+    })
+
+
+@login_required
+@require_POST
+@csrf_protect
+@rate_limit(limit=3, window=3600)  # SECURITY: 3 solicitações por hora
+def lgpd_solicitar_exclusao(request):
+    """
+    Permite que o próprio candidato solicite exclusão de seus dados.
+    
+    LGPD Art. 18 - Direito do titular solicitar exclusão.
+    
+    Fluxo:
+    1. Candidato logado solicita exclusão
+    2. Sistema verifica que é o próprio candidato
+    3. Marca candidato para exclusão (não exclui imediatamente)
+    4. RH pode confirmar ou contestar em 72h
+    5. Se não contestado, exclusão automática
+    """
+    candidato = getattr(request.user, 'candidato', None)
+    
+    if not candidato:
+        return JsonResponse({
+            'success': False,
+            'error': 'Você não possui um perfil de candidato vinculado.',
+        }, status=400)
+    
+    motivo = request.POST.get('motivo', '').strip()
+    if not motivo:
+        return JsonResponse({
+            'success': False,
+            'error': 'Por favor, informe o motivo da solicitação.',
+        }, status=400)
+    
+    # Marca candidato como pendente de exclusão
+    candidato.lgpd_exclusao_solicitada = True
+    candidato.lgpd_exclusao_motivo = motivo[:500]  # Limita tamanho
+    candidato.lgpd_exclusao_data = timezone.now()
+    candidato.save(update_fields=['lgpd_exclusao_solicitada', 'lgpd_exclusao_motivo', 'lgpd_exclusao_data'])
+    
+    # Registra solicitação no histórico
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_SOLICITACAO,
+        candidato=candidato,
+        detalhes={
+            'motivo': motivo[:100],  # Resumido no log
+            'tipo': 'exclusao',
+        },
+        ip_address=get_client_ip(request)
+    )
+    
+    logger.info(
+        "LGPD: Exclusion request from candidato (user_id=%s)",
+        request.user.id,
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Sua solicitação foi registrada. Seus dados serão excluídos em até 72 horas, conforme LGPD.',
+    })
+
+
+@login_required
+@require_GET
+def lgpd_exportar_dados(request):
+    """
+    Exporta todos os dados do candidato (LGPD Art. 18 - Direito de Portabilidade).
+    
+    Retorna JSON com todos os dados pessoais do candidato.
+    """
+    candidato = getattr(request.user, 'candidato', None)
+    
+    if not candidato:
+        return JsonResponse({
+            'success': False,
+            'error': 'Você não possui um perfil de candidato vinculado.',
+        }, status=400)
+    
+    # Busca habilidades do Neo4j
+    habilidades = []
+    try:
+        query = """
+        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
+        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos
+        ORDER BY r.nivel DESC
+        """
+        habilidades = run_query(query, {'uuid': str(candidato.id)})
+    except Exception:
+        pass
+    
+    # Monta export de dados
+    dados = {
+        'meta': {
+            'exportado_em': timezone.now().isoformat(),
+            'formato': 'LGPD Art. 18 - Portabilidade',
+        },
+        'dados_pessoais': {
+            'nome': candidato.nome,
+            'email': candidato.email,
+            'telefone': candidato.telefone,
+            'senioridade': candidato.get_senioridade_display(),
+            'anos_experiencia': candidato.anos_experiencia,
+            'disponivel': candidato.disponivel,
+            'created_at': candidato.created_at.isoformat(),
+        },
+        'habilidades': [
+            {
+                'nome': h['nome'],
+                'nivel': h['nivel'],
+                'anos': h.get('anos', 0),
+            }
+            for h in habilidades
+        ],
+        'historico_processo': {
+            'etapa_atual': candidato.get_etapa_processo_display(),
+            'status_cv': candidato.get_status_cv_display(),
+        },
+    }
+    
+    # Registra exportação
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_EXPORT,
+        candidato=candidato,
+        ip_address=get_client_ip(request)
+    )
+    
+    response = JsonResponse(dados, json_dumps_params={'indent': 2, 'ensure_ascii': False})
+    response['Content-Disposition'] = f'attachment; filename="meus_dados_lgpd_{timezone.now().strftime("%Y%m%d")}.json"'
+    return response

@@ -26,8 +26,21 @@ class CandidateSearchService:
     MAX_SKILL_TERM_LENGTH = 80
 
     @staticmethod
-    def apply_filters(query_params: dict, request_id: str = 'n/a'):
-        candidatos = Candidato.objects.all()
+    def apply_filters(query_params: dict, request_id: str = 'n/a', organization=None):
+        """
+        Aplica filtros na busca de candidatos.
+        
+        SECURITY: organization é obrigatório para tenant isolation.
+        """
+        if organization is None:
+            logger.error(
+                "CandidateSearchService.apply_filters called without organization (request_id=%s). "
+                "Returning empty queryset for security.",
+                request_id,
+            )
+            return Candidato.objects.none()
+        
+        candidatos = Candidato.objects.filter(organization=organization)
 
         # Filtros básicos
         nome = query_params.get('nome')

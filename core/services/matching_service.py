@@ -22,8 +22,9 @@ class MatchingService:
     """Service layer para fluxos de matching do RH."""
 
     @staticmethod
-    def run_matching(vaga_id: int, limite: int = 50):
-        engine = MatchingEngine()
+    def run_matching(vaga_id: int, limite: int = 50, organization=None):
+        # SECURITY: Passar organization para tenant isolation
+        engine = MatchingEngine(organization=organization)
         return engine.executar_matching(
             vaga_id=vaga_id,
             salvar_auditoria=True,
@@ -36,10 +37,12 @@ class MatchingService:
         return resultados_dict, len(resultados_dict)
 
     @staticmethod
-    def get_ranking_resultados(vaga):
-        auditorias = AuditoriaMatch.objects.filter(
-            vaga=vaga
-        ).select_related('candidato').order_by('-score')[:50]
+    def get_ranking_resultados(vaga, organization=None):
+        # SECURITY: Filtrar por organization para tenant isolation
+        queryset = AuditoriaMatch.objects.filter(vaga=vaga)
+        if organization:
+            queryset = queryset.filter(vaga__organization=organization)
+        auditorias = queryset.select_related('candidato').order_by('-score')[:50]
 
         resultados = []
         for auditoria in auditorias:

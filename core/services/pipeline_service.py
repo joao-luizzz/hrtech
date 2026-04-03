@@ -33,12 +33,25 @@ class PipelineService:
     }
 
     @staticmethod
-    def build_pipeline_data(vaga_id=None):
+    def build_pipeline_data(vaga_id=None, organization=None):
+        """
+        Monta dados do pipeline/kanban.
+        
+        SECURITY: organization é obrigatório para tenant isolation.
+        """
         vaga = None
         scores_map = {}
 
         if vaga_id:
-            vaga = Vaga.objects.get(pk=vaga_id)
+            # SECURITY: Filtrar vaga por organization
+            if organization:
+                vaga = Vaga.objects.filter(pk=vaga_id, organization=organization).first()
+            else:
+                vaga = Vaga.objects.filter(pk=vaga_id).first()
+            
+            if not vaga:
+                return {'vaga': None, 'pipeline': {'novo': [], 'em_analise': [], 'aprovado': [], 'reprovado': []}}
+            
             auditorias = AuditoriaMatch.objects.filter(vaga=vaga).select_related('candidato').order_by('candidato_id', '-created_at').distinct('candidato_id')
             candidatos_ids = [a.candidato_id for a in auditorias if a.candidato_id]
             candidatos = Candidato.objects.filter(id__in=candidatos_ids)
@@ -51,7 +64,11 @@ class PipelineService:
                     continue
                 scores_map[candidato_id] = float(auditoria.score)
         else:
-            candidatos = Candidato.objects.all()
+            # SECURITY: Filtrar candidatos por organization
+            if organization:
+                candidatos = Candidato.objects.filter(organization=organization)
+            else:
+                candidatos = Candidato.objects.none()
 
             # Evita N+1: traz todas auditorias em uma consulta e mantém apenas a mais recente por candidato.
             auditorias = AuditoriaMatch.objects.filter(
@@ -83,7 +100,7 @@ class PipelineService:
         }
 
     @staticmethod
-    def move_candidate_stage(candidato_id: str, nova_etapa: str, usuario=None):
+    def move_candidate_stage(candidato_id: str, nova_etapa: str, usuario=None, organization=None):
         # Frontend legado envia status de coluna; convertemos para etapa real.
         nova_etapa = PipelineService.KANBAN_TO_ETAPA.get(nova_etapa, nova_etapa)
         etapas_validas = {etapa for etapa, _ in Candidato.EtapaProcesso.choices}
@@ -91,7 +108,11 @@ class PipelineService:
             return None, None, 'Etapa inválida'
 
         try:
-            candidato = Candidato.objects.get(pk=candidato_id)
+            # SECURITY: Filtrar por organization para evitar IDOR
+            if organization:
+                candidato = Candidato.objects.get(pk=candidato_id, organization=organization)
+            else:
+                candidato = Candidato.objects.get(pk=candidato_id)
         except Candidato.DoesNotExist:
             return None, None, 'Candidato não encontrado'
 

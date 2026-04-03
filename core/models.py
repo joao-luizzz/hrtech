@@ -263,6 +263,8 @@ class Candidato(models.Model):
         'Organization',
         on_delete=models.CASCADE,
         related_name='candidatos',
+        null=True,  # Permite null para migração inicial
+        blank=True,
         help_text="Tenant ao qual este candidato pertence",
     )
 
@@ -321,6 +323,21 @@ class Candidato(models.Model):
         through='CandidatoTag',
         related_name='candidatos',
         blank=True
+    )
+
+    # LGPD - Campos para controle de exclusão de dados
+    lgpd_exclusao_solicitada = models.BooleanField(
+        default=False,
+        help_text="Candidato solicitou exclusão de dados (LGPD Art. 18)"
+    )
+    lgpd_exclusao_motivo = models.TextField(
+        blank=True,
+        help_text="Motivo da solicitação de exclusão"
+    )
+    lgpd_exclusao_data = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Data da solicitação de exclusão"
     )
 
     # Timestamps
@@ -406,6 +423,8 @@ class Vaga(models.Model):
         'Organization',
         on_delete=models.CASCADE,
         related_name='vagas',
+        null=True,
+        blank=True,
         help_text="Tenant ao qual esta vaga pertence",
     )
 
@@ -460,6 +479,8 @@ class AuditoriaMatch(models.Model):
         'Organization',
         on_delete=models.CASCADE,
         related_name='auditorias',
+        null=True,  # Permite null para registros antigos
+        blank=True,
         help_text="Tenant — mantido mesmo se vaga/candidato forem deletados (LGPD)",
     )
 
@@ -540,6 +561,9 @@ class HistoricoAcao(models.Model):
         # Ações de Autenticação
         LOGIN = 'login', 'Login'
         LOGOUT = 'logout', 'Logout'
+        # Ações LGPD
+        LGPD_SOLICITACAO = 'lgpd_solicitacao', 'Solicitação LGPD'
+        LGPD_EXPORT = 'lgpd_export', 'Exportação de dados LGPD'
 
     usuario = models.ForeignKey(
         User,
@@ -789,6 +813,8 @@ class Tag(models.Model):
         'Organization',
         on_delete=models.CASCADE,
         related_name='tags',
+        null=True,
+        blank=True,
         help_text="Tags são escopadas por tenant",
     )
 
@@ -874,6 +900,8 @@ class FiltroSalvo(models.Model):
         'Organization',
         on_delete=models.CASCADE,
         related_name='filtros_salvos',
+        null=True,
+        blank=True,
         help_text="Filtros salvos são escopados por tenant",
     )
 
