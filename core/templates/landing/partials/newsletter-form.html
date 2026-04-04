@@ -1,7 +1,7 @@
 {% load static %}
 
 <form class="newsletter-form"
-      hx-post="{% url 'landing:newsletter-signup' %}"
+      hx-post="{% url 'newsletter-signup' %}"
       hx-target="#newsletter-response"
       hx-on="htmx:responseError: showError(event)">
   {% csrf_token %}
