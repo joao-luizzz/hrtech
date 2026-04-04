@@ -210,10 +210,16 @@
 
     {% block extra_css %}{% endblock %}
 
-    <!-- Landing Page CSS Files -->
-    <link rel="stylesheet" href="{% static 'css/landing/index.css' %}" media="all">
-    <link rel="stylesheet" href="{% static 'css/landing/responsive.css' %}" media="all">
-    <link rel="stylesheet" href="{% static 'css/landing/animations.css' %}" media="print" onload="this.media='all'">
+    <!-- Landing Page CSS Files (minified in production) -->
+    {% if DEBUG %}
+        <link rel="stylesheet" href="{% static 'css/landing/index.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/responsive.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/animations.css' %}" media="print" onload="this.media='all'">
+    {% else %}
+        <link rel="stylesheet" href="{% static 'css/landing/index.min.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/responsive.min.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/animations.min.css' %}" media="print" onload="this.media='all'">
+    {% endif %}
 </head>
 <body>
     {% block content %}{% endblock %}
@@ -225,13 +231,21 @@
     <script async defer src="https://cdn.jsdelivr.net/npm/d3@7/+esm"></script>
 
     <!-- Lazy-load sections with Intersection Observer -->
-    <script type="module" src="{% static 'js/landing/lazy-loader.js' %}"></script>
+    {% if DEBUG %}
+        <script type="module" src="{% static 'js/landing/lazy-loader.js' %}"></script>
+    {% else %}
+        <script type="module" src="{% static 'js/landing/lazy-loader.min.js' %}"></script>
+    {% endif %}
 
     <!-- Graph initialization deferred to window.load for optimal LCP -->
     <script type="module">
       window.addEventListener('load', () => {
         // Import dynamically after page is fully loaded and interactive
-        import('/static/js/landing/graph-visualization.js').then(mod => {
+        {% if DEBUG %}
+            import('/static/js/landing/graph-visualization.js').then(mod => {
+        {% else %}
+            import('/static/js/landing/graph-visualization.min.js').then(mod => {
+        {% endif %}
           mod.initializeHeroGraph();
         }).catch(err => {
           console.warn('Graph visualization failed to load:', err);
