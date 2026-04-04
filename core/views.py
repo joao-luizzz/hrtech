@@ -148,9 +148,14 @@ def _parse_skills_payload(raw_payload, label):
 @method_decorator(cache_page(60 * 60 * 24), name='dispatch')
 class LandingPageView(TemplateView):
     """
-    Landing page portal view with 24-hour caching.
+    Landing page portal view with 24-hour caching and A/B testing support.
 
     Serves the main marketing/portal page for HRTech ATS.
+
+    A/B Testing:
+    - Variant A (Control): "Start Free Trial" + "Schedule Demo"
+    - Variant B (Test): "Get Started Now" + "Book Demo"
+    - 50/50 split per request (can be enhanced with cookies for persistence)
     """
     template_name = 'landing/index.html'
 
@@ -158,6 +163,12 @@ class LandingPageView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'HRTech: AI-Powered Recruitment'
         context['page_description'] = 'Intelligent matching using knowledge graphs and Neo4j. Automate resume processing, skill extraction, and AI-powered interview questions.'
+
+        # A/B Testing: 50/50 variant split
+        import random
+        context['ab_variant'] = 'B' if random.random() < 0.5 else 'A'
+        context['ab_variant_name'] = 'Variant B: Get Started' if context['ab_variant'] == 'B' else 'Variant A: Start Free'
+
         return context
 
 

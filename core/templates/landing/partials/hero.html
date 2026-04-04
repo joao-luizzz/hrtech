@@ -14,13 +14,23 @@
             Built on knowledge graphs. Powered by AI. Infinitely more precise than keyword matching.
         </p>
         <div class="hero-buttons" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-            <button class="btn-primary" style="background-color: var(--color-brand); color: var(--color-light); padding: 12px 32px; border-radius: 8px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; min-height: 44px; transition: all 0.2s ease;" onclick="alert('Start Free Trial clicked')">
-                Start Free Trial
-            </button>
-            <button class="btn-secondary" style="background-color: transparent; color: var(--color-accent); padding: 12px 32px; border: 2px solid var(--color-accent); border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; min-height: 44px; transition: all 0.2s ease;" onclick="alert('Watch Demo clicked')">
-                Watch Demo
-            </button>
-        </div>
+            {% if ab_variant == 'B' %}
+                <!-- Variant B: "Get Started Now" + "Watch Demo" -->
+                <button class="btn-primary" style="background-color: var(--color-brand); color: var(--color-light); padding: 12px 32px; border-radius: 8px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; min-height: 44px; transition: all 0.2s ease;" data-ab="get-started" onclick="gtag?.('event', 'cta_click', {'button_text': 'Get Started Now', 'variant': 'B'})">
+                    Get Started Now
+                </button>
+                <button class="btn-secondary" style="background-color: transparent; color: var(--color-accent); padding: 12px 32px; border: 2px solid var(--color-accent); border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; min-height: 44px; transition: all 0.2s ease;" data-ab="watch-demo" onclick="gtag?.('event', 'cta_click', {'button_text': 'Watch Demo', 'variant': 'B'})">
+                    Watch Demo
+                </button>
+            {% else %}
+                <!-- Variant A: "Start Free Trial" + "Watch Demo" -->
+                <button class="btn-primary" style="background-color: var(--color-brand); color: var(--color-light); padding: 12px 32px; border-radius: 8px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; min-height: 44px; transition: all 0.2s ease;" data-ab="start-free" onclick="gtag?.('event', 'cta_click', {'button_text': 'Start Free Trial', 'variant': 'A'})">
+                    Start Free Trial
+                </button>
+                <button class="btn-secondary" style="background-color: transparent; color: var(--color-accent); padding: 12px 32px; border: 2px solid var(--color-accent); border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; min-height: 44px; transition: all 0.2s ease;" data-ab="watch-demo" onclick="gtag?.('event', 'cta_click', {'button_text': 'Watch Demo', 'variant': 'A'})">
+                    Watch Demo
+                </button>
+            {% endif %}
     </div>
 
     <style>

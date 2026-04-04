@@ -6,12 +6,23 @@
     <p class="cta-subtitle">Join 100+ companies using AI-powered matching.</p>
 
     <div class="cta-buttons mt-5">
-      <button class="btn-primary btn-lg me-3" hx-post="{% url 'start-free' %}" hx-target="#cta-response">
-        Start Free Trial
-      </button>
-      <button class="btn-secondary btn-lg" hx-post="{% url 'schedule-demo' %}" hx-target="#cta-response">
-        Schedule Demo
-      </button>
+      {% if ab_variant == 'B' %}
+        <!-- Variant B: "Get Started Now" + "Book Demo" -->
+        <button class="btn-primary btn-lg me-3" hx-post="{% url 'start-free' %}" hx-target="#cta-response" data-ab="get-started">
+          Get Started Now
+        </button>
+        <button class="btn-secondary btn-lg" hx-post="{% url 'schedule-demo' %}" hx-target="#cta-response" data-ab="book-demo">
+          Book Demo
+        </button>
+      {% else %}
+        <!-- Variant A: "Start Free Trial" + "Schedule Demo" -->
+        <button class="btn-primary btn-lg me-3" hx-post="{% url 'start-free' %}" hx-target="#cta-response" data-ab="start-free">
+          Start Free Trial
+        </button>
+        <button class="btn-secondary btn-lg" hx-post="{% url 'schedule-demo' %}" hx-target="#cta-response" data-ab="schedule-demo">
+          Schedule Demo
+        </button>
+      {% endif %}
     </div>
 
     <!-- Response area for HTMX -->
