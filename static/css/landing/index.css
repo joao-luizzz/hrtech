@@ -1,0 +1,359 @@
+/* =============================================================================
+   Landing Page CSS - Main Stylesheet
+   ============================================================================= */
+
+:root {
+    --color-brand: #0066FF;
+    --color-accent: #00D4AA;
+    --color-dark: #0F1419;
+    --color-light: #FFFFFF;
+    --color-neutral-700: #A0AAB8;
+    --color-surface: #1A1F26;
+    --color-border: #2D3139;
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-error: #EF4444;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+    --spacing-3xl: 48px;
+    --spacing-4xl: 64px;
+}
+
+/* Base Typography */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--color-dark);
+    color: var(--color-light);
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--color-light);
+}
+
+h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+h3 {
+    font-size: 1.875rem;
+    font-weight: 700;
+}
+
+h4 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+p {
+    color: var(--color-neutral-700);
+    margin-bottom: 1rem;
+}
+
+small {
+    font-size: 0.875rem;
+    color: var(--color-neutral-700);
+}
+
+/* Links */
+a {
+    color: var(--color-brand);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #0052CC;
+}
+
+/* Containers */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-3xl);
+}
+
+/* Components - Buttons */
+.btn-primary {
+    background-color: var(--color-brand);
+    color: var(--color-light);
+    padding: 12px 32px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary:hover {
+    background-color: #0052CC;
+    box-shadow: 0 8px 16px rgba(0, 102, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--color-accent);
+    padding: 12px 32px;
+    border: 2px solid var(--color-accent);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-secondary:hover {
+    background-color: rgba(0, 212, 170, 0.1);
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+}
+
+/* Components - Cards */
+.card {
+    padding: var(--spacing-2xl);
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    border-color: var(--color-brand);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+}
+
+/* Problem Section Cards */
+.problem-card {
+    padding: var(--spacing-2xl);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+    height: 100%;
+}
+
+.problem-before {
+    border: 1px solid #EF4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.problem-after {
+    border: 1px solid #10B981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.card-header {
+    font-weight: 700;
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-2xl);
+    color: var(--color-light);
+}
+
+/* Navigation */
+.navbar {
+    height: 64px;
+    background-color: var(--color-dark);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-links {
+    display: flex;
+    gap: var(--spacing-2xl);
+    align-items: center;
+}
+
+.nav-links a {
+    color: var(--color-light);
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+}
+
+.nav-links a:hover {
+    color: var(--color-brand);
+    text-decoration: underline 2px;
+}
+
+/* Hero Section */
+.hero {
+    position: relative;
+    min-height: 600px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-graph {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    background-color: var(--color-dark);
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    max-width: 600px;
+    text-align: center;
+    color: var(--color-light);
+    padding: var(--spacing-3xl) var(--spacing-lg);
+}
+
+.hero h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: var(--spacing-xl);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.hero p {
+    color: var(--color-neutral-700);
+    font-size: 1.125rem;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    margin-bottom: var(--spacing-2xl);
+    line-height: 1.6;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: var(--spacing-lg);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Problem Section */
+.problem {
+    background-color: var(--color-dark);
+    padding: var(--spacing-4xl) var(--spacing-3xl);
+    margin-top: var(--spacing-4xl);
+}
+
+.problem h2 {
+    text-align: center;
+    color: var(--color-light);
+    margin-bottom: var(--spacing-xl);
+}
+
+.problem .intro {
+    font-size: 1.125rem;
+    color: var(--color-neutral-700);
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto var(--spacing-3xl);
+    line-height: 1.6;
+}
+
+/* Grid system */
+.row {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--spacing-lg);
+}
+
+.col-12 {
+    grid-column: span 12;
+}
+
+.col-md-4 {
+    grid-column: span 4;
+}
+
+.col-md-6 {
+    grid-column: span 6;
+}
+
+/* Utilities */
+.text-center {
+    text-align: center;
+}
+
+.mt-4 {
+    margin-top: var(--spacing-4xl);
+}
+
+.mb-4 {
+    margin-bottom: var(--spacing-4xl);
+}
+
+.hidden {
+    display: none;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .navbar {
+        display: none;
+    }
+
+    .hero-buttons {
+        display: none;
+    }
+}

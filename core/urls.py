@@ -59,9 +59,14 @@ app_name = 'core'
 
 urlpatterns = [
     # ==========================================================================
+    # LANDING PAGE (PUBLIC)
+    # ==========================================================================
+    path('', views.LandingPageView.as_view(), name='landing'),
+
+    # ==========================================================================
     # PÁGINAS PÚBLICAS
     # ==========================================================================
-    path('', views.home, name='home'),
+    path('home/', views.home, name='home'),
     path('upload/', views.upload_cv, name='upload_cv'),
     path('upload/processar/', views.processar_upload, name='processar_upload'),
     path('upload/status/<str:candidato_id>/', views.status_cv_htmx, name='status_cv_htmx'),

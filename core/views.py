@@ -22,6 +22,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
+from django.views.generic import TemplateView
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.http import JsonResponse, HttpResponseForbidden, StreamingHttpResponse
@@ -31,6 +32,8 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 
 from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
@@ -137,6 +140,26 @@ def _parse_skills_payload(raw_payload, label):
         normalized.append({'nome': nome, 'nivel_minimo': nivel})
 
     return normalized, errors
+
+# =============================================================================
+# LANDING PAGE (PUBLIC)
+# =============================================================================
+
+@method_decorator(cache_page(60 * 60 * 24), name='dispatch')
+class LandingPageView(TemplateView):
+    """
+    Landing page portal view with 24-hour caching.
+
+    Serves the main marketing/portal page for HRTech ATS.
+    """
+    template_name = 'landing/index.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'HRTech: AI-Powered Recruitment'
+        context['page_description'] = 'Intelligent matching using knowledge graphs and Neo4j. Automate resume processing, skill extraction, and AI-powered interview questions.'
+        return context
+
 
 # =============================================================================
 # VIEWS PÚBLICAS

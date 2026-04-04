@@ -1,0 +1,91 @@
+<header class="navbar" id="main-navbar">
+    <div class="container" style="display: flex; align-items: center; justify-content: space-between; height: 100%; padding: 0 48px;">
+        <!-- Logo -->
+        <div class="logo" style="font-size: 1.5rem; font-weight: 700; color: var(--color-light); letter-spacing: -0.03em;">
+            HRTech
+        </div>
+
+        <!-- Navigation Links (Desktop) -->
+        <nav class="nav-links" style="display: flex; gap: 2rem; align-items: center;">
+            <a href="#hero" style="color: var(--color-light); text-decoration: none; font-size: 0.95rem;">Home</a>
+            <a href="#features" style="color: var(--color-light); text-decoration: none; font-size: 0.95rem;">Features</a>
+            <a href="#pricing" style="color: var(--color-light); text-decoration: none; font-size: 0.95rem;">Pricing</a>
+            <a href="#cta" style="color: var(--color-light); text-decoration: none; font-size: 0.95rem;">Get Started</a>
+        </nav>
+
+        <!-- CTA Button -->
+        <button class="btn-cta" style="background-color: var(--color-brand); color: var(--color-light); padding: 12px 32px; border-radius: 8px; border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s ease;" onclick="alert('Start Free Trial clicked')">
+            Start Free
+        </button>
+
+        <!-- Mobile Hamburger Menu -->
+        <div class="hamburger-menu" style="display: none; cursor: pointer;" id="hamburger-btn">
+            <span style="display: block; width: 25px; height: 2px; background-color: var(--color-light); margin: 6px 0; transition: 0.3s;"></span>
+            <span style="display: block; width: 25px; height: 2px; background-color: var(--color-light); margin: 6px 0; transition: 0.3s;"></span>
+            <span style="display: block; width: 25px; height: 2px; background-color: var(--color-light); margin: 6px 0; transition: 0.3s;"></span>
+        </div>
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" id="mobile-menu" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background-color: rgba(15, 20, 25, 0.95); z-index: 50; padding: 80px 24px 24px;">
+        <nav style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <a href="#hero" style="color: var(--color-light); text-decoration: none; font-size: 1.125rem; font-weight: 500;">Home</a>
+            <a href="#features" style="color: var(--color-light); text-decoration: none; font-size: 1.125rem; font-weight: 500;">Features</a>
+            <a href="#pricing" style="color: var(--color-light); text-decoration: none; font-size: 1.125rem; font-weight: 500;">Pricing</a>
+            <a href="#cta" style="color: var(--color-light); text-decoration: none; font-size: 1.125rem; font-weight: 500;">Get Started</a>
+            <button style="background-color: var(--color-brand); color: var(--color-light); padding: 12px 32px; border-radius: 8px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; margin-top: 1rem; width: 100%;">
+                Start Free
+            </button>
+        </nav>
+    </div>
+
+    <style>
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none !important;
+            }
+
+            .btn-cta {
+                display: none !important;
+            }
+
+            .hamburger-menu {
+                display: block !important;
+            }
+
+            .navbar .container {
+                padding: 0 24px !important;
+            }
+        }
+
+        .btn-cta:hover {
+            background-color: #0052CC;
+            box-shadow: 0 8px 16px rgba(0, 102, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-cta:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 480px) {
+            .navbar .container {
+                padding: 0 16px !important;
+            }
+        }
+    </style>
+</header>
+
+<script>
+document.getElementById('hamburger-btn').addEventListener('click', function() {
+    const menu = document.getElementById('mobile-menu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+});
+
+// Close menu when clicking on a link
+document.querySelectorAll('.mobile-menu a').forEach(link => {
+    link.addEventListener('click', function() {
+        document.getElementById('mobile-menu').style.display = 'none';
+    });
+});
+</script>
