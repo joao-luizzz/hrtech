@@ -53,26 +53,60 @@ export function initializeHeroGraph() {
     .force('collide', isMobile ? null : d3.forceCollide().radius(35))
     .force('center', d3.forceCenter(width / 2, height / 2));
 
+  // Animation: gentle rotation
+  let angle = 0;
+  const rotationSpeed = 0.0005; // Slow rotation (20s per full circle)
+
   // Render loop
   simulation.on('tick', () => {
     // Clear canvas with slight trail effect
     context.fillStyle = 'rgba(15, 20, 25, 0.05)';
     context.fillRect(0, 0, width, height);
 
-    // Draw links
+    // Apply subtle rotation for visual interest
+    angle += rotationSpeed;
+    const rotation = angle % (2 * Math.PI);
+
+    // Draw links with rotation
     context.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     context.lineWidth = 2;
     data.links.forEach(link => {
+      const cx = width / 2;
+      const cy = height / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+
+      // Rotate source point
+      const sx = link.source.x - cx;
+      const sy = link.source.y - cy;
+      const rotatedSx = sx * cos - sy * sin + cx;
+      const rotatedSy = sx * sin + sy * cos + cy;
+
+      // Rotate target point
+      const tx = link.target.x - cx;
+      const ty = link.target.y - cy;
+      const rotatedTx = tx * cos - ty * sin + cx;
+      const rotatedTy = tx * sin + ty * cos + cy;
+
       context.beginPath();
-      context.moveTo(link.source.x, link.source.y);
-      context.lineTo(link.target.x, link.target.y);
+      context.moveTo(rotatedSx, rotatedSy);
+      context.lineTo(rotatedTx, rotatedTy);
       context.stroke();
     });
 
-    // Draw nodes
+    // Draw nodes with rotation
     data.nodes.forEach(node => {
+      const cx = width / 2;
+      const cy = height / 2;
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      const x = node.x - cx;
+      const y = node.y - cy;
+      const rotatedX = x * cos - y * sin + cx;
+      const rotatedY = x * sin + y * cos + cy;
+
       context.beginPath();
-      context.arc(node.x, node.y, 15, 0, 2 * Math.PI);
+      context.arc(rotatedX, rotatedY, 15, 0, 2 * Math.PI);
       const color = getNodeColor(node.group);
       context.fillStyle = color;
       context.fill();
