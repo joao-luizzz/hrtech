@@ -528,6 +528,99 @@ a:hover {
     }
 }
 
+/* Features Section */
+.features {
+    padding: var(--spacing-4xl) var(--spacing-2xl);
+    background-color: var(--color-dark);
+    margin-top: var(--spacing-4xl);
+}
+
+.features h2 {
+    text-align: center;
+    margin-bottom: var(--spacing-3xl);
+}
+
+.feature-card {
+    padding: var(--spacing-2xl);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.feature-card:hover {
+    border-color: var(--color-brand);
+    box-shadow: 0 12px 24px rgba(0, 102, 255, 0.15);
+    transform: translateY(-4px);
+}
+
+.feature-icon {
+    font-size: 48px;
+    margin-bottom: var(--spacing-lg);
+    display: block;
+}
+
+.feature-card h3 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--color-light);
+}
+
+.feature-card p {
+    font-size: 16px;
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+    flex-grow: 1;
+}
+
+.badge {
+    display: inline-block;
+    margin-top: var(--spacing-lg);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: var(--color-success);
+    color: white;
+}
+
+.badge-secondary {
+    background-color: #6B7280;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .features {
+        padding: 48px 24px;
+        margin-top: 48px;
+    }
+
+    .feature-card {
+        padding: 24px;
+        min-height: auto;
+    }
+
+    .feature-icon {
+        font-size: 36px;
+    }
+
+    .feature-card h3 {
+        font-size: 20px;
+    }
+
+    .feature-card p {
+        font-size: 14px;
+    }
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
     * {
