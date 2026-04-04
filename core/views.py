@@ -169,6 +169,9 @@ class LandingPageView(TemplateView):
         context['ab_variant'] = 'B' if random.random() < 0.5 else 'A'
         context['ab_variant_name'] = 'Variant B: Get Started' if context['ab_variant'] == 'B' else 'Variant A: Start Free'
 
+        # Google Analytics Measurement ID (from environment, optional)
+        context['GA_MEASUREMENT_ID'] = settings.GA_MEASUREMENT_ID
+
         return context
 
 

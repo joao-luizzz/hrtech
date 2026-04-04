@@ -220,6 +220,50 @@
         <link rel="stylesheet" href="{% static 'css/landing/responsive.min.css' %}" media="all">
         <link rel="stylesheet" href="{% static 'css/landing/animations.min.css' %}" media="print" onload="this.media='all'">
     {% endif %}
+
+    <!-- Google Analytics 4 -->
+    {% if GA_MEASUREMENT_ID %}
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ GA_MEASUREMENT_ID }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            // GA4 initialization with enhanced e-commerce tracking
+            gtag('config', '{{ GA_MEASUREMENT_ID }}', {
+                'allow_google_signals': false,  // LGPD: Disable Google Signals
+                'anonymize_ip': true,           // LGPD: Anonymize IP address
+                'cookie_flags': 'SameSite=None;Secure'  // Secure cookies only
+            });
+
+            // Track page view (automatic in GA4)
+            // Track custom events for CTA clicks
+            window.addEventListener('click', function(e) {
+                const btn = e.target.closest('button[data-ab]');
+                if (btn) {
+                    const buttonText = btn.textContent.trim();
+                    const variant = btn.getAttribute('data-variant') || '{{ ab_variant }}';
+                    gtag('event', 'cta_click', {
+                        'button_text': buttonText,
+                        'variant': variant,
+                        'page_path': window.location.pathname
+                    });
+                }
+            });
+
+            // Track newsletter signup (via HTMX response)
+            document.addEventListener('htmx:responseEnd', function(event) {
+                if (event.detail.xhr.responseURL.includes('newsletter-signup')) {
+                    if (event.detail.xhr.status === 200) {
+                        gtag('event', 'newsletter_signup', {
+                            'page_path': window.location.pathname,
+                            'variant': '{{ ab_variant }}'
+                        });
+                    }
+                }
+            });
+        </script>
+    {% endif %}
 </head>
 <body>
     {% block content %}{% endblock %}
