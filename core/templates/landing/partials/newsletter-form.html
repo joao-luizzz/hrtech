@@ -1,0 +1,23 @@
+{% load static %}
+
+<form class="newsletter-form"
+      hx-post="{% url 'landing:newsletter-signup' %}"
+      hx-target="#newsletter-response"
+      hx-on="htmx:responseError: showError(event)">
+  {% csrf_token %}
+
+  <div class="form-group">
+    <input type="email"
+           name="email"
+           class="form-control"
+           placeholder="Enter your email"
+           required>
+  </div>
+
+  <button type="submit" class="btn-primary" hx-indicator="#loading">
+    <span>Subscribe</span>
+    <span id="loading" class="htmx-indicator spinner"></span>
+  </button>
+</form>
+
+<div id="newsletter-response"></div>

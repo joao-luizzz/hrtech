@@ -62,6 +62,11 @@ urlpatterns = [
     # LANDING PAGE (PUBLIC)
     # ==========================================================================
     path('', views.LandingPageView.as_view(), name='landing'),
+    path('api/newsletter-signup/', views.newsletter_signup, name='landing:newsletter-signup'),
+    path('api/start-free/', views.start_free, name='landing:start-free'),
+    path('api/upgrade-pro/', views.upgrade_pro, name='landing:upgrade-pro'),
+    path('api/schedule-demo/', views.schedule_demo, name='landing:schedule-demo'),
+    path('api/contact-sales/', views.contact_sales, name='landing:contact-sales'),
 
     # ==========================================================================
     # PÁGINAS PÚBLICAS

@@ -162,6 +162,67 @@ class LandingPageView(TemplateView):
 
 
 # =============================================================================
+# LANDING PAGE HTMX ENDPOINTS
+# =============================================================================
+
+@require_http_methods(["POST"])
+def newsletter_signup(request):
+    """Handle newsletter signup form via HTMX."""
+    email = request.POST.get("email", "").strip()
+
+    if not email or "@" not in email:
+        return JsonResponse(
+            {"error": "Please enter a valid email address"},
+            status=400
+        )
+
+    # TODO: Save to database
+    # Newsletter.objects.get_or_create(email=email)
+
+    return JsonResponse({
+        "success": True,
+        "message": "Thank you for subscribing! Check your email for confirmation."
+    })
+
+
+@require_http_methods(["POST"])
+def start_free(request):
+    """Handle 'Start Free Trial' CTA button."""
+    return JsonResponse({
+        "success": True,
+        "message": "Redirecting to signup...",
+        "redirect_url": "/signup/"
+    })
+
+
+@require_http_methods(["POST"])
+def upgrade_pro(request):
+    """Handle 'Upgrade to Pro' pricing button."""
+    return JsonResponse({
+        "success": True,
+        "message": "Take me to pricing page..."
+    })
+
+
+@require_http_methods(["POST"])
+def schedule_demo(request):
+    """Handle 'Schedule Demo' CTA button."""
+    return JsonResponse({
+        "success": True,
+        "message": "Calendar will open shortly..."
+    })
+
+
+@require_http_methods(["POST"])
+def contact_sales(request):
+    """Handle 'Contact Sales' pricing button."""
+    return JsonResponse({
+        "success": True,
+        "message": "Sales team will contact you soon."
+    })
+
+
+# =============================================================================
 # VIEWS PÚBLICAS
 # =============================================================================
 
