@@ -194,6 +194,9 @@
     <!-- Load D3.js asynchronously, after page is interactive -->
     <script async defer src="https://cdn.jsdelivr.net/npm/d3@7/+esm"></script>
 
+    <!-- Lazy-load sections with Intersection Observer -->
+    <script type="module" src="{% static 'js/landing/lazy-loader.js' %}"></script>
+
     <!-- Graph initialization deferred to window.load for optimal LCP -->
     <script type="module">
       window.addEventListener('load', () => {
