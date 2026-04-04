@@ -171,10 +171,12 @@ class CandidatePortalService:
         else:
             candidato_original = Candidato.objects.get(pk=candidato_id)
 
+        # SECURITY: Filtrar por organization_id no Neo4j para tenant isolation
         query = """
         MATCH (c_original:Candidato {uuid: $candidato_uuid})
         MATCH (c_similar:Candidato)
         WHERE c_similar.uuid <> $candidato_uuid
+          AND ($organization_id IS NULL OR c_similar.organization_id = $organization_id)
         OPTIONAL MATCH (c_original)-[:TEM_HABILIDADE]->(h:Habilidade)<-[:TEM_HABILIDADE]-(c_similar)
 
         WITH c_similar,
@@ -207,13 +209,22 @@ class CandidatePortalService:
                skills_comuns
         """
 
+        org_id = str(organization.id) if organization else None
+
         candidatos_similares = []
         try:
             with Neo4jConnection() as conn:
-                resultados = conn.run_query(query, {'candidato_uuid': str(candidato_original.id)})
+                resultados = conn.run_query(query, {
+                    'candidato_uuid': str(candidato_original.id),
+                    'organization_id': org_id,
+                })
             for resultado in resultados:
                 try:
-                    candidato = Candidato.objects.get(pk=resultado['uuid'])
+                    # SECURITY: Filtrar por organization no PostgreSQL também (defesa em profundidade)
+                    filter_kwargs = {'pk': resultado['uuid']}
+                    if organization:
+                        filter_kwargs['organization'] = organization
+                    candidato = Candidato.objects.get(**filter_kwargs)
                     candidato.similarity_score = resultado['similarity_score']
                     candidato.skills_comuns = resultado['skills_comuns']
                     candidatos_similares.append(candidato)

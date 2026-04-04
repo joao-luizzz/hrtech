@@ -229,11 +229,15 @@ class MatchingEngine:
             return []
 
         # 3. Executar query no Neo4j
+        # SECURITY: Passar organization_id para filtro no Neo4j
+        organization_id = str(self.organization.id) if self.organization else None
+        
         dados_neo4j = self._buscar_candidatos_neo4j(
             skills_obrigatorias=skills_obrigatorias,
             skills_desejaveis=skills_desejaveis,
             area_vaga=vaga.area,
-            senioridade_vaga=vaga.senioridade_desejada
+            senioridade_vaga=vaga.senioridade_desejada,
+            organization_id=organization_id,
         )
 
         logger.debug(f"Neo4j retornou {len(dados_neo4j)} candidatos")
@@ -269,7 +273,8 @@ class MatchingEngine:
         skills_obrigatorias: list[dict],
         skills_desejaveis: list[dict],
         area_vaga: str,
-        senioridade_vaga: str
+        senioridade_vaga: str,
+        organization_id: str | None = None,  # SECURITY: Tenant isolation
     ) -> list[dict]:
         """
         Executa query Cypher para buscar candidatos e suas skills.
@@ -285,6 +290,7 @@ class MatchingEngine:
             skills_desejaveis: Lista de skills desejáveis da vaga
             area_vaga: Área da vaga (ex: "Dados")
             senioridade_vaga: Senioridade desejada
+            organization_id: ID da organização para filtro de tenant
 
         Returns:
             Lista de dicionários com dados dos candidatos do Neo4j
@@ -304,9 +310,12 @@ class MatchingEngine:
         #
         # IMPORTANTE: Neo4j armazena apenas uuid do candidato.
         # Nome, email, senioridade vêm do PostgreSQL (persistência poliglota)
+        # SECURITY: Filtro por organization_id para tenant isolation
         query = """
         // Buscar candidatos que têm pelo menos uma skill relevante (direta ou similar)
+        // SECURITY: Filtrar por organization_id para tenant isolation
         MATCH (c:Candidato)
+        WHERE ($organization_id IS NULL OR c.organization_id = $organization_id)
 
         // Coletar todas as skills do candidato
         OPTIONAL MATCH (c)-[tem:TEM_HABILIDADE]->(h:Habilidade)
@@ -347,6 +356,7 @@ class MatchingEngine:
             'skills_obrigatorias': nomes_obrigatorias,
             'skills_desejaveis': nomes_desejaveis,
             'area_vaga': area_vaga,
+            'organization_id': organization_id,
         }
 
         try:
