@@ -193,5 +193,17 @@
 
     <!-- Load D3.js asynchronously, after page is interactive -->
     <script async defer src="https://cdn.jsdelivr.net/npm/d3@7/+esm"></script>
+
+    <!-- Graph initialization deferred to window.load for optimal LCP -->
+    <script type="module">
+      window.addEventListener('load', () => {
+        // Import dynamically after page is fully loaded and interactive
+        import('/static/js/landing/graph-visualization.js').then(mod => {
+          mod.initializeHeroGraph();
+        }).catch(err => {
+          console.warn('Graph visualization failed to load:', err);
+        });
+      });
+    </script>
 </body>
 </html>
