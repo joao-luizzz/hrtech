@@ -1632,12 +1632,12 @@ def lgpd_excluir_candidato(request, candidato_id):
     
     # 1. Excluir do Neo4j (grafo de habilidades)
     try:
-        from core.neo4j_connection import run_query
+        from core.neo4j_connection import run_write_query
         delete_query = """
         MATCH (c:Candidato {uuid: $uuid})
         DETACH DELETE c
         """
-        run_query(delete_query, {'uuid': str(candidato.id)})
+        run_write_query(delete_query, {'uuid': str(candidato.id)})
         logger.info("LGPD: Neo4j data deleted for candidato (audit: %s)", audit_data)
     except Exception as e:
         errors.append(f"Neo4j: {type(e).__name__}")

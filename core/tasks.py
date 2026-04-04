@@ -390,13 +390,16 @@ def processar_cv_task(self, candidato_id: str) -> dict:
         candidato.save(update_fields=['senioridade', 'anos_experiencia', 'updated_at'])
 
         # Salva habilidades no Neo4j
+        # SECURITY: Passar organization_id para tenant isolation no grafo
+        organization_id = str(candidato.organization_id) if candidato.organization_id else None
 
         salvar_habilidades_neo4j(
             candidato_uuid=str(candidato.id),
             area=cv_parseado.area_atuacao,
             habilidades=cv_parseado.habilidades,
             senioridade=cv_parseado.senioridade_inferida,
-            anos_experiencia=int(anos_experiencia)
+            anos_experiencia=int(anos_experiencia),
+            organization_id=organization_id,
         )
 
         candidato.status_cv = Candidato.StatusCV.CONCLUIDO
@@ -501,7 +504,8 @@ def salvar_habilidades_neo4j(
     area: str,
     habilidades: list,
     senioridade: str = None,
-    anos_experiencia: int = None
+    anos_experiencia: int = None,
+    organization_id: str = None,  # SECURITY: Tenant isolation
 ) -> None:
     """
     Persiste habilidades extraídas no grafo Neo4j.
@@ -518,10 +522,12 @@ def salvar_habilidades_neo4j(
 
     # Query Cypher - usa 'uuid' conforme schema do Neo4j (Fase 1)
     # MERGE no Candidato para criar o nó se não existir (upload via Django)
+    # SECURITY: Grava organization_id para tenant isolation nas queries
     query = """
     MERGE (c:Candidato {uuid: $candidato_uuid})
     SET c.senioridade = $senioridade,
-        c.anos_experiencia = $anos_experiencia
+        c.anos_experiencia = $anos_experiencia,
+        c.organization_id = $organization_id
 
     MERGE (a:Area {nome: $area})
     MERGE (c)-[:ATUA_EM]->(a)
@@ -557,6 +563,7 @@ def salvar_habilidades_neo4j(
         'habilidades': habilidades_dict,
         'senioridade': senioridade,
         'anos_experiencia': anos_experiencia,
+        'organization_id': organization_id,
     })
 
     logger.info("Habilidades salvas no Neo4j")
