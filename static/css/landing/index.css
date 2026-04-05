@@ -107,7 +107,10 @@ a:hover {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 var(--spacing-3xl);
+    padding: 0 var(--spacing-lg);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: visible;
 }
 
 /* Components - Buttons */
@@ -182,15 +185,17 @@ a:hover {
     background: var(--color-surface);
     box-shadow: var(--shadow-md);
     height: 100%;
+    overflow: visible;
+    box-sizing: border-box;
 }
 
 .problem-before {
-    border: 1px solid #EF4444;
+    border: 2px solid #EF4444;
     background: rgba(239, 68, 68, 0.05);
 }
 
 .problem-after {
-    border: 1px solid #10B981;
+    border: 2px solid #10B981;
     background: rgba(16, 185, 129, 0.05);
 }
 
@@ -324,6 +329,8 @@ a:hover {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
     gap: var(--spacing-lg);
+    width: 100%;
+    overflow: visible;
 }
 
 .col-12 {
@@ -360,6 +367,8 @@ a:hover {
     padding: 64px 24px;
     background-color: var(--color-dark);
     margin-top: 64px;
+    overflow: visible;
+    width: 100%;
 }
 
 .how-it-works h2 {
@@ -675,6 +684,8 @@ a:hover {
     padding: 96px var(--spacing-2xl);
     background: linear-gradient(135deg, rgba(0, 102, 255, 0.1) 0%, rgba(0, 212, 170, 0.1) 100%);
     margin-top: var(--spacing-4xl);
+    overflow: visible;
+    width: 100%;
 }
 
 .cta h2 {

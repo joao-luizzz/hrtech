@@ -8,18 +8,18 @@
     <div class="cta-buttons mt-5">
       {% if ab_variant == 'B' %}
         <!-- Variant B: "Get Started Now" + "Book Demo" -->
-        <button class="btn-primary btn-lg me-3" hx-post="{% url 'start-free' %}" hx-target="#cta-response" data-ab="get-started">
+        <button class="btn-primary btn-lg me-3" hx-post="{% url 'core:start-free' %}" hx-target="#cta-response" data-ab="get-started">
           Get Started Now
         </button>
-        <button class="btn-secondary btn-lg" hx-post="{% url 'schedule-demo' %}" hx-target="#cta-response" data-ab="book-demo">
+        <button class="btn-secondary btn-lg" hx-post="{% url 'core:schedule-demo' %}" hx-target="#cta-response" data-ab="book-demo">
           Book Demo
         </button>
       {% else %}
         <!-- Variant A: "Start Free Trial" + "Schedule Demo" -->
-        <button class="btn-primary btn-lg me-3" hx-post="{% url 'start-free' %}" hx-target="#cta-response" data-ab="start-free">
+        <button class="btn-primary btn-lg me-3" hx-post="{% url 'core:start-free' %}" hx-target="#cta-response" data-ab="start-free">
           Start Free Trial
         </button>
-        <button class="btn-secondary btn-lg" hx-post="{% url 'schedule-demo' %}" hx-target="#cta-response" data-ab="schedule-demo">
+        <button class="btn-secondary btn-lg" hx-post="{% url 'core:schedule-demo' %}" hx-target="#cta-response" data-ab="schedule-demo">
           Schedule Demo
         </button>
       {% endif %}
