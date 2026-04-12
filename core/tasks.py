@@ -308,7 +308,12 @@ def processar_cv_task(self, candidato_id: str) -> dict:
     logger.info(f"[Task {self.request.id}] Processando CV candidato={candidato_id[:8]}...")
 
     try:
-        candidato = Candidato.objects.get(pk=candidato_id)
+        # SECURITY: Validar que candidato existe e recuperar organização
+        try:
+            candidato = Candidato.objects.get(pk=candidato_id)
+        except Candidato.DoesNotExist:
+            logger.error(f"Candidato {candidato_id} não encontrado - possível cross-tenant attack")
+            return {'status': 'error', 'reason': 'candidato_nao_encontrado'}
 
         if candidato.status_cv not in ['recebido', 'erro']:
             logger.warning(f"Candidato em estado inválido: {candidato.status_cv}")
@@ -580,7 +585,7 @@ def varrer_jobs_fantasmas(self) -> dict:
 
     Executada a cada hora pelo Celery Beat.
 
-    Critério: status PROCESSANDO ou EXTRAINDO há mais de 15 minutos.
+    Critério: status RECEBIDO/PROCESSANDO/EXTRAINDO há mais de 15 minutos.
     """
     logger.info("[Beat] Varredura de jobs fantasmas")
 
@@ -588,6 +593,7 @@ def varrer_jobs_fantasmas(self) -> dict:
 
     jobs_fantasmas = Candidato.objects.filter(
         status_cv__in=[
+            Candidato.StatusCV.RECEBIDO,
             Candidato.StatusCV.PROCESSANDO,
             Candidato.StatusCV.EXTRAINDO,
         ],

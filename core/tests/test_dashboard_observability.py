@@ -17,9 +17,10 @@ class DashboardObservabilityTests(TestCase):
             password='pass1234'
         )
         self.user.profile.role = self.user.profile.Role.RH
+        self.org = create_test_organization()
+        self.user.profile.organization = self.org
         self.user.profile.save()
         self.client.login(username='rh_user', password='pass1234')
-        self.org = create_test_organization()
 
     def test_dashboard_rh_exibe_metricas_de_saude_operacional(self):
         ghost = Candidato.objects.create(

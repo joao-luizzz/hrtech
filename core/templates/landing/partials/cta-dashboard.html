@@ -1,0 +1,218 @@
+{% comment %} CTA section para usuários LOGADOS - Próximos passos e dicas {% endcomment %}
+
+<section style="
+  padding: 80px 20px;
+  background: linear-gradient(180deg, #0F1419 0%, #1A1F26 100%);
+  color: white;
+  text-align: center;
+">
+  <div style="max-width: 1000px; margin: 0 auto;">
+    <h2 style="
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      letter-spacing: -0.02em;
+    ">
+      Próximos Passos
+    </h2>
+
+    <p style="
+      font-size: 1.1rem;
+      color: #A0AAB8;
+      margin-bottom: 60px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    ">
+      Maximize seus resultados de recrutamento com inteligência artificial
+    </p>
+
+    {# Action Cards Grid #}
+    <div style="
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 25px;
+    ">
+      {# Card 1: Criar Vaga #}
+      <div style="
+        background: linear-gradient(135deg, #0066FF, #004DB3);
+        padding: 35px 25px;
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      " onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 20px 40px rgba(0,102,255,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="
+          font-size: 3rem;
+          margin-bottom: 15px;
+        ">
+          ➕
+        </div>
+        <h3 style="
+          font-size: 1.2rem;
+          font-weight: 600;
+          margin-bottom: 10px;
+        ">
+          Criar Nova Vaga
+        </h3>
+        <p style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+          margin-bottom: 20px;
+        ">
+          Publique uma vaga e deixe a IA encontrar os melhores candidatos
+        </p>
+        <a href="{% url 'core:criar_vaga' %}" style="
+          color: white;
+          text-decoration: none;
+          font-weight: 600;
+          opacity: 0.9;
+        ">
+          Começar →
+        </a>
+      </div>
+
+      {# Card 2: Fazer Matching #}
+      <div style="
+        background: linear-gradient(135deg, #00D4AA, #00A885);
+        padding: 35px 25px;
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      " onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 20px 40px rgba(0,212,170,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="
+          font-size: 3rem;
+          margin-bottom: 15px;
+        ">
+          🎯
+        </div>
+        <h3 style="
+          font-size: 1.2rem;
+          font-weight: 600;
+          margin-bottom: 10px;
+        ">
+          Rodar Matching
+        </h3>
+        <p style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+          margin-bottom: 20px;
+        ">
+          Deixe a IA avaliar e rankear candidatos com precisão
+        </p>
+        <a href="{% url 'core:lista_vagas' %}" style="
+          color: white;
+          text-decoration: none;
+          font-weight: 600;
+          opacity: 0.9;
+        ">
+          Acessar →
+        </a>
+      </div>
+
+      {# Card 3: Revisar Pipeline #}
+      <div style="
+        background: linear-gradient(135deg, #FF6B6B, #FF5252);
+        padding: 35px 25px;
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      " onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 20px 40px rgba(255,107,107,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="
+          font-size: 3rem;
+          margin-bottom: 15px;
+        ">
+          📋
+        </div>
+        <h3 style="
+          font-size: 1.2rem;
+          font-weight: 600;
+          margin-bottom: 10px;
+        ">
+          Revisar Pipeline
+        </h3>
+        <p style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+          margin-bottom: 20px;
+        ">
+          Acompanhe cada candidato no funil de seleção
+        </p>
+        <a href="{% url 'core:pipeline_kanban' %}" style="
+          color: white;
+          text-decoration: none;
+          font-weight: 600;
+          opacity: 0.9;
+        ">
+          Acessar →
+        </a>
+      </div>
+
+      {# Card 4: Buscar Talento #}
+      <div style="
+        background: linear-gradient(135deg, #A78BFA, #8B5CF6);
+        padding: 35px 25px;
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      " onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 20px 40px rgba(167,139,250,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="
+          font-size: 3rem;
+          margin-bottom: 15px;
+        ">
+          🔍
+        </div>
+        <h3 style="
+          font-size: 1.2rem;
+          font-weight: 600;
+          margin-bottom: 10px;
+        ">
+          Buscar Talento
+        </h3>
+        <p style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+          margin-bottom: 20px;
+        ">
+          Encontre candidatos qualificados na base de dados
+        </p>
+        <a href="{% url 'core:buscar_candidatos' %}" style="
+          color: white;
+          text-decoration: none;
+          font-weight: 600;
+          opacity: 0.9;
+        ">
+          Acessar →
+        </a>
+      </div>
+    </div>
+
+    {# Bottom Help Section #}
+    <div style="
+      margin-top: 60px;
+      padding: 30px;
+      background: rgba(0, 102, 255, 0.1);
+      border: 1px solid rgba(0, 102, 255, 0.2);
+      border-radius: 12px;
+    ">
+      <p style="
+        font-size: 1rem;
+        color: #A0AAB8;
+        margin: 0;
+      ">
+        💡 <strong style="color: #0066FF;">Dica:</strong> Use o pipeline kanban para gerenciar candidatos em tempo real e acelerar sua contratação
+      </p>
+    </div>
+  </div>
+</section>

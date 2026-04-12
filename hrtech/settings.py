@@ -25,13 +25,19 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # =============================================================================
+# AMBIENTE E CONFIGURAÇÃO BÁSICA
+# =============================================================================
+# Define o ambiente: development, staging, production
+ENVIRONMENT = config('ENVIRONMENT', default='development').lower()
+
+# =============================================================================
 # SEGURANÇA
 # =============================================================================
 # CRÍTICO: Todas as variáveis sensíveis DEVEM vir do .env
 # Não há defaults para SECRET_KEY e senhas em produção
 SECRET_KEY = config('SECRET_KEY')  # OBRIGATÓRIO - sem default
-DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
+DEBUG = config('DEBUG', default=(ENVIRONMENT == 'development'), cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1' if DEBUG else '', cast=Csv())
 
 # Proteções adicionais para produção
 if not DEBUG:
@@ -98,8 +104,8 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # URLs de redirecionamento
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = 'core:home'  # Landing com conteúdo logado
+LOGOUT_REDIRECT_URL = 'core:home'  # Volta para landing pública
 LOGIN_URL = 'account_login'
 
 # Configurações do Allauth
@@ -193,28 +199,57 @@ AWS_PRESIGNED_URL_TTL = config('AWS_PRESIGNED_URL_TTL', default=900, cast=int)  
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0' if DEBUG else None)
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0' if DEBUG else None)
 
-# Cache compartilhado para suporte a rate limiting distribuido no backend.
+# Cache compartilhado para suporte a rate limiting distribuido.
+# 
+# ESTRATÉGIA:
+# - DESENVOLVIMENTO: CACHE_URL vazio = LocMemCache (em memória, sem persistência)
+# - STAGING/PRODUÇÃO: CACHE_URL deve apontar para Redis
+# 
+# Para testar Redis localmente, configure CACHE_URL no .env:
+#   CACHE_URL=redis://localhost:6379/1
+#
+# AVISO: Mudanças em templates podem não aparecer em desenvolvimento devido ao cache.
+# Se mudar templates e não ver mudanças, limpe com: redis-cli FLUSHALL
 CACHE_URL = config('CACHE_URL', default='')
+
+# Fallback: se CACHE_URL vazio e CELERY_BROKER_URL é Redis, usa o mesmo Redis para cache
 if not CACHE_URL and isinstance(CELERY_BROKER_URL, str) and CELERY_BROKER_URL.startswith(('redis://', 'rediss://')):
     CACHE_URL = CELERY_BROKER_URL
 
+# Configura backend de cache baseado na disponibilidade de Redis
 if CACHE_URL.startswith(('redis://', 'rediss://')):
+    # Redis está disponível - usar para cache distribuído
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': CACHE_URL,
-            'KEY_PREFIX': 'hrtech',
+            'KEY_PREFIX': f'hrtech-{ENVIRONMENT}',
             'TIMEOUT': 300,
         }
     }
+    CACHE_BACKEND_MESSAGE = "🔴 Usando Redis para cache (distribuído)"
 else:
+    # Redis não configurado - usar LocMemCache em memória
+    # Nota: LocMemCache não compartilha entre processos/workers
+    # Use apenas em DESENVOLVIMENTO local!
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'hrtech-local-cache',
+            'LOCATION': f'hrtech-{ENVIRONMENT}-local',
             'TIMEOUT': 300,
         }
     }
+    CACHE_BACKEND_MESSAGE = "🟡 Usando LocMemCache em memória (DEV apenas - não compartilhado entre workers)"
+
+if DEBUG:
+    print(f"\n{'='*70}")
+    print(f"CONFIGURAÇÃO DE CACHE")
+    print(f"{'='*70}")
+    print(f"Ambiente: {ENVIRONMENT.upper()}")
+    print(f"Backend: {CACHE_BACKEND_MESSAGE}")
+    print(f"DEBUG: {DEBUG}")
+    print(f"{'='*70}\n")
+
 
 # Configurações de serialização segura
 CELERY_ACCEPT_CONTENT = ['json']

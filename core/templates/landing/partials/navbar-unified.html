@@ -3,7 +3,7 @@
 <nav class="navbar-unified">
     <div class="navbar-container">
         <!-- Logo -->
-        <a href="{% url 'core:landing' %}" class="navbar-brand">
+        <a href="{% url 'core:home' %}" class="navbar-brand">
             <span class="navbar-logo">👥</span>
             HRTech
         </a>
@@ -19,9 +19,9 @@
                 <li><a href="{% url 'core:dashboard_geral' %}" class="nav-link">Stats</a></li>
             {% else %}
                 <!-- Unauthenticated User Links -->
-                <li><a href="{% url 'core:landing' %}#features" class="nav-link">Features</a></li>
-                <li><a href="{% url 'core:landing' %}#pricing" class="nav-link">Pricing</a></li>
-                <li><a href="{% url 'core:landing' %}#how-it-works" class="nav-link">How it Works</a></li>
+                <li><a href="{% url 'core:home' %}#features" class="nav-link">Features</a></li>
+                <li><a href="{% url 'core:home' %}#pricing" class="nav-link">Pricing</a></li>
+                <li><a href="{% url 'core:home' %}#how-it-works" class="nav-link">How it Works</a></li>
             {% endif %}
         </ul>
 
@@ -75,9 +75,9 @@
                 <li><a href="{% url 'account_logout' %}" class="mobile-nav-link logout">Logout</a></li>
             {% else %}
                 <!-- Unauthenticated Mobile Navigation -->
-                <li><a href="{% url 'core:landing' %}#features" class="mobile-nav-link">Features</a></li>
-                <li><a href="{% url 'core:landing' %}#pricing" class="mobile-nav-link">Pricing</a></li>
-                <li><a href="{% url 'core:landing' %}#how-it-works" class="mobile-nav-link">How it Works</a></li>
+                <li><a href="{% url 'core:home' %}#features" class="mobile-nav-link">Features</a></li>
+                <li><a href="{% url 'core:home' %}#pricing" class="mobile-nav-link">Pricing</a></li>
+                <li><a href="{% url 'core:home' %}#how-it-works" class="mobile-nav-link">How it Works</a></li>
                 <li><hr class="mobile-nav-divider"></li>
                 <li class="mobile-auth-actions">
                     <a href="{% url 'account_login' %}" class="btn btn-secondary btn-full">Login</a>

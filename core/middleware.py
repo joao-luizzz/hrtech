@@ -63,7 +63,7 @@ class CacheHeadersMiddleware:
             "default-src 'self'; "
             "script-src 'self' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js https://www.googletagmanager.com https://www.google-analytics.com 'unsafe-inline'; "
             "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; "
-            "font-src 'self' https://fonts.gstatic.com data:; "
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "
             "img-src 'self' data: https:; "
             "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com; "
             "frame-ancestors 'none'; "
@@ -81,4 +81,3 @@ class CacheHeadersMiddleware:
         response['X-XSS-Protection'] = '1; mode=block'
 
         return response
-

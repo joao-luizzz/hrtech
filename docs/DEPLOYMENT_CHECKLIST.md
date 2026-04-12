@@ -80,10 +80,20 @@
 - [ ] S3 bucket lifecycle rules configured (delete old CVs after N days)
 - [ ] Presigned URL expiration set appropriately
 
-**Redis (Caching):**
-- [ ] `REDIS_URL` configured (if using cache)
-- [ ] Redis connection tested
+**Redis (Caching & Broker):**
+- [ ] `CACHE_URL` configured for production Redis (não localhost!)
+- [ ] `CELERY_BROKER_URL` e `CELERY_RESULT_BACKEND` configurados
+- [ ] Redis connection tested from application
 - [ ] Key eviction policy configured (e.g., `maxmemory-policy allkeys-lru`)
+- [ ] Redis password protegida (não usar default/vazio)
+- [ ] Backup de configuração Redis documentado
+
+**Development Cache Management:**
+- [ ] `.env.local` não commitado no git (em `.gitignore`)
+- [ ] `CACHE_URL` vazio em desenvolvimento → força uso de LocMemCache (memória)
+- [ ] `ENVIRONMENT=development` no `.env.local`
+- [ ] Scripts de cache limpeza: `python scripts/clean_cache.py` testados
+- [ ] Documentado que mudanças em templates requerem limpeza de cache
 
 **Email (Notifications):**
 - [ ] Email backend configured (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`)

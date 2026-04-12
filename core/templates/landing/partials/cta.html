@@ -11,16 +11,16 @@
         <button class="btn-primary btn-lg me-3" hx-post="{% url 'core:start-free' %}" hx-target="#cta-response" data-ab="get-started">
           Get Started Now
         </button>
-        <button class="btn-secondary btn-lg" hx-post="{% url 'core:schedule-demo' %}" hx-target="#cta-response" data-ab="book-demo">
-          Book Demo
+        <button class="btn-secondary btn-lg" disabled style="opacity: 0.5; cursor: not-allowed;">
+          Book Demo (Coming soon)
         </button>
       {% else %}
-        <!-- Variant A: "Start Free Trial" + "Schedule Demo" -->
+        <!-- Variant A: "Start Free Trial" -->
         <button class="btn-primary btn-lg me-3" hx-post="{% url 'core:start-free' %}" hx-target="#cta-response" data-ab="start-free">
           Start Free Trial
         </button>
-        <button class="btn-secondary btn-lg" hx-post="{% url 'core:schedule-demo' %}" hx-target="#cta-response" data-ab="schedule-demo">
-          Schedule Demo
+        <button class="btn-secondary btn-lg" disabled style="opacity: 0.5; cursor: not-allowed;">
+          Schedule Demo (Coming soon)
         </button>
       {% endif %}
     </div>

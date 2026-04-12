@@ -1,0 +1,181 @@
+{% comment %} Hero section para usuários LOGADOS {% endcomment %}
+
+<section class="hero-section-logged" style="
+  background: linear-gradient(135deg, #0066FF 0%, #00D4AA 100%);
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: white;
+">
+  <div style="max-width: 900px; margin: 0 auto; width: 100%;">
+    {# Welcome personalizado #}
+    <h1 style="
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    ">
+      Bem-vindo de volta{% if user.first_name %}, {{ user.first_name }}!{% endif %}
+    </h1>
+
+    <p style="
+      font-size: 1.25rem;
+      margin-bottom: 40px;
+      opacity: 0.95;
+      line-height: 1.6;
+    ">
+      Sua empresa encontrou <strong style="font-weight: 600;">{{ stats.matches_realizados }} matches</strong>
+      desde a última vez. Continue sua jornada de recrutamento inteligente.
+    </p>
+
+    {# Quick Stats Grid #}
+    <div style="
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+      margin-bottom: 50px;
+    ">
+      <div style="
+        background: rgba(255,255,255, 0.15);
+        padding: 25px;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255, 0.2);
+      ">
+        <div style="
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 8px;
+        ">
+          {{ stats.vagas_abertas }}
+        </div>
+        <div style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+        ">
+          Vagas Abertas
+        </div>
+      </div>
+
+      <div style="
+        background: rgba(255,255,255, 0.15);
+        padding: 25px;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255, 0.2);
+      ">
+        <div style="
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 8px;
+        ">
+          {{ stats.candidatos_processados }}
+        </div>
+        <div style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+        ">
+          Candidatos Processados
+        </div>
+      </div>
+
+      <div style="
+        background: rgba(255,255,255, 0.15);
+        padding: 25px;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255, 0.2);
+      ">
+        <div style="
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 8px;
+        ">
+          {% if stats.score_medio %}{{ stats.score_medio|floatformat:1 }}/10{% else %}--{% endif %}
+        </div>
+        <div style="
+          font-size: 0.95rem;
+          opacity: 0.9;
+        ">
+          Score Médio
+        </div>
+      </div>
+    </div>
+
+    {# CTA Buttons #}
+    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+      <a href="{% url 'core:dashboard_rh' %}" style="
+        background-color: #FFFFFF;
+        color: #0066FF;
+        padding: 14px 35px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        display: inline-block;
+      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(0,102,255,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        📊 Ver Dashboard
+      </a>
+
+      <a href="{% url 'core:lista_vagas' %}" style="
+        background-color: rgba(255,255,255, 0.2);
+        color: #FFFFFF;
+        padding: 14px 35px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        border: 1px solid rgba(255,255,255, 0.4);
+        transition: all 0.3s ease;
+        display: inline-block;
+      " onmouseover="this.style.backgroundColor='rgba(255,255,255, 0.3)'" onmouseout="this.style.backgroundColor='rgba(255,255,255, 0.2)'">
+        💼 Minhas Vagas
+      </a>
+
+      <a href="{% url 'core:pipeline_kanban' %}" style="
+        background-color: rgba(255,255,255, 0.2);
+        color: #FFFFFF;
+        padding: 14px 35px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        border: 1px solid rgba(255,255,255, 0.4);
+        transition: all 0.3s ease;
+        display: inline-block;
+      " onmouseover="this.style.backgroundColor='rgba(255,255,255, 0.3)'" onmouseout="this.style.backgroundColor='rgba(255,255,255, 0.2)'">
+        📋 Pipeline
+      </a>
+
+      <a href="{% url 'core:buscar_candidatos' %}" style="
+        background-color: rgba(255,255,255, 0.2);
+        color: #FFFFFF;
+        padding: 14px 35px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        border: 1px solid rgba(255,255,255, 0.4);
+        transition: all 0.3s ease;
+        display: inline-block;
+      " onmouseover="this.style.backgroundColor='rgba(255,255,255, 0.3)'" onmouseout="this.style.backgroundColor='rgba(255,255,255, 0.2)'">
+        🔍 Buscar Candidatos
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  @media (max-width: 768px) {
+    .hero-section-logged h1 {
+      font-size: 2rem !important;
+    }
+
+    .hero-section-logged p {
+      font-size: 1rem !important;
+    }
+  }
+</style>

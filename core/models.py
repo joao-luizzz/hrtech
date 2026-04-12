@@ -354,6 +354,10 @@ class Candidato(models.Model):
                 name='candidato_organization_email_uniq',
             ),
         ]
+        indexes = [
+            models.Index(fields=['organization', 'status_cv'], name='idx_cand_org_status'),
+            models.Index(fields=['organization', 'created_at'], name='idx_cand_org_created'),
+        ]
 
     def __str__(self):
         return f"{self.nome} ({self.senioridade})"
@@ -521,6 +525,8 @@ class AuditoriaMatch(models.Model):
         indexes = [
             models.Index(fields=['vaga', 'score']),
             models.Index(fields=['candidato', 'created_at']),
+            models.Index(fields=['organization', 'created_at'], name='idx_audit_org_created'),
+            models.Index(fields=['organization', 'vaga'], name='idx_audit_org_vaga'),
         ]
     
     def __str__(self):
