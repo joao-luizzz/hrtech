@@ -103,11 +103,11 @@ class RHProtectedSmokeTests(TestCase):
             email='rh-smoke@example.com',
             password='pass1234'
         )
+        self.org = create_test_organization()
         self.user.profile.role = self.user.profile.Role.RH
+        self.user.profile.organization = self.org
         self.user.profile.save()
         self.client.login(username='rh_smoke', password='pass1234')
-
-        self.org = create_test_organization()
         self.vaga = Vaga.objects.create(
             titulo='Engenheiro Backend',
             area='Backend',
@@ -248,6 +248,7 @@ class RHProtectedSmokeTests(TestCase):
             password='pass1234',
         )
         outro_user.profile.role = outro_user.profile.Role.RH
+        outro_user.profile.organization = self.org
         outro_user.profile.save()
 
         response_publico = self.client.post(
@@ -286,6 +287,7 @@ class RHProtectedSmokeTests(TestCase):
             password='pass1234',
         )
         outro_user.profile.role = outro_user.profile.Role.RH
+        outro_user.profile.organization = self.org
         outro_user.profile.save()
 
         self.client.logout()
