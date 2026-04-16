@@ -1,0 +1,333 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="HRTech: AI-Powered Recruitment using knowledge graphs and Neo4j. Intelligent matching, skill extraction, and interview question generation.">
+    <meta name="keywords" content="recruitment, ATS, AI matching, knowledge graphs, Neo4j, hiring, interview questions, skill gap analysis">
+    <meta name="author" content="HRTech">
+    <meta name="canonical" href="https://hrtech.example.com/">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="HRTech: AI-Powered Recruitment">
+    <meta property="og:description" content="Intelligent matching using knowledge graphs. Powered by AI. Infinitely more precise than keyword matching.">
+    <meta property="og:image" content="{% static 'images/landing/og-image.webp' %}">
+    <meta property="og:image:alt" content="HRTech - AI-Powered Recruitment Platform">
+    <meta property="og:url" content="https://hrtech.example.com/">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="HRTech: AI-Powered Recruitment">
+    <meta name="twitter:description" content="Find perfect candidates in seconds with knowledge graph matching">
+    <meta name="twitter:image" content="{% static 'images/landing/twitter-image.webp' %}">
+
+    <!-- Structured Data (Schema.org) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "HRTech",
+      "description": "AI-powered recruitment matching using knowledge graphs",
+      "applicationCategory": "BusinessApplication",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "100"
+      }
+    }
+    </script>
+
+    <title>HRTech: AI-Powered Recruitment | Knowledge Graph Matching</title>
+
+    <!-- Bootstrap 5.3 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Inter Font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Critical Inline CSS -->
+    <style>
+        :root {
+            --color-brand: #0066FF;
+            --color-accent: #00D4AA;
+            --color-dark: #0F1419;
+            --color-light: #FFFFFF;
+            --color-neutral-700: #A0AAB8;
+            --color-surface: #1A1F26;
+            --color-border: #2D3139;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            background-color: var(--color-dark);
+            color: var(--color-light);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            letter-spacing: -0.01em;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 1.875rem;
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--color-neutral-700);
+            margin-bottom: 1rem;
+        }
+
+        a {
+            color: var(--color-brand);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: #0052CC;
+            text-decoration: underline 2px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            h2 {
+                font-size: 1.25rem;
+            }
+        }
+
+        /* Navbar styles */
+        .navbar {
+            height: 64px;
+            background-color: var(--color-dark);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Hero section styles */
+        .hero {
+            position: relative;
+            min-height: 600px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 1024px) {
+            .hero {
+                min-height: 500px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                min-height: 400px;
+            }
+        }
+
+        /* Grid system compatibility */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1rem;
+            margin: 0;
+            width: 100%;
+        }
+
+        .col-12 {
+            grid-column: span 12;
+        }
+
+        .col-md-4 {
+            grid-column: span 4;
+        }
+
+        .col-md-6 {
+            grid-column: span 6;
+        }
+
+        .col-lg-4 {
+            grid-column: span 4;
+        }
+
+        .col-lg-6 {
+            grid-column: span 6;
+        }
+
+        /* Bootstrap col widths conflict with grid rows; force stretch inside grid tracks */
+        .row > [class*="col-"] {
+            width: auto !important;
+            max-width: none !important;
+            min-width: 0 !important;
+        }
+
+        @media (max-width: 1024px) {
+            .col-lg-4,
+            .col-lg-6 {
+                grid-column: span 6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .col-md-4 {
+                grid-column: span 12;
+            }
+
+            .col-md-6,
+            .col-lg-4,
+            .col-lg-6 {
+                grid-column: span 12;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+
+    <!-- Landing Page CSS Files (minified in production) -->
+    {% if DEBUG %}
+        <link rel="stylesheet" href="{% static 'css/landing/index.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/responsive.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/animations.css' %}" media="print" onload="this.media='all'">
+    {% else %}
+        <link rel="stylesheet" href="{% static 'css/landing/index.min.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/responsive.min.css' %}" media="all">
+        <link rel="stylesheet" href="{% static 'css/landing/animations.min.css' %}" media="print" onload="this.media='all'">
+    {% endif %}
+
+    <!-- Google Analytics 4 -->
+    {% if GA_MEASUREMENT_ID %}
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ GA_MEASUREMENT_ID }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            // GA4 initialization with enhanced e-commerce tracking
+            gtag('config', '{{ GA_MEASUREMENT_ID }}', {
+                'allow_google_signals': false,  // LGPD: Disable Google Signals
+                'anonymize_ip': true,           // LGPD: Anonymize IP address
+                'cookie_flags': 'SameSite=None;Secure'  // Secure cookies only
+            });
+
+            // Track page view (automatic in GA4)
+            // Track custom events for CTA clicks
+            window.addEventListener('click', function(e) {
+                const btn = e.target.closest('button[data-ab]');
+                if (btn) {
+                    const buttonText = btn.textContent.trim();
+                    const variant = btn.getAttribute('data-variant') || '{{ ab_variant }}';
+                    gtag('event', 'cta_click', {
+                        'button_text': buttonText,
+                        'variant': variant,
+                        'page_path': window.location.pathname
+                    });
+                }
+            });
+
+            // Track newsletter signup (via HTMX response)
+            document.addEventListener('htmx:responseEnd', function(event) {
+                if (event.detail.xhr.responseURL.includes('newsletter-signup')) {
+                    if (event.detail.xhr.status === 200) {
+                        gtag('event', 'newsletter_signup', {
+                            'page_path': window.location.pathname,
+                            'variant': '{{ ab_variant }}'
+                        });
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+</head>
+<body>
+    {% block content %}{% endblock %}
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Load D3.js asynchronously, after page is interactive -->
+    <script async defer src="https://cdn.jsdelivr.net/npm/d3@7/+esm"></script>
+
+    <!-- Lazy-load sections with Intersection Observer -->
+    {% if DEBUG %}
+        <script type="module" src="{% static 'js/landing/lazy-loader.js' %}"></script>
+    {% else %}
+        <script type="module" src="{% static 'js/landing/lazy-loader.min.js' %}"></script>
+    {% endif %}
+
+    <!-- Graph initialization deferred to window.load for optimal LCP -->
+    <script type="module">
+      window.addEventListener('load', () => {
+        // Import dynamically after page is fully loaded and interactive
+        {% if DEBUG %}
+            import('/static/js/landing/graph-visualization.js').then(mod => {
+        {% else %}
+            import('/static/js/landing/graph-visualization.min.js').then(mod => {
+        {% endif %}
+          mod.initializeHeroGraph();
+        }).catch(err => {
+          console.warn('Graph visualization failed to load:', err);
+        });
+      });
+    </script>
+</body>
+</html>

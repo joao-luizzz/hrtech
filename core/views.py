@@ -24,13 +24,15 @@ from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse, HttpResponseForbidden, StreamingHttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, StreamingHttpResponse
 from django.db.models import Count, Avg, Q
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.utils import timezone
 from django.urls import reverse
+from django.db.models.functions import TruncMonth
 
 from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
@@ -38,7 +40,7 @@ from core.models import (
 )
 from core.tasks import processar_cv_task
 from core.neo4j_connection import run_query
-from core.decorators import rh_required, get_client_ip, get_request_id, staff_required, rate_limit
+from core.decorators import rh_required, get_client_ip, get_request_id, staff_required
 from core.services import (
     CVUploadService,
     get_s3_service,
@@ -144,8 +146,34 @@ def _parse_skills_payload(raw_payload, label):
 
 @require_GET
 def home(request):
-    """Página inicial."""
-    return render(request, 'core/home.html')
+    """Landing page - conteúdo diferente se user está logado."""
+    context = {}
+    
+    # Se user logado e é RH: mostrar stats
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        user_org = _get_user_organization(request.user)
+        if user_org:
+            context['stats'] = {
+                'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
+                'candidatos_processados': Candidato.objects.filter(
+                    organization=user_org,
+                    status_cv=Candidato.StatusCV.CONCLUIDO
+                ).count(),
+                'matches_realizados': AuditoriaMatch.objects.filter(
+                    vaga__organization=user_org
+                ).count(),
+                'score_medio': AuditoriaMatch.objects.filter(
+                    vaga__organization=user_org
+                ).aggregate(avg=Avg('score'))['avg'] or 0.0,
+            }
+    
+    return render(request, 'landing/index.html', context)
+
+
+@require_POST
+def start_free(request):
+    """CTA 'Start Free' - redireciona para signup."""
+    return JsonResponse({'redirect': f'{settings.LOGIN_URL}?next=/'}, status=200)
 
 
 @require_GET
@@ -178,9 +206,10 @@ def processar_upload(request):
             status=429,
         )
 
-    # Verifica se email já existe
-    if Candidato.objects.filter(email=email).exists():
-        candidato = Candidato.objects.get(email=email)
+    # SECURITY: Para uploads públicos (sem org), filtrar apenas candidatos sem organização
+    # Isso previne que um candidato público acesse/atualize dados de candidatos corporativos
+    if Candidato.objects.filter(email=email, organization__isnull=True).exists():
+        candidato = Candidato.objects.get(email=email, organization__isnull=True)
         if candidato.status_cv in ['processando', 'extraindo']:
             return render(
                 request, 'core/partials/upload_errors.html',
@@ -213,9 +242,7 @@ def processar_upload(request):
         ip_address=ip_address
     )
 
-    # SECURITY: Mascarar UUID em logs (LGPD)
-    safe_id = str(candidato.id)[:8] + "..."
-    logger.info(f"CV recebido para candidato {safe_id}")
+    logger.info(f"CV recebido para candidato {candidato.id}")
 
     # Dispara task Celery
     processar_cv_task.delay(str(candidato.id))
@@ -252,6 +279,11 @@ def status_cv_htmx(request, candidato_id: str):
         Candidato.StatusCV.ERRO,
     ]
 
+    # Evita re-render desnecessário em polling sem mudança de estado.
+    last_status = request.GET.get('last_status')
+    if not finalizado and last_status and last_status == candidato.status_cv:
+        return HttpResponse(status=204)
+
     response = render(request, 'core/partials/status_polling.html', {
         'candidato': candidato,
         'candidato_id': str(candidato.id),
@@ -274,12 +306,17 @@ def status_cv_htmx(request, candidato_id: str):
 @require_GET
 def dashboard_rh(request):
     """Dashboard principal do RH."""
-    from django.db.models import Count
     from datetime import timedelta
     import json
 
     # SECURITY: Filtrar por organization para tenant isolation
     user_org = _get_user_organization(request.user)
+    org_cache_key = str(user_org.id) if user_org else f"user-{request.user.id}"
+    cache_key = f"dashboard_rh:{org_cache_key}"
+    cached_context = cache.get(cache_key)
+    if cached_context is not None:
+        return render(request, 'core/dashboard_rh.html', cached_context)
+
     vagas = Vaga.objects.filter(organization=user_org).order_by('-created_at')
     ghost_job_minutes = getattr(settings, 'CV_GHOST_JOB_MINUTES', 30)
     ghost_job_cutoff = timezone.now() - timedelta(minutes=ghost_job_minutes)
@@ -294,24 +331,22 @@ def dashboard_rh(request):
         updated_at__lt=ghost_job_cutoff,
     ).order_by('updated_at')
 
+    candidatos_agg = Candidato.objects.filter(organization=user_org).aggregate(
+        candidatos_total=Count('id'),
+        candidatos_processados=Count('id', filter=Q(status_cv=Candidato.StatusCV.CONCLUIDO)),
+        candidatos_com_erro=Count('id', filter=Q(status_cv=Candidato.StatusCV.ERRO)),
+        jobs_em_processamento=Count('id', filter=Q(status_cv__in=processing_statuses)),
+    )
+
     stats = {
         'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
-        'candidatos_total': Candidato.objects.filter(organization=user_org).count(),
-        'candidatos_processados': Candidato.objects.filter(
-            organization=user_org,
-            status_cv=Candidato.StatusCV.CONCLUIDO
-        ).count(),
-        'candidatos_com_erro': Candidato.objects.filter(
-            organization=user_org,
-            status_cv=Candidato.StatusCV.ERRO
-        ).count(),
-        'jobs_em_processamento': Candidato.objects.filter(
-            organization=user_org,
-            status_cv__in=processing_statuses
-        ).count(),
+        'candidatos_total': candidatos_agg['candidatos_total'],
+        'candidatos_processados': candidatos_agg['candidatos_processados'],
+        'candidatos_com_erro': candidatos_agg['candidatos_com_erro'],
+        'jobs_em_processamento': candidatos_agg['jobs_em_processamento'],
         'jobs_fantasmas': jobs_fantasmas_qs.count(),
         'matches_realizados': AuditoriaMatch.objects.filter(
-            vaga__organization=user_org
+            organization=user_org
         ).count(),
     }
 
@@ -325,22 +360,29 @@ def dashboard_rh(request):
     senioridade_labels = [dict(Candidato.Senioridade.choices).get(item['senioridade'], item['senioridade']) for item in senioridade_data]
     senioridade_values = [item['count'] for item in senioridade_data]
 
-    # Dados para gráficos - Candidatos nos últimos 6 meses
+    # Dados para gráficos - Candidatos nos últimos 6 meses (query única)
     hoje = timezone.now()
+    seis_meses_atras = (hoje - timedelta(days=180)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    meses_agg = (
+        Candidato.objects.filter(
+            organization=user_org,
+            created_at__gte=seis_meses_atras,
+        )
+        .annotate(mes=TruncMonth('created_at'))
+        .values('mes')
+        .annotate(total=Count('id'))
+        .order_by('mes')
+    )
+    meses_lookup = {item['mes'].strftime('%Y-%m'): item['total'] for item in meses_agg if item['mes']}
+
     meses_labels = []
     meses_values = []
     for i in range(5, -1, -1):
         data_inicio = (hoje - timedelta(days=30*i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        if i > 0:
-            data_fim = (hoje - timedelta(days=30*(i-1))).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        else:
-            data_fim = hoje
-
-        count = Candidato.objects.filter(organization=user_org, created_at__gte=data_inicio, created_at__lt=data_fim).count()
         meses_labels.append(data_inicio.strftime('%B'))
-        meses_values.append(count)
+        meses_values.append(meses_lookup.get(data_inicio.strftime('%Y-%m'), 0))
 
-    return render(request, 'core/dashboard_rh.html', {
+    context = {
         'vagas': vagas,
         'stats': stats,
         'jobs_fantasmas': list(jobs_fantasmas_qs[:10]),
@@ -351,7 +393,9 @@ def dashboard_rh(request):
         'senioridade_values': json.dumps(senioridade_values),
         'meses_labels': json.dumps(meses_labels),
         'meses_values': json.dumps(meses_values),
-    })
+    }
+    cache.set(cache_key, context, timeout=60)
+    return render(request, 'core/dashboard_rh.html', context)
 
 
 # =============================================================================
@@ -363,9 +407,12 @@ def dashboard_rh(request):
 @require_GET
 def lista_vagas(request):
     """Lista todas as vagas com filtros."""
-    # SECURITY: Filtrar por organization para tenant isolation
     user_org = _get_user_organization(request.user)
-    vagas = Vaga.objects.filter(organization=user_org).order_by('-created_at')
+    vagas = (
+        Vaga.objects.filter(organization=user_org)
+        .select_related('organization', 'criado_por')
+        .order_by('-created_at')
+    )
 
     # Filtros
     status = request.GET.get('status')
@@ -395,9 +442,6 @@ def lista_vagas(request):
 @require_http_methods(["GET", "POST"])
 def criar_vaga(request):
     """Cria uma nova vaga."""
-    # SECURITY: Obter organization do usuário para atribuir à vaga
-    user_org = _get_user_organization(request.user)
-    
     if request.method == 'POST':
         titulo = request.POST.get('titulo', '').strip()
         descricao = request.POST.get('descricao', '').strip()
@@ -422,8 +466,6 @@ def criar_vaga(request):
             errors.append('Título é obrigatório')
         if not area:
             errors.append('Área é obrigatória')
-        if not user_org:
-            errors.append('Usuário não pertence a nenhuma organização')
         errors.extend(errors_obrigatorias)
         errors.extend(errors_desejaveis)
 
@@ -444,7 +486,6 @@ def criar_vaga(request):
             skills_obrigatorias=parsed_obrigatorias,
             skills_desejaveis=parsed_desejaveis,
             criado_por=request.user,
-            organization=user_org,  # SECURITY: Atribuir organization
         )
 
         # Registra ação
@@ -553,15 +594,13 @@ def excluir_vaga(request, vaga_id):
 @rh_required
 @require_POST
 @csrf_protect
-@rate_limit(limit=10, window=60)  # SECURITY: 10 matchings por minuto (operação cara)
 def rodar_matching(request, vaga_id):
     """Executa matching para uma vaga específica."""
     user_org = _get_user_organization(request.user)
     vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
     try:
-        # SECURITY: Passar organization para tenant isolation no MatchingEngine
-        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50, organization=user_org)
+        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50)
     except Exception as e:
         logger.exception(
             "Erro no matching (vaga_id=%s, request_id=%s): %s",
@@ -599,8 +638,7 @@ def ranking_candidatos(request, vaga_id):
     """Página de ranking de candidatos para uma vaga."""
     user_org = _get_user_organization(request.user)
     vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
-    # SECURITY: Passar organization para tenant isolation
-    resultados = MatchingService.get_ranking_resultados(vaga, organization=user_org)
+    resultados = MatchingService.get_ranking_resultados(vaga)
 
     return render(request, 'core/ranking_candidatos.html', {
         'vaga': vaga,
@@ -642,10 +680,8 @@ def detalhe_candidato_match(request, vaga_id, candidato_id):
         )
 
     # Fetch active interview questions for this candidate
-    # SECURITY: Filter by candidato__organization to ensure tenant isolation
     questions = InterviewQuestion.objects.filter(
         candidato_id=candidato_id,
-        candidato__organization=user_org,
         is_active=True
     ).order_by('-created_at')
 
@@ -682,7 +718,6 @@ def pipeline_kanban(request, vaga_id=None):
     if vaga_id:
         get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
-    # SECURITY: Passar organization para tenant isolation
     context = PipelineService.build_pipeline_data(vaga_id=vaga_id, organization=user_org)
     return render(request, 'core/pipeline_kanban.html', context)
 
@@ -693,23 +728,23 @@ def pipeline_kanban(request, vaga_id=None):
 @csrf_protect
 def mover_kanban(request):
     """Move candidato entre etapas do processo."""
+    user_org = _get_user_organization(request.user)
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao tentar mover kanban")
+        return JsonResponse({'error': 'Organização não encontrada'}, status=403)
+
     candidato_id = request.POST.get('candidato_id')
     nova_etapa = request.POST.get('nova_etapa') or request.POST.get('novo_status')
 
     if not candidato_id or not nova_etapa:
         return JsonResponse({'error': 'Parâmetros inválidos'}, status=400)
 
-    # SECURITY: Verificar tenant isolation antes de mover
-    user_org = _get_user_organization(request.user)
-    candidato = Candidato.objects.filter(pk=candidato_id, organization=user_org).first()
-    if not candidato:
-        return JsonResponse({'error': 'Candidato não encontrado'}, status=404)
-
+    # SECURITY: Passar organization para validar cross-tenant
     candidato, etapa_anterior, error = PipelineService.move_candidate_stage(
         candidato_id=candidato_id,
         nova_etapa=nova_etapa,
         usuario=request.user,
-        organization=user_org,  # SECURITY: Passar org para validação dupla no service
+        organization=user_org,  # ← ADICIONADO
     )
 
     if error == 'Etapa inválida':
@@ -717,8 +752,7 @@ def mover_kanban(request):
     if error == 'Candidato não encontrado':
         return JsonResponse({'error': error}, status=404)
 
-    # SECURITY: Não logar UUID completo do candidato (LGPD)
-    logger.info(f"Candidato movido de {etapa_anterior} para {nova_etapa} por user_id={request.user.id}")
+    logger.info(f"Candidato {candidato_id} movido de {etapa_anterior} para {nova_etapa}")
 
     return JsonResponse({'success': True, 'nova_etapa': nova_etapa})
 
@@ -818,13 +852,11 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
     service = InterviewOpenAIService()
     try:
         # Call service with candidate_id, vaga_id, and user info for audit
-        # SECURITY: Pass organization for tenant isolation in service layer
         questions = service.get_candidate_questions(
             candidate_id=str(candidate_id),
             vaga_id=str(vaga_id),
             created_by_user=request.user,
-            force_regenerate=force_regenerate,
-            organization=user_org
+            force_regenerate=force_regenerate
         )
         
         logger.info(
@@ -834,10 +866,8 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
         
         # Convert service response to InterviewQuestion objects for template
         # Service returns List[Dict], but template expects queryset/list of InterviewQuestion
-        # SECURITY: Filter by candidato__organization to ensure tenant isolation
         active_questions = InterviewQuestion.objects.filter(
             candidato_id=candidate_id,
-            candidato__organization=user_org,
             is_active=True
         ).order_by('-created_at')
         
@@ -903,15 +933,18 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
 @login_required
 @rh_required
 @require_GET
-@rate_limit(limit=30, window=60)  # SECURITY: 30 buscas por minuto
 def buscar_candidatos(request):
     """Busca e filtros de candidatos com filtros avançados."""
-    # SECURITY: Passar organization para filtro de tenant isolation
     user_org = _get_user_organization(request.user)
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao buscar candidatos")
+        return render(request, 'core/error.html', {'message': 'Organização não encontrada'}, status=403)
+
+    # SECURITY: Passar organization para validar cross-tenant
     candidatos = CandidateSearchService.apply_filters(
         query_params=request.GET,
         request_id=get_request_id(request),
-        organization=user_org,
+        organization=user_org,  # ← ADICIONADO
     )
 
     # Paginação
@@ -1043,12 +1076,9 @@ def buscar_candidatos_similares(request, candidato_id):
 
     Returns top 10 candidatos mais similares.
     """
-    # SECURITY: Passar organization para tenant isolation
-    user_org = _get_user_organization(request.user)
     candidato_original, candidatos_similares = CandidatePortalService.find_similar_candidates(
         candidato_id=candidato_id,
         request_id=get_request_id(request),
-        organization=user_org,
     )
 
     return render(request, 'core/candidatos/similares.html', {
@@ -1130,9 +1160,13 @@ def habilidades_candidato_htmx(request, candidato_id):
 @require_GET
 def dashboard_geral(request):
     """Dashboard geral com estatísticas."""
-    # SECURITY: Filtrar por organization para tenant isolation
     user_org = _get_user_organization(request.user)
-    
+    org_cache_key = str(user_org.id) if user_org else f"user-{request.user.id}"
+    cache_key = f"dashboard_geral:{org_cache_key}"
+    cached_context = cache.get(cache_key)
+    if cached_context is not None:
+        return render(request, 'core/dashboard_geral.html', cached_context)
+
     senioridade_data = list(
         Candidato.objects.filter(organization=user_org).values('senioridade')
         .annotate(total=Count('id'))
@@ -1141,17 +1175,13 @@ def dashboard_geral(request):
 
     area_data = []
     try:
-        # SECURITY: Filtrar por organization no Neo4j
-        # Nota: Neo4j precisa ter organization como propriedade do nó Candidato
         query = """
         MATCH (c:Candidato)-[:ATUA_EM]->(a:Area)
-        WHERE c.organization_id = $org_id
+        WHERE ($organization_id IS NULL OR c.organization_id = $organization_id)
         RETURN a.nome as area, count(c) as total
         ORDER BY total DESC
         """
-        org_id = str(user_org.id) if user_org else None
-        if org_id:
-            area_data = run_query(query, {'org_id': org_id})
+        area_data = run_query(query, {'organization_id': str(user_org.id)})
     except Exception as e:
         logger.warning(
             "Erro ao buscar areas no Neo4j (request_id=%s): %s",
@@ -1166,7 +1196,7 @@ def dashboard_geral(request):
     )
 
     score_por_vaga = list(
-        AuditoriaMatch.objects.filter(vaga__organization=user_org).values('vaga__titulo')
+        AuditoriaMatch.objects.filter(organization=user_org).values('vaga__titulo')
         .annotate(score_medio=Avg('score'))
         .order_by('-score_medio')[:10]
     )
@@ -1175,8 +1205,8 @@ def dashboard_geral(request):
         'total_candidatos': Candidato.objects.filter(organization=user_org).count(),
         'total_vagas': Vaga.objects.filter(organization=user_org).count(),
         'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
-        'matches_total': AuditoriaMatch.objects.filter(vaga__organization=user_org).count(),
-        'score_medio_geral': AuditoriaMatch.objects.filter(vaga__organization=user_org).aggregate(avg=Avg('score'))['avg'] or 0,
+        'matches_total': AuditoriaMatch.objects.filter(organization=user_org).count(),
+        'score_medio_geral': AuditoriaMatch.objects.filter(organization=user_org).aggregate(avg=Avg('score'))['avg'] or 0,
         'candidatos_processados': Candidato.objects.filter(
             organization=user_org,
             status_cv=Candidato.StatusCV.CONCLUIDO
@@ -1188,13 +1218,15 @@ def dashboard_geral(request):
             return float(obj)
         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-    return render(request, 'core/dashboard_geral.html', {
+    context = {
         'senioridade_data': json.dumps(senioridade_data, default=decimal_default),
         'area_data': json.dumps(area_data, default=decimal_default),
         'vagas_status': json.dumps(vagas_status, default=decimal_default),
         'score_por_vaga': json.dumps(score_por_vaga, default=decimal_default),
         'stats': stats,
-    })
+    }
+    cache.set(cache_key, context, timeout=60)
+    return render(request, 'core/dashboard_geral.html', context)
 
 
 @login_required
@@ -1202,9 +1234,7 @@ def dashboard_geral(request):
 @require_GET
 def api_stats(request):
     """API JSON para Chart.js."""
-    # SECURITY: Filtrar por organization para tenant isolation
     user_org = _get_user_organization(request.user)
-    
     senioridade = list(
         Candidato.objects.filter(organization=user_org).values('senioridade')
         .annotate(total=Count('id'))
@@ -1212,16 +1242,13 @@ def api_stats(request):
 
     area_data = []
     try:
-        # SECURITY: Filtrar por organization no Neo4j
         query = """
         MATCH (c:Candidato)-[:ATUA_EM]->(a:Area)
-        WHERE c.organization_id = $org_id
+        WHERE ($organization_id IS NULL OR c.organization_id = $organization_id)
         RETURN a.nome as area, count(c) as total
         ORDER BY total DESC
         """
-        org_id = str(user_org.id) if user_org else None
-        if org_id:
-            area_data = run_query(query, {'org_id': org_id})
+        area_data = run_query(query, {'organization_id': str(user_org.id) if user_org else None})
     except Exception as e:
         logger.warning(
             "Erro ao buscar areas no Neo4j para api_stats (request_id=%s): %s",
@@ -1230,7 +1257,7 @@ def api_stats(request):
         )
 
     score_vagas = list(
-        AuditoriaMatch.objects.filter(vaga__organization=user_org).values('vaga__titulo')
+        AuditoriaMatch.objects.filter(organization=user_org).values('vaga__titulo')
         .annotate(score_medio=Avg('score'))
         .order_by('-score_medio')[:10]
     )
@@ -1257,10 +1284,13 @@ def api_stats(request):
 @require_GET
 def historico_acoes(request):
     """Lista histórico de ações do sistema."""
-    # SECURITY: Filtrar por organization para tenant isolation
     user_org = _get_user_organization(request.user)
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao acessar historico_acoes")
+        return render(request, 'core/error.html', {'message': 'Organização não encontrada'}, status=403)
+
     acoes = HistoricoAcao.objects.filter(
-        Q(vaga__organization=user_org) | Q(candidato__organization=user_org) | Q(vaga__isnull=True, candidato__isnull=True, usuario__profile__organization=user_org)
+        organization=user_org
     ).select_related(
         'usuario', 'candidato', 'vaga'
     ).order_by('-created_at')
@@ -1272,12 +1302,7 @@ def historico_acoes(request):
     if tipo:
         acoes = acoes.filter(tipo_acao=tipo)
     if usuario_id:
-        # SECURITY: Validar que usuario_id pertence à mesma organization
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        if User.objects.filter(id=usuario_id, profile__organization=user_org).exists():
-            acoes = acoes.filter(usuario_id=usuario_id)
-        # Ignora filtro se usuario não pertence à org (evita IDOR)
+        acoes = acoes.filter(usuario_id=usuario_id)
 
     paginator = Paginator(acoes, 50)
     page = request.GET.get('page', 1)
@@ -1308,32 +1333,33 @@ def meu_perfil(request):
 @rh_required
 @require_POST
 @csrf_protect
-@rate_limit(limit=20, window=60)  # SECURITY: 20 comentários por minuto
 def adicionar_comentario(request, candidato_id):
     """Adiciona um comentário a um candidato."""
-    # SECURITY: Verificar tenant isolation
     user_org = _get_user_organization(request.user)
-    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
-    
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao adicionar comentário")
+        return render(request, 'core/error.html', {'message': 'Organização não encontrada'}, status=403)
+
     texto = request.POST.get('texto', '').strip()
     tipo = request.POST.get('tipo', 'nota')
     vaga_id = request.POST.get('vaga_id')
     privado = request.POST.get('privado') in ('on', '1', 'true')
 
     try:
+        # SECURITY: Passar organization para validar cross-tenant
         comentario = EngagementService.create_comment(
-            candidato_id=str(candidato.id),
+            candidato_id=candidato_id,
             autor=request.user,
             texto=texto,
             tipo=tipo,
             vaga_id=vaga_id,
             privado=privado,
+            organization=user_org,  # ← ADICIONADO
         )
     except ValueError as exc:
         return JsonResponse({'error': str(exc)}, status=400)
 
-    # SECURITY: Não logar UUID completo do candidato (LGPD)
-    logger.info("Comentario adicionado por usuario_id=%s", request.user.id)
+    logger.info("Comentario adicionado ao candidato %s por usuario_id=%s", candidato_id, request.user.id)
 
     # Retorna o HTML do comentário para HTMX
     if request.headers.get('HX-Request'):
@@ -1349,9 +1375,16 @@ def adicionar_comentario(request, candidato_id):
 @require_GET
 def listar_comentarios(request, candidato_id):
     """Lista comentários de um candidato."""
+    user_org = _get_user_organization(request.user)
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao listar comentários")
+        return render(request, 'core/error.html', {'message': 'Organização não encontrada'}, status=403)
+
+    # SECURITY: Passar organization para validar cross-tenant
     context = EngagementService.list_comments_context(
         candidato_id=candidato_id,
         user=request.user,
+        organization=user_org,  # ← ADICIONADO
     )
     return render(request, 'core/comentarios/lista.html', context)
 
@@ -1380,18 +1413,20 @@ def excluir_comentario(request, comentario_id):
 @rh_required
 @require_POST
 @csrf_protect
-@rate_limit(limit=30, window=60)  # SECURITY: 30 toggles por minuto
 def toggle_favorito(request, candidato_id):
     """Adiciona ou remove candidato dos favoritos."""
-    # SECURITY: Verificar tenant isolation
     user_org = _get_user_organization(request.user)
-    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
-    
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao toggle favorito")
+        return JsonResponse({'error': 'Organização não encontrada'}, status=403)
+
     vaga_id = request.POST.get('vaga_id')
+    # SECURITY: Passar organization para validar cross-tenant
     is_favorito = EngagementService.toggle_favorite(
-        candidato_id=str(candidato.id),
+        candidato_id=candidato_id,
         user=request.user,
         vaga_id=vaga_id,
+        organization=user_org,  # ← ADICIONADO
     )
 
     return JsonResponse({
@@ -1405,7 +1440,13 @@ def toggle_favorito(request, candidato_id):
 @require_GET
 def meus_favoritos(request):
     """Lista candidatos favoritos do usuário."""
-    favoritos = EngagementService.list_user_favorites(request.user)
+    user_org = _get_user_organization(request.user)
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao listar favoritos")
+        return render(request, 'core/error.html', {'message': 'Organização não encontrada'}, status=403)
+
+    # SECURITY: Passar organization para filtrar favoritos da org
+    favoritos = EngagementService.list_user_favorites(request.user, organization=user_org)
 
     return render(request, 'core/favoritos/lista.html', {
         'favoritos': favoritos
@@ -1450,7 +1491,9 @@ def vincular_candidato(request):
 
     Busca pelo email do usuário.
     """
-    status, candidato = CandidatePortalService.link_candidate_to_user(request.user)
+    user_org = _get_user_organization(request.user)
+    # SECURITY: Passar organization para validar cross-tenant
+    status, candidato = CandidatePortalService.link_candidate_to_user(request.user, organization=user_org)
 
     if status == 'already_linked':
         messages.warning(request, 'Você já possui um perfil de candidato vinculado.')
@@ -1499,20 +1542,24 @@ def exportar_candidatos_excel(request):
     """
     from django.http import HttpResponse
 
+    user_org = _get_user_organization(request.user)
+    if not user_org:
+        logger.error(f"User {request.user.id} sem organização ao exportar candidatos")
+        return render(request, 'core/error.html', {'message': 'Organização não encontrada'}, status=403)
+
     formato = request.GET.get('formato', '').strip().lower()
 
-    # SECURITY: Filtrar por organization para tenant isolation
-    user_org = _get_user_organization(request.user)
+    # SECURITY: Passar organization para validar cross-tenant
     candidatos = CandidateSearchService.apply_filters(
         query_params=request.GET,
         request_id=get_request_id(request),
-        organization=user_org,
+        organization=user_org,  # ← ADICIONADO
     )
 
     if formato == 'csv':
         filename = f"candidatos_{timezone.now().strftime('%Y%m%d_%H%M')}.csv"
         response = StreamingHttpResponse(
-            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200), mask_pii=True),
+            ExportService.stream_candidatos_csv(candidatos.iterator(chunk_size=200)),
             content_type='text/csv; charset=utf-8',
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1528,7 +1575,7 @@ def exportar_candidatos_excel(request):
         messages.error(request, 'Módulo openpyxl não instalado. Execute: pip install openpyxl')
         return redirect('core:buscar_candidatos')
 
-    file_content, filename = ExportService.build_candidatos_workbook(candidatos, mask_pii=True)
+    file_content, filename = ExportService.build_candidatos_workbook(candidatos)
 
     response = HttpResponse(
         file_content,
@@ -1564,8 +1611,7 @@ def exportar_ranking_excel(request, vaga_id):
         vaga=vaga
     ).select_related('candidato').order_by('-score')
 
-    # SECURITY: Mascarar PII nos exports (LGPD compliance)
-    file_content, filename = ExportService.build_ranking_workbook(vaga, matches, mask_pii=True)
+    file_content, filename = ExportService.build_ranking_workbook(vaga, matches)
     response = HttpResponse(
         file_content,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1590,249 +1636,3 @@ def relatorio_candidato_print(request, candidato_id):
         request_id=get_request_id(request),
     )
     return render(request, 'core/relatorios/candidato_print.html', context)
-
-
-# =============================================================================
-# LGPD - DIREITO AO ESQUECIMENTO (Art. 18)
-# =============================================================================
-
-@login_required
-@rh_required
-@require_POST
-@csrf_protect
-@rate_limit(limit=5, window=300)  # SECURITY: 5 exclusões por 5 minutos (operação destrutiva)
-def lgpd_excluir_candidato(request, candidato_id):
-    """
-    Exclui todos os dados de um candidato (LGPD Art. 18 - Direito ao Esquecimento).
-    
-    SECURITY:
-    - Requer autenticação RH
-    - Verifica tenant isolation (organization)
-    - Rate limited para prevenir abuso
-    - Registra auditoria antes da exclusão
-    - Remove dados de: PostgreSQL, Neo4j, S3
-    
-    Returns:
-        JsonResponse com status da exclusão
-    """
-    from core.services import get_s3_service
-    
-    user_org = _get_user_organization(request.user)
-    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
-    
-    # Captura dados para auditoria ANTES da exclusão
-    audit_data = {
-        'candidato_id': str(candidato.id)[:8] + '...',  # Mascarado
-        'email_hash': hash(candidato.email) % 10000,  # Hash para verificação sem expor email
-        'motivo': request.POST.get('motivo', 'Solicitação LGPD'),
-        'solicitante_id': request.user.id,
-    }
-    
-    errors = []
-    
-    # 1. Excluir do Neo4j (grafo de habilidades)
-    try:
-        from core.neo4j_connection import run_write_query
-        delete_query = """
-        MATCH (c:Candidato {uuid: $uuid})
-        DETACH DELETE c
-        """
-        run_write_query(delete_query, {'uuid': str(candidato.id)})
-        logger.info("LGPD: Neo4j data deleted for candidato (audit: %s)", audit_data)
-    except Exception as e:
-        errors.append(f"Neo4j: {type(e).__name__}")
-        logger.error("LGPD: Failed to delete Neo4j data: %s", type(e).__name__)
-    
-    # 2. Excluir CV do S3
-    if candidato.cv_s3_key:
-        try:
-            s3 = get_s3_service()
-            s3.delete_file(candidato.cv_s3_key)
-            logger.info("LGPD: S3 file deleted for candidato (audit: %s)", audit_data)
-        except Exception as e:
-            errors.append(f"S3: {type(e).__name__}")
-            logger.error("LGPD: Failed to delete S3 file: %s", type(e).__name__)
-    
-    # 3. Excluir registros relacionados no PostgreSQL
-    try:
-        # Comentários
-        Comentario.objects.filter(candidato=candidato).delete()
-        # Favoritos
-        Favorito.objects.filter(candidato=candidato).delete()
-        # Auditorias de match
-        AuditoriaMatch.objects.filter(candidato=candidato).delete()
-        # Interview questions
-        InterviewQuestion.objects.filter(candidate_id=str(candidato.id)).delete()
-        
-        logger.info("LGPD: Related records deleted for candidato (audit: %s)", audit_data)
-    except Exception as e:
-        errors.append(f"Related records: {type(e).__name__}")
-        logger.error("LGPD: Failed to delete related records: %s", type(e).__name__)
-    
-    # 4. Registrar ação de exclusão LGPD no histórico (antes de deletar candidato)
-    registrar_acao(
-        usuario=request.user,
-        tipo_acao=HistoricoAcao.TipoAcao.CANDIDATO_DELETADO,
-        detalhes={
-            'lgpd_request': True,
-            'audit': audit_data,
-            'errors': errors if errors else None,
-        },
-        ip_address=get_client_ip(request)
-    )
-    
-    # 5. Excluir o candidato do PostgreSQL
-    try:
-        candidato.delete()
-        logger.info("LGPD: Candidato deleted successfully (audit: %s)", audit_data)
-    except Exception as e:
-        errors.append(f"Candidato: {type(e).__name__}")
-        logger.error("LGPD: Failed to delete candidato: %s", type(e).__name__)
-        return JsonResponse({
-            'success': False,
-            'error': 'Falha ao excluir candidato. Contate o suporte.',
-            'partial_errors': errors,
-        }, status=500)
-    
-    if errors:
-        return JsonResponse({
-            'success': True,
-            'warning': 'Candidato excluído com alguns erros parciais.',
-            'partial_errors': errors,
-        })
-    
-    return JsonResponse({
-        'success': True,
-        'message': 'Dados do candidato excluídos com sucesso (LGPD Art. 18).',
-    })
-
-
-@login_required
-@require_POST
-@csrf_protect
-@rate_limit(limit=3, window=3600)  # SECURITY: 3 solicitações por hora
-def lgpd_solicitar_exclusao(request):
-    """
-    Permite que o próprio candidato solicite exclusão de seus dados.
-    
-    LGPD Art. 18 - Direito do titular solicitar exclusão.
-    
-    Fluxo:
-    1. Candidato logado solicita exclusão
-    2. Sistema verifica que é o próprio candidato
-    3. Marca candidato para exclusão (não exclui imediatamente)
-    4. RH pode confirmar ou contestar em 72h
-    5. Se não contestado, exclusão automática
-    """
-    candidato = getattr(request.user, 'candidato', None)
-    
-    if not candidato:
-        return JsonResponse({
-            'success': False,
-            'error': 'Você não possui um perfil de candidato vinculado.',
-        }, status=400)
-    
-    motivo = request.POST.get('motivo', '').strip()
-    if not motivo:
-        return JsonResponse({
-            'success': False,
-            'error': 'Por favor, informe o motivo da solicitação.',
-        }, status=400)
-    
-    # Marca candidato como pendente de exclusão
-    candidato.lgpd_exclusao_solicitada = True
-    candidato.lgpd_exclusao_motivo = motivo[:500]  # Limita tamanho
-    candidato.lgpd_exclusao_data = timezone.now()
-    candidato.save(update_fields=['lgpd_exclusao_solicitada', 'lgpd_exclusao_motivo', 'lgpd_exclusao_data'])
-    
-    # Registra solicitação no histórico
-    registrar_acao(
-        usuario=request.user,
-        tipo_acao=HistoricoAcao.TipoAcao.LGPD_SOLICITACAO,
-        candidato=candidato,
-        detalhes={
-            'motivo': motivo[:100],  # Resumido no log
-            'tipo': 'exclusao',
-        },
-        ip_address=get_client_ip(request)
-    )
-    
-    logger.info(
-        "LGPD: Exclusion request from candidato (user_id=%s)",
-        request.user.id,
-    )
-    
-    return JsonResponse({
-        'success': True,
-        'message': 'Sua solicitação foi registrada. Seus dados serão excluídos em até 72 horas, conforme LGPD.',
-    })
-
-
-@login_required
-@require_GET
-def lgpd_exportar_dados(request):
-    """
-    Exporta todos os dados do candidato (LGPD Art. 18 - Direito de Portabilidade).
-    
-    Retorna JSON com todos os dados pessoais do candidato.
-    """
-    candidato = getattr(request.user, 'candidato', None)
-    
-    if not candidato:
-        return JsonResponse({
-            'success': False,
-            'error': 'Você não possui um perfil de candidato vinculado.',
-        }, status=400)
-    
-    # Busca habilidades do Neo4j
-    habilidades = []
-    try:
-        query = """
-        MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
-        RETURN h.nome as nome, r.nivel as nivel, r.anos_experiencia as anos
-        ORDER BY r.nivel DESC
-        """
-        habilidades = run_query(query, {'uuid': str(candidato.id)})
-    except Exception:
-        pass
-    
-    # Monta export de dados
-    dados = {
-        'meta': {
-            'exportado_em': timezone.now().isoformat(),
-            'formato': 'LGPD Art. 18 - Portabilidade',
-        },
-        'dados_pessoais': {
-            'nome': candidato.nome,
-            'email': candidato.email,
-            'telefone': candidato.telefone,
-            'senioridade': candidato.get_senioridade_display(),
-            'anos_experiencia': candidato.anos_experiencia,
-            'disponivel': candidato.disponivel,
-            'created_at': candidato.created_at.isoformat(),
-        },
-        'habilidades': [
-            {
-                'nome': h['nome'],
-                'nivel': h['nivel'],
-                'anos': h.get('anos', 0),
-            }
-            for h in habilidades
-        ],
-        'historico_processo': {
-            'etapa_atual': candidato.get_etapa_processo_display(),
-            'status_cv': candidato.get_status_cv_display(),
-        },
-    }
-    
-    # Registra exportação
-    registrar_acao(
-        usuario=request.user,
-        tipo_acao=HistoricoAcao.TipoAcao.LGPD_EXPORT,
-        candidato=candidato,
-        ip_address=get_client_ip(request)
-    )
-    
-    response = JsonResponse(dados, json_dumps_params={'indent': 2, 'ensure_ascii': False})
-    response['Content-Disposition'] = f'attachment; filename="meus_dados_lgpd_{timezone.now().strftime("%Y%m%d")}.json"'
-    return response

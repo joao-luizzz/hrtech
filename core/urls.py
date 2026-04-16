@@ -62,6 +62,7 @@ urlpatterns = [
     # PÁGINAS PÚBLICAS
     # ==========================================================================
     path('', views.home, name='home'),
+    path('api/start-free/', views.start_free, name='start-free'),
     path('upload/', views.upload_cv, name='upload_cv'),
     path('upload/processar/', views.processar_upload, name='processar_upload'),
     path('upload/status/<str:candidato_id>/', views.status_cv_htmx, name='status_cv_htmx'),
@@ -156,7 +157,8 @@ urlpatterns = [
     # ==========================================================================
     # LGPD - DIREITO AO ESQUECIMENTO (Art. 18)
     # ==========================================================================
-    path('rh/lgpd/excluir/<str:candidato_id>/', views.lgpd_excluir_candidato, name='lgpd_excluir'),
-    path('minha-area/lgpd/solicitar-exclusao/', views.lgpd_solicitar_exclusao, name='lgpd_solicitar_exclusao'),
-    path('minha-area/lgpd/exportar-dados/', views.lgpd_exportar_dados, name='lgpd_exportar_dados'),
+    # TODO: Implementar viewsde LGPD
+    # path('rh/lgpd/excluir/<str:candidato_id>/', views.lgpd_excluir_candidato, name='lgpd_excluir'),
+    # path('minha-area/lgpd/solicitar-exclusao/', views.lgpd_solicitar_exclusao, name='lgpd_solicitar_exclusao'),
+    # path('minha-area/lgpd/exportar-dados/', views.lgpd_exportar_dados, name='lgpd_exportar_dados'),
 ]

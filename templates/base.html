@@ -1,5 +1,6 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
+<html lang="pt-BR" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,15 +10,41 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>">
     <title>{% block title %}HRTech ATS{% endblock %}</title>
 
+    <!-- Premium Font - Inter (Landing) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Design System - Shared Design Tokens -->
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
     <style>
-        /* ========== DARK MODE VARIABLES ========== */
+        /* ========== PREMIUM DESIGN SYSTEM (Sync com Landing) ========== */
         :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* Colors (Landing Design Tokens) */
+            --color-brand: #0066FF;
+            --color-accent: #00D4AA;
+            --color-dark: #0F1419;
+            --color-light: #FFFFFF;
+            --color-neutral-700: #A0AAB8;
+            --color-surface: #1A1F26;
+            --color-border: #2D3139;
+            --color-error: #FF4444;
+            --color-success: #00D4AA;
+            --color-warning: #FFB84D;
+            --color-info: #0066FF;
+
+            /* Gradients */
+            --primary-gradient: linear-gradient(135deg, var(--color-brand) 0%, #0052CC 100%);
+            --accent-gradient: linear-gradient(135deg, var(--color-accent) 0%, #00B894 100%);
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
 
             /* Light mode colors */
             --bg-primary: #ffffff;
@@ -29,33 +56,66 @@
             --border-color: #dee2e6;
             --card-bg: #ffffff;
             --card-shadow: rgba(0, 0, 0, 0.07);
-            --navbar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --navbar-gradient: linear-gradient(135deg, var(--color-brand) 0%, #0052CC 100%);
         }
 
         [data-theme="dark"] {
-            --bg-primary: #1a1d23;
-            --bg-secondary: #212529;
-            --bg-tertiary: #2c3034;
-            --text-primary: #e9ecef;
-            --text-secondary: #adb5bd;
-            --text-muted: #6c757d;
-            --border-color: #495057;
-            --card-bg: #2c3034;
+            /* Premium Dark Theme (Landing inspired) */
+            --bg-primary: var(--color-dark);
+            --bg-secondary: #1A1F26;
+            --bg-tertiary: #252B36;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0AAB8;
+            --text-muted: #6C7680;
+            --border-color: var(--color-border);
+            --card-bg: var(--color-surface);
             --card-shadow: rgba(0, 0, 0, 0.3);
-            --navbar-gradient: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            --navbar-gradient: linear-gradient(135deg, #1A1F26 0%, #0F1419 100%);
         }
 
         /* Global theme application */
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             background-color: var(--bg-secondary);
             color: var(--text-primary);
             min-height: 100vh;
             transition: background-color 0.3s ease, color 0.3s ease;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            letter-spacing: -0.01em;
         }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            line-height: 1.2;
+            color: var(--text-primary);
+        }
+
+        h1 { font-size: 2.5rem; }
+        h2 { font-size: 2rem; }
+        h3 { font-size: 1.5rem; }
+        h4 { font-size: 1.25rem; }
+        h5 { font-size: 1.1rem; }
+        h6 { font-size: 1rem; }
 
         .navbar {
             background: var(--navbar-gradient);
             transition: background 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.02em;
         }
 
         .card {
@@ -63,8 +123,13 @@
             color: var(--text-primary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            box-shadow: 0 4px 6px var(--card-shadow);
-            transition: background-color 0.3s ease, border-color 0.3s ease;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
         }
 
         .table {
@@ -86,10 +151,58 @@
         .btn-primary {
             background: var(--primary-gradient);
             border: none;
+            font-weight: 600;
+            padding: 0.625rem 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 102, 255, 0.2);
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+            background: linear-gradient(135deg, #0052CC 0%, #003d99 100%);
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: var(--accent-gradient);
+            border: none;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 212, 170, 0.2);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #00B894 0%, #009973 100%);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline-primary {
+            color: var(--color-brand);
+            border: 2px solid var(--color-brand);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--color-brand);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline-accent {
+            color: var(--color-accent);
+            border: 2px solid var(--color-accent);
+            font-weight: 600;
+        }
+
+        .btn-outline-accent:hover {
+            background: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
         }
 
         /* Dark mode toggle button */
@@ -114,32 +227,34 @@
             font-size: 1.1rem;
         }
 
-        /* Status badges */
+        /* Status badges - Premium colors */
         .status-badge {
             padding: 0.5rem 1rem;
-            border-radius: 50px;
-            font-weight: 500;
+            border-radius: 8px;
+            font-weight: 600;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            font-size: 0.875rem;
+            letter-spacing: -0.01em;
         }
 
-        .status-pendente { background-color: #f8f9fa; color: #6c757d; }
-        .status-recebido { background-color: #cfe2ff; color: #0a58ca; }
-        .status-processando { background-color: #fff3cd; color: #997404; }
-        .status-extraindo { background-color: #d1e7dd; color: #0f5132; }
-        .status-concluido { background-color: #d1e7dd; color: #0f5132; }
-        .status-erro { background-color: #f8d7da; color: #842029; }
+        .status-pendente { background: rgba(160, 170, 184, 0.15); color: var(--color-neutral-700); }
+        .status-recebido { background: rgba(0, 102, 255, 0.15); color: var(--color-brand); }
+        .status-processando { background: rgba(255, 180, 77, 0.15); color: var(--color-warning); }
+        .status-extraindo { background: rgba(0, 212, 170, 0.15); color: var(--color-accent); }
+        .status-concluido { background: rgba(0, 212, 170, 0.15); color: var(--color-accent); }
+        .status-erro { background: rgba(255, 68, 68, 0.15); color: var(--color-error); }
 
-        /* Etapas do processo */
-        .etapa-triagem { background-color: #e2e3e5; color: #41464b; }
-        .etapa-entrevista_rh { background-color: #cfe2ff; color: #084298; }
-        .etapa-teste_tecnico { background-color: #fff3cd; color: #664d03; }
-        .etapa-entrevista_tecnica { background-color: #cff4fc; color: #055160; }
-        .etapa-proposta { background-color: #d1e7dd; color: #0f5132; }
-        .etapa-contratado { background-color: #198754; color: white; }
-        .etapa-rejeitado { background-color: #f8d7da; color: #842029; }
-        .etapa-desistiu { background-color: #6c757d; color: white; }
+        /* Etapas do processo - Premium gradient colors */
+        .etapa-triagem { background: rgba(160, 170, 184, 0.15); color: var(--color-neutral-700); border-left: 3px solid var(--color-neutral-700); }
+        .etapa-entrevista_rh { background: rgba(0, 102, 255, 0.15); color: var(--color-brand); border-left: 3px solid var(--color-brand); }
+        .etapa-teste_tecnico { background: rgba(255, 180, 77, 0.15); color: var(--color-warning); border-left: 3px solid var(--color-warning); }
+        .etapa-entrevista_tecnica { background: rgba(0, 102, 255, 0.1); color: var(--color-brand); border-left: 3px solid var(--color-brand); }
+        .etapa-proposta { background: rgba(0, 212, 170, 0.15); color: var(--color-accent); border-left: 3px solid var(--color-accent); }
+        .etapa-contratado { background: var(--accent-gradient); color: white; border-left: 3px solid var(--color-accent); }
+        .etapa-rejeitado { background: rgba(255, 68, 68, 0.15); color: var(--color-error); border-left: 3px solid var(--color-error); }
+        .etapa-desistiu { background: rgba(160, 170, 184, 0.2); color: var(--color-neutral-700); border-left: 3px solid var(--color-neutral-700); }
 
         /* Spinner */
         .spinner-grow-sm {
@@ -215,32 +330,68 @@
             color: var(--text-muted);
         }
 
-        /* Forms dark mode */
+        /* Forms - Premium dark mode styling */
+        .form-control,
+        .form-select,
+        .form-range {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
         [data-theme="dark"] .form-control,
         [data-theme="dark"] .form-select {
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
-            border-color: var(--border-color);
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .form-control:hover,
+        [data-theme="dark"] .form-select:hover {
+            border-color: #3a4249;
         }
 
         [data-theme="dark"] .form-control:focus,
         [data-theme="dark"] .form-select:focus {
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
-            border-color: #667eea;
+            border-color: var(--color-brand);
+            box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .form-label,
+        [data-theme="dark"] label {
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        [data-theme="dark"] .form-text {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        [data-theme="dark"] .form-control::placeholder {
+            color: var(--text-muted);
         }
 
         [data-theme="dark"] .dropdown-menu {
             background-color: var(--card-bg);
             border-color: var(--border-color);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
         }
 
         [data-theme="dark"] .dropdown-item {
             color: var(--text-primary);
+            transition: all 0.2s ease;
         }
 
-        [data-theme="dark"] .dropdown-item:hover {
+        [data-theme="dark"] .dropdown-item:hover,
+        [data-theme="dark"] .dropdown-item:focus {
             background-color: var(--bg-tertiary);
+            color: var(--color-brand);
         }
 
         [data-theme="dark"] .dropdown-divider {
@@ -250,7 +401,21 @@
         [data-theme="dark"] .alert {
             background-color: var(--bg-tertiary);
             border-color: var(--border-color);
+            border: 1px solid var(--border-color);
             color: var(--text-primary);
+            border-left: 3px solid var(--color-brand);
+        }
+
+        [data-theme="dark"] .alert-warning {
+            border-left-color: var(--color-warning);
+        }
+
+        [data-theme="dark"] .alert-danger {
+            border-left-color: var(--color-error);
+        }
+
+        [data-theme="dark"] .alert-success {
+            border-left-color: var(--color-accent);
         }
 
         /* ========== DARK MODE FIXES COMPLETOS ========== */
@@ -276,20 +441,6 @@
             color: var(--text-primary) !important;
         }
 
-        /* Formulários */
-        [data-theme="dark"] .form-label,
-        [data-theme="dark"] label {
-            color: var(--text-primary) !important;
-        }
-
-        [data-theme="dark"] .form-text {
-            color: var(--text-secondary) !important;
-        }
-
-        [data-theme="dark"] .form-control::placeholder {
-            color: var(--text-muted);
-        }
-
         [data-theme="dark"] input[type="file"].form-control {
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
@@ -297,9 +448,18 @@
         }
 
         [data-theme="dark"] input[type="file"].form-control::file-selector-button {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border-color: var(--border-color);
+            background-color: linear-gradient(135deg, var(--color-brand) 0%, #0052CC 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.4rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="dark"] input[type="file"].form-control::file-selector-button:hover {
+            transform: translateY(-2px);
         }
 
         /* Textos e listas */
@@ -523,130 +683,55 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'core:home' %}">
-                <i class="bi bi-people-fill"></i>
-                <span>HRTech ATS</span>
+    <!-- Navbar for Internal App (Bootstrap-based) -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4" style="background-color: var(--color-dark); border-bottom: 2px solid var(--color-brand);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'core:home' %}" style="font-weight: 700; letter-spacing: -0.02em;">
+                👥 HRTech ATS
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         {% if user.profile.is_rh or user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:dashboard_rh' %}">
-                                <i class="bi bi-clipboard2-data"></i> Dashboard RH
-                            </a>
+                            <a class="nav-link" href="{% url 'core:dashboard_rh' %}" style="color: var(--color-light);">Dashboard RH</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:lista_vagas' %}">
-                                <i class="bi bi-briefcase"></i> Vagas
-                            </a>
+                            <a class="nav-link" href="{% url 'core:lista_vagas' %}" style="color: var(--color-light);">Vagas</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:pipeline_kanban' %}">
-                                <i class="bi bi-kanban"></i> Pipeline
-                            </a>
+                            <a class="nav-link" href="{% url 'core:pipeline_kanban' %}" style="color: var(--color-light);">Pipeline</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:dashboard_geral' %}">
-                                <i class="bi bi-graph-up"></i> Estatisticas
-                            </a>
+                            <a class="nav-link" href="{% url 'core:dashboard_geral' %}" style="color: var(--color-light);">Estatísticas</a>
                         </li>
                         {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:minha_area' %}">
-                                <i class="bi bi-house"></i> Minha Area
-                            </a>
+                            <a class="nav-link" href="{% url 'core:minha_area' %}" style="color: var(--color-light);">Minha Área</a>
                         </li>
                         {% endif %}
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav align-items-center">
-                    <!-- Dark Mode Toggle -->
-                    <li class="nav-item me-3">
-                        <button class="theme-toggle btn btn-link nav-link p-0" id="theme-toggle" aria-label="Toggle dark mode">
-                            <i class="bi bi-moon-stars-fill" id="theme-icon"></i>
-                        </button>
-                    </li>
-                    {% if user.is_authenticated %}
-                        <li class="nav-item me-2">
-                            <a class="nav-link btn btn-outline-light btn-sm px-3" href="{% url 'core:upload_cv' %}">
-                                <i class="bi bi-cloud-upload"></i> Upload CV
-                            </a>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'core:upload_cv' %}" style="color: var(--color-light);">Upload CV</a>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i>
-                                <span class="user-badge">
-                                    {{ user.email|truncatechars:20 }}
-                                    {% if user.profile.role == 'rh' %}
-                                    <i class="bi bi-shield-check ms-1" title="RH"></i>
-                                    {% elif user.is_superuser %}
-                                    <i class="bi bi-star-fill ms-1" title="Admin"></i>
-                                    {% endif %}
-                                </span>
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" style="color: var(--color-light);">
+                                {{ user.email|truncatechars:20 }}
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><h6 class="dropdown-header">{{ user.email }}</h6></li>
-                                <li>
-                                    <span class="dropdown-item-text small text-muted">
-                                        {% if user.is_superuser %}
-                                        <i class="bi bi-star-fill text-warning"></i> Administrador
-                                        {% elif user.profile.role == 'rh' %}
-                                        <i class="bi bi-shield-check text-primary"></i> Recrutador
-                                        {% else %}
-                                        <i class="bi bi-person text-secondary"></i> Candidato
-                                        {% endif %}
-                                    </span>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                {% if not user.profile.is_rh and not user.is_superuser %}
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'core:minha_area' %}">
-                                        <i class="bi bi-house me-2"></i>Minha Area
-                                    </a>
-                                </li>
-                                {% endif %}
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'core:meu_perfil' %}">
-                                        <i class="bi bi-person-badge me-2"></i>Minha Conta
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'account_change_password' %}">
-                                        <i class="bi bi-key me-2"></i>Alterar Senha
-                                    </a>
-                                </li>
-                                {% if user.is_staff %}
-                                <li>
-                                    <a class="dropdown-item" href="/admin/">
-                                        <i class="bi bi-sliders me-2"></i>Painel Admin
-                                    </a>
-                                </li>
-                                {% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item text-danger" href="{% url 'account_logout' %}">
-                                        <i class="bi bi-box-arrow-right me-2"></i>Sair
-                                    </a>
-                                </li>
+                            <ul class="dropdown-menu dropdown-menu-end" style="background-color: var(--color-surface); border-color: var(--color-border);">
+                                <li><h6 class="dropdown-header" style="color: var(--color-light);">{{ user.email }}</h6></li>
+                                <li><hr class="dropdown-divider" style="border-color: var(--color-border);"></li>
+                                <li><a class="dropdown-item" href="{% url 'account_logout' %}" style="color: var(--color-light);">Logout</a></li>
                             </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'account_login' %}">
-                                <i class="bi bi-box-arrow-in-right"></i> Entrar
-                            </a>
+                            <a class="nav-link" href="{% url 'account_login' %}" style="color: var(--color-light);">Login</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link btn btn-outline-light btn-sm px-3 ms-2" href="{% url 'account_signup' %}">
-                                <i class="bi bi-person-plus"></i> Cadastrar
-                            </a>
+                            <a class="nav-link" href="{% url 'account_signup' %}" style="color: var(--color-light);">Sign Up</a>
                         </li>
                     {% endif %}
                 </ul>

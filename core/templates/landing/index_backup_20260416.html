@@ -1,0 +1,25 @@
+{% extends "landing/base.html" %}
+
+{% block content %}
+  {% include "landing/partials/header.html" %}
+
+  {% comment %} Conteúdo diferente baseado em autenticação {% endcomment %}
+  {% if user.is_authenticated and stats %}
+    {% comment %} ===== LANDING LOGADA ===== {% endcomment %}
+    {% include "landing/partials/hero-logged.html" %}
+    {% include "landing/partials/cta-dashboard.html" %}
+  {% else %}
+    {% comment %} ===== LANDING PÚBLICA ===== {% endcomment %}
+    {% include "landing/partials/hero.html" %}
+    {% include "landing/partials/vision.html" %}
+    {% include "landing/partials/problem.html" %}
+    {% include "landing/partials/how-it-works.html" %}
+    {% include "landing/partials/graphs-vs-keywords.html" %}
+    {% include "landing/partials/features.html" %}
+    {% include "landing/partials/tech-stack.html" %}
+    {% include "landing/partials/pricing.html" %}
+    {% include "landing/partials/cta.html" %}
+  {% endif %}
+
+  {% include "landing/partials/footer.html" %}
+{% endblock %}

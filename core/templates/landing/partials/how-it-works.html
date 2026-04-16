@@ -1,0 +1,46 @@
+<!-- How It Works Section - Split Layout with Graph -->
+<section class="how-it-works lazy-section">
+  <div class="container">
+    <div class="row align-items-center">
+      <!-- Left: Steps Explanation -->
+      <div class="col-12 col-lg-6 mb-5 mb-lg-0">
+        <h2>How It Works</h2>
+        <p class="intro">Like Google's PageRank, but for hiring.</p>
+
+        <!-- Step 1 -->
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Upload CV</h3>
+          <p>Extracts skills via GPT-4. Organizes data structurally.</p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Build Knowledge Graph</h3>
+          <p>Neo4j organizes skill relationships and proficiency levels.</p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Match with Precision</h3>
+          <p>Scoring algorithm finds best candidates in seconds.</p>
+        </div>
+
+        <!-- Cypher Query Example -->
+        <div class="code-snippet">
+          <pre><code>MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
+&lt;-[:REQUER]-(v:Vaga)
+WHERE v.uuid = $vaga_id
+RETURN c, COUNT(h) as skills_match</code></pre>
+        </div>
+      </div>
+
+      <!-- Right: Graph Visualization -->
+      <div class="col-12 col-lg-6">
+        <canvas id="how-it-works-graph-canvas" class="how-graph"></canvas>
+      </div>
+    </div>
+  </div>
+</section>

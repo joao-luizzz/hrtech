@@ -118,12 +118,20 @@ class CandidatePortalService:
         }
 
     @staticmethod
-    def link_candidate_to_user(user):
+    def link_candidate_to_user(user, organization=None):
+        """
+        SECURITY: Link candidate to user with organization validation.
+        If organization is provided, only link candidates from that organization.
+        """
         if hasattr(user, 'candidato') and user.candidato:
             return 'already_linked', user.candidato
 
         try:
-            candidato = Candidato.objects.get(email=user.email)
+            # SECURITY: Filtrar por organization se fornecido
+            if organization:
+                candidato = Candidato.objects.get(email=user.email, organization=organization)
+            else:
+                candidato = Candidato.objects.get(email=user.email)
         except Candidato.DoesNotExist:
             return 'not_found', None
 

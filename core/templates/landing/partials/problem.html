@@ -1,0 +1,223 @@
+<section class="problem" id="problem">
+    <div class="problem-container">
+        <h2>
+            Why Traditional ATS Fail: The Problem with Keywords
+        </h2>
+        <p class="intro">
+            Keyword-based matching misses 35% of qualified candidates. Knowledge graphs catch them all.
+        </p>
+
+        <div class="problem-cards-wrapper">
+            <!-- Before Card -->
+            <div class="problem-card-container">
+                <div class="problem-card problem-before">
+                    <div class="card-header">
+                        ❌ Before
+                    </div>
+                    <ul>
+                        <li>Manual CV review</li>
+                        <li>Keyword matching</li>
+                        <li>Hours of analysis</li>
+                        <li>High bias risk</li>
+                        <li>Slow hiring pipeline</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Arrow (hidden on mobile) -->
+            <div class="arrow-container">
+                <div class="arrow">→</div>
+            </div>
+
+            <!-- After Card -->
+            <div class="problem-card-container">
+                <div class="problem-card problem-after">
+                    <div class="card-header">
+                        ✅ After
+                    </div>
+                    <ul>
+                        <li>Automated CV processing</li>
+                        <li>Graph-based matching</li>
+                        <li>Minutes to analyze</li>
+                        <li>Objective scoring</li>
+                        <li>Fast hiring cycles</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .problem {
+            background-color: var(--color-dark) !important;
+            padding: 64px 48px !important;
+            margin-top: 64px !important;
+        }
+
+        .problem-container {
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 0 16px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .problem-cards-wrapper {
+            display: grid !important;
+            grid-template-columns: minmax(280px, 1fr) auto minmax(280px, 1fr) !important;
+            gap: 32px !important;
+            margin-top: 48px !important;
+            align-items: stretch !important;
+            justify-items: stretch !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .problem-card-container {
+            display: block !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .problem-card {
+            padding: 32px !important;
+            border-radius: 12px !important;
+            background: var(--color-surface) !important;
+            box-shadow: var(--shadow-md) !important;
+            overflow: visible !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            word-wrap: break-word !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+        }
+
+        .problem-before {
+            border: 2px solid #EF4444 !important;
+            background: rgba(239, 68, 68, 0.05) !important;
+        }
+
+        .problem-after {
+            border: 2px solid #10B981 !important;
+            background: rgba(16, 185, 129, 0.05) !important;
+        }
+
+        .card-header {
+            font-weight: 700 !important;
+            font-size: 1.125rem !important;
+            margin-bottom: 24px !important;
+            color: var(--color-light) !important;
+        }
+
+        .problem-card ul {
+            list-style: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .problem-card li {
+            margin-bottom: 12px !important;
+            padding-left: 24px !important;
+            position: relative !important;
+            color: var(--color-neutral-700) !important;
+            word-wrap: break-word !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+            white-space: normal !important;
+        }
+
+        .problem-card li:before {
+            content: "•" !important;
+            position: absolute !important;
+            left: 0 !important;
+            color: var(--color-neutral-700) !important;
+        }
+
+        .arrow-container {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 16px !important;
+            min-width: auto !important;
+            flex-shrink: 0 !important;
+        }
+
+        .arrow {
+            font-size: 3rem !important;
+            color: var(--color-accent) !important;
+            opacity: 0.5 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+        }
+
+        @media (max-width: 1024px) {
+            .problem-cards-wrapper {
+                gap: 24px !important;
+            }
+
+            .problem-card {
+                padding: 24px !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .problem {
+                padding: 48px 24px !important;
+            }
+
+            .problem-container {
+                padding: 0 16px !important;
+            }
+
+            .problem-cards-wrapper {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+                margin-top: 32px !important;
+            }
+
+            .arrow-container {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .problem {
+                padding: 32px 16px !important;
+            }
+
+            .problem-container {
+                padding: 0 12px !important;
+            }
+
+            .problem-card {
+                padding: 20px !important;
+            }
+
+            .card-header {
+                font-size: 1rem !important;
+                margin-bottom: 16px !important;
+            }
+
+            .problem-card li {
+                margin-bottom: 10px !important;
+                padding-left: 20px !important;
+                font-size: 0.95rem !important;
+            }
+        }
+
+        .problem h2 {
+            text-align: center !important;
+            color: var(--color-light) !important;
+            margin-bottom: 24px !important;
+        }
+
+        .intro {
+            text-align: center !important;
+        }
+    </style>
+</section>

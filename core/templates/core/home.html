@@ -1,180 +1,323 @@
 {% extends 'base.html' %}
 
-{% block title %}HRTech ATS - Sistema de Recomendacao de Candidatos{% endblock %}
+{% block title %}HRTech - Contratação Inteligente com IA{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+    /* 1. Variáveis de Cor Rigorosas (O "Padrão Ph.D.") */
+    :root {
+        --bg-main: #0B0F19;
+        --bg-card: #1A1F2B;
+        --border-color: #2A3143;
+        --accent-blue: #3B82F6;
+        --accent-green: #10B981;
+        --text-main: #FFFFFF;
+        --text-sub: #94A3B8;
+    }
+
+    body {
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        line-height: 1.6;
+    }
+
+    /* 2. Tipografia e Espaçamento */
+    h1, h2, h3 {
+        letter-spacing: -0.02em;
+        font-weight: 800;
+        color: var(--text-main);
+    }
+
+    .section-padding {
+        padding: 120px 0; /* Exigência de 120px a 160px de respiro */
+    }
+
+    .code-font {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--accent-green);
+    }
+
+    /* 3. Hero Section Específica */
+    .hero-section {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    #network-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        opacity: 0.3;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .badge-tech {
+        background-color: rgba(59, 130, 246, 0.1);
+        border: 1px solid var(--accent-blue);
+        color: var(--accent-blue);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-bottom: 24px;
+        display: inline-block;
+    }
+
+    /* 4. Componentes (Cards e Botões) */
+    .saas-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 40px;
+        height: 100%;
+        transition: transform 0.2s ease;
+    }
+
+    .saas-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .text-subtle {
+        color: var(--text-sub);
+    }
+
+    .btn-custom-primary {
+        background-color: var(--accent-blue);
+        color: white;
+        font-weight: 700;
+        padding: 14px 32px;
+        border-radius: 8px;
+        border: none;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-custom-primary:hover {
+        background-color: #2563EB; /* Azul mais escuro */
+        color: white;
+    }
+
+    .btn-custom-outline {
+        background-color: transparent;
+        color: var(--text-main);
+        font-weight: 700;
+        padding: 14px 32px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-custom-outline:hover {
+        border-color: var(--text-main);
+        color: var(--text-main);
+    }
+
+    .bg-highlight {
+        background-color: var(--accent-blue);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <!-- Hero -->
+<section class="hero-section text-center text-md-start">
+    <div id="network-background"></div>
+    <div class="container hero-content">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mx-auto text-center">
+                <span class="badge-tech">✨ Lançamento: O futuro do ATS</span>
+                <h1 class="display-3 mb-4">Vá além das palavras-chave.<br>Contrate pela precisão.</h1>
+                <p class="lead text-subtle mb-5 px-md-5">
+                    A primeira plataforma HRTech movida a Inteligência Artificial e Grafos de Conhecimento (Neo4j). Automatize a triagem, elimine o viés e descubra o match perfeito com precisão matemática.
+                </p>
+                <div class="d-flex gap-3 justify-content-center flex-column flex-sm-row">
+                    <a href="{% url 'account_signup' %}" class="btn-custom-primary">Agendar Demonstração</a>
+                    <a href="#como-funciona" class="btn-custom-outline">Explorar a Tecnologia</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-padding border-top border-dark">
+    <div class="container">
         <div class="text-center mb-5">
-            <h1 class="display-5 fw-bold mb-3">
-                <i class="bi bi-people-fill text-primary"></i>
-                HRTech ATS
-            </h1>
-            <p class="lead text-muted">
-                Sistema inteligente de recomendacao de candidatos usando grafos e IA
-            </p>
+            <h2 class="display-5">O fim do recrutamento subjetivo.</h2>
+            <p class="text-subtle fs-5">A transição de processos lentos para a inteligência de dados.</p>
         </div>
-
-        <!-- Cards de acesso rapido -->
-        <div class="row g-4 mb-5">
-            <!-- Dashboard RH -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 border-primary">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-clipboard2-data display-4 text-primary"></i>
-                        </div>
-                        <h5 class="card-title">Dashboard RH</h5>
-                        <p class="card-text text-muted small">
-                            Gerencie vagas e execute matching de candidatos
-                        </p>
-                        <a href="{% url 'core:dashboard_rh' %}" class="btn btn-primary w-100">
-                            <i class="bi bi-arrow-right"></i> Acessar
-                        </a>
-                    </div>
+        <div class="row g-4 mt-4">
+            <div class="col-md-6">
+                <div class="saas-card" style="border-top: 4px solid #EF4444;"> <h3 class="h4 mb-3">O Padrão Antigo</h3>
+                    <p class="text-subtle mb-0">Busca estática por palavras-chave em bancos de dados relacionais. Processo lento, subjetivo e altamente sujeito a vieses inconscientes humanos durante a leitura de PDFs.</p>
                 </div>
             </div>
-
-            <!-- Pipeline Kanban -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 border-warning">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-kanban display-4 text-warning"></i>
-                        </div>
-                        <h5 class="card-title">Pipeline Kanban</h5>
-                        <p class="card-text text-muted small">
-                            Visualize candidatos por etapa do processo
-                        </p>
-                        <a href="{% url 'core:pipeline_kanban' %}" class="btn btn-warning w-100">
-                            <i class="bi bi-arrow-right"></i> Acessar
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Estatisticas -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 border-info">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-graph-up display-4 text-info"></i>
-                        </div>
-                        <h5 class="card-title">Estatisticas</h5>
-                        <p class="card-text text-muted small">
-                            Graficos e metricas do sistema de recrutamento
-                        </p>
-                        <a href="{% url 'core:dashboard_geral' %}" class="btn btn-info w-100">
-                            <i class="bi bi-arrow-right"></i> Acessar
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Upload CV -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 border-success">
-                    <div class="card-body text-center p-4">
-                        <div class="mb-3">
-                            <i class="bi bi-cloud-upload display-4 text-success"></i>
-                        </div>
-                        <h5 class="card-title">Upload de CV</h5>
-                        <p class="card-text text-muted small">
-                            Envie seu curriculo e tenha skills extraidas
-                        </p>
-                        <a href="{% url 'core:upload_cv' %}" class="btn btn-success w-100">
-                            <i class="bi bi-upload"></i> Enviar CV
-                        </a>
-                    </div>
+            <div class="col-md-6">
+                <div class="saas-card" style="border-top: 4px solid var(--accent-blue);">
+                    <h3 class="h4 mb-3">O Padrão HRTech</h3>
+                    <p class="text-subtle mb-0">Matching multidimensional. Nossa IA extrai competências com GPT-4 e analisa a profundidade das conexões em um grafo de conhecimento, gerando um Score objetivo.</p>
                 </div>
             </div>
         </div>
+    </div>
+</section>
 
-        <!-- Features -->
-        <div class="card">
-            <div class="card-body p-4">
-                <h5 class="card-title mb-4">
-                    <i class="bi bi-stars text-warning"></i> Funcionalidades
-                </h5>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="d-flex gap-3">
-                            <i class="bi bi-cpu text-primary fs-4"></i>
-                            <div>
-                                <h6 class="mb-1">Extracao com IA</h6>
-                                <small class="text-muted">GPT-4o-mini analisa CVs e extrai habilidades automaticamente</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex gap-3">
-                            <i class="bi bi-diagram-2 text-success fs-4"></i>
-                            <div>
-                                <h6 class="mb-1">Grafo de Skills</h6>
-                                <small class="text-muted">Neo4j mapeia relacoes entre habilidades similares</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex gap-3">
-                            <i class="bi bi-speedometer2 text-info fs-4"></i>
-                            <div>
-                                <h6 class="mb-1">Score 0-100</h6>
-                                <small class="text-muted">Ranking preciso com match direto + similaridade + perfil</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex gap-3">
-                            <i class="bi bi-shield-check text-danger fs-4"></i>
-                            <div>
-                                <h6 class="mb-1">LGPD Compliant</h6>
-                                <small class="text-muted">Dados pessoais mascarados antes de processar</small>
-                            </div>
-                        </div>
-                    </div>
+<section id="como-funciona" class="section-padding">
+    <div class="container">
+        <div class="row mb-5">
+            <div class="col-lg-6">
+                <h2 class="display-5">Tecnologia de ponta sob o capô.</h2>
+                <p class="text-subtle fs-5">Veja como transformamos um PDF não estruturado na sua próxima grande contratação.</p>
+            </div>
+        </div>
+        <div class="row g-5">
+            <div class="col-md-4">
+                <div class="saas-card border-0 bg-transparent p-0">
+                    <span class="code-font mb-2 d-block">01. EXTRATOR_GPT4</span>
+                    <h4 class="h5 text-white">Extração Inteligente</h4>
+                    <p class="text-subtle small">O candidato faz upload do CV (PDF). O GPT-4 faz a leitura contextual (OCR integrado), ignorando formatações complexas e extraindo hard e soft skills com precisão.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="saas-card border-0 bg-transparent p-0">
+                    <span class="code-font mb-2 d-block">02. CREATE_NODE(Skill)</span>
+                    <h4 class="h5 text-white">Construção do Grafo</h4>
+                    <p class="text-subtle small">Em vez de tabelas rígidas, as competências viram <em>Nós</em> interligados no Neo4j AuraDB. O sistema entende que quem sabe 'React' tem proximidade com 'JavaScript'.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="saas-card border-0 bg-transparent p-0">
+                    <span class="code-font mb-2 d-block">03. MATCH_SCORE()</span>
+                    <h4 class="h5 text-white">Matching Perfeito</h4>
+                    <p class="text-subtle small">Calculamos a compatibilidade exata entre as skills requeridas da vaga e o perfil do candidato, retornando um ranking decrescente de adequação real.</p>
                 </div>
             </div>
         </div>
+    </div>
+</section>
 
-        <!-- Algoritmo de 3 Camadas -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-layers text-primary me-2"></i>Algoritmo de Matching - 3 Camadas</h5>
+<section class="section-padding border-top border-dark">
+    <div class="container">
+        <h2 class="text-center display-6 mb-5">Desenhado para escalar a sua equipe.</h2>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="saas-card d-flex gap-4">
+                    <div class="text-primary fs-1">⚡</div>
+                    <div>
+                        <h4 class="h5">Triagem Zero-Touch</h4>
+                        <p class="text-subtle mb-0 small">Automatize a leitura de 10.000 currículos em minutos. Foque em entrevistar, não em ler PDFs infinitos.</p>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
-                            <div class="display-6 text-primary mb-2">60%</div>
-                            <h6>Camada 1</h6>
-                            <p class="small text-muted mb-0">
-                                Match direto de skills obrigatorias com decaimento temporal
-                            </p>
-                        </div>
+            <div class="col-md-6">
+                <div class="saas-card d-flex gap-4">
+                    <div class="text-primary fs-1">📊</div>
+                    <div>
+                        <h4 class="h5">Gestão Visual Integrada</h4>
+                        <p class="text-subtle mb-0 small">Pipeline Kanban com drag-and-drop. Controle todo o fluxo de entrevistas, tags e comentários colaborativos na mesma plataforma.</p>
                     </div>
-                    <div class="col-md-4">
-                        <div class="text-center p-3 bg-info bg-opacity-10 rounded">
-                            <div class="display-6 text-info mb-2">25%</div>
-                            <h6>Camada 2</h6>
-                            <p class="small text-muted mb-0">
-                                Match por similaridade via grafo Neo4j
-                            </p>
-                        </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="saas-card d-flex gap-4">
+                    <div class="text-success fs-1">🛡️</div>
+                    <div>
+                        <h4 class="h5">Segurança LGPD</h4>
+                        <p class="text-subtle mb-0 small">Arquitetura Multi-Tenant com isolamento de dados. CVs armazenados em buckets S3 privados, PII Masking e exclusão de dados sob demanda.</p>
                     </div>
-                    <div class="col-md-4">
-                        <div class="text-center p-3 bg-success bg-opacity-10 rounded">
-                            <div class="display-6 text-success mb-2">15%</div>
-                            <h6>Camada 3</h6>
-                            <p class="small text-muted mb-0">
-                                Compatibilidade de perfil (area + senioridade)
-                            </p>
-                        </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="saas-card d-flex gap-4">
+                    <div class="text-primary fs-1">📈</div>
+                    <div>
+                        <h4 class="h5">Analytics Avançado</h4>
+                        <p class="text-subtle mb-0 small">Dashboards interativos (Chart.js) que revelam o funil de conversão de etapas, tendências temporais e distribuição de senioridade.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
+
+<section class="section-padding bg-highlight text-center">
+    <div class="container">
+        <h2 class="display-4 text-white mb-3">Pare de perder talentos em pilhas de currículos.</h2>
+        <p class="lead text-white-50 mb-5">Junte-se às empresas que estão transformando o recrutamento em uma ciência exata.</p>
+        <a href="{% url 'account_signup' %}" class="btn-custom-primary" style="background-color: var(--bg-main); color: white;">Começar meu período de teste</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script>
+    // Documentação: Inicialização do Grafo de Conhecimento Visual
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Criar um conjunto de dados simulando a estrutura do seu Neo4j
+        var nodes = new vis.DataSet([
+            { id: 1, label: 'Candidato', group: 'candidate', size: 20 },
+            { id: 2, label: 'Python', group: 'skill' },
+            { id: 3, label: 'Django', group: 'skill' },
+            { id: 4, label: 'Neo4j', group: 'skill' },
+            { id: 5, label: 'Vaga', group: 'job', size: 20 },
+            { id: 6, label: 'React', group: 'skill' },
+            { id: 7, label: 'Machine Learning', group: 'skill' },
+            { id: 8, label: 'PostgreSQL', group: 'skill' }
+        ]);
+
+        var edges = new vis.DataSet([
+            { from: 1, to: 2 }, { from: 1, to: 3 }, { from: 1, to: 8 },
+            { from: 5, to: 2 }, { from: 5, to: 4 }, { from: 5, to: 8 },
+            { from: 2, to: 3 }, { from: 2, to: 7 }, { from: 4, to: 8 },
+            { from: 3, to: 6 }
+        ]);
+
+        var container = document.getElementById('network-background');
+        var data = { nodes: nodes, edges: edges };
+        
+        // 2. Cores e físicas rigorosamente alinhadas com o guia de UI/UX
+        var options = {
+            nodes: {
+                shape: 'dot',
+                size: 10,
+                font: { size: 0, color: 'transparent' }, // Esconde o texto para ficar com visual abstrato de IA
+                borderWidth: 0
+            },
+            edges: {
+                width: 1,
+                color: { color: 'rgba(59, 130, 246, 0.2)' }, // Azul com transparência para não poluir
+                smooth: { type: 'continuous' }
+            },
+            groups: {
+                candidate: { color: { background: '#10B981' } }, // Verde (Accent secundário)
+                skill: { color: { background: '#3B82F6' } }, // Azul (Accent primário)
+                job: { color: { background: '#FFFFFF' } } // Branco
+            },
+            physics: {
+                barnesHut: { gravitationalConstant: -3000, centralGravity: 0.1, springLength: 200 },
+                maxVelocity: 20, // Movimento flutuante e suave
+                timestep: 0.3
+            },
+            interaction: {
+                dragNodes: false, zoomView: false, dragView: false // Impede zoom no scroll
+            }
+        };
+
+        new vis.Network(container, data, options);
+    });
+</script>
 {% endblock %}

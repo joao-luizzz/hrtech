@@ -1,0 +1,104 @@
+{% load static %}
+
+<section class="pricing lazy-section" id="pricing">
+  <div class="container">
+    <h2>Get Started with HRTech</h2>
+    <p class="intro">Flexible plans for teams of all sizes</p>
+
+    <div class="row g-4 mt-5">
+      <!-- Starter Plan -->
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="pricing-card">
+          <h3>Starter</h3>
+          <div class="price">Free</div>
+          <p class="price-period">for 30 days</p>
+
+          <button class="btn-primary w-100 my-4" hx-post="{% url 'core:start-free' %}" hx-target="#cta-response">
+            Start Free
+          </button>
+
+          <ul class="features">
+            <li>Up to 50 candidates</li>
+            <li>1 team member</li>
+            <li>Basic matching</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Pro Plan (Highlighted) -->
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="pricing-card pricing-pro">
+          <div class="badge-most-popular">Most Popular</div>
+          <h3>Pro</h3>
+          <div class="price">$99</div>
+          <p class="price-period">per month</p>
+
+          <button class="btn-primary w-100 my-4" onclick="window.location.href = '{% url 'account_login' %}';">
+            Upgrade to Pro
+          </button>
+
+          <ul class="features">
+            <li>Unlimited candidates</li>
+            <li>5 team members</li>
+            <li>Advanced analytics</li>
+            <li>Interview questions</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Enterprise Plan -->
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="pricing-card">
+          <h3>Enterprise</h3>
+          <div class="price">Custom</div>
+          <p class="price-period">tailored to your needs</p>
+
+          <button class="btn-primary w-100 my-4" onclick="window.location.href = '{% url 'account_login' %}';">
+            Contact Sales
+          </button>
+
+          <ul class="features">
+            <li>Everything in Pro</li>
+            <li>Custom integrations</li>
+            <li>Dedicated support</li>
+            <li>SLA & uptime guarantees</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Comparison Table -->
+    <div class="feature-matrix mt-5">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Starter</th>
+            <th>Pro</th>
+            <th>Enterprise</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Candidates</td>
+            <td>Up to 50</td>
+            <td>Unlimited</td>
+            <td>Unlimited</td>
+          </tr>
+          <tr>
+            <td>Interview Questions</td>
+            <td>❌</td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <td>Support</td>
+            <td>Email</td>
+            <td>Email + Chat</td>
+            <td>24/7 Dedicated</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

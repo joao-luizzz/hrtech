@@ -21,6 +21,7 @@ Uso:
 from django.conf import settings
 from neo4j import GraphDatabase
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -129,9 +130,18 @@ def run_query(query: str, parameters: dict = None, database: str = "neo4j"):
     driver = get_neo4j_driver()
 
     try:
+        start = time.perf_counter()
         with driver.session(database=database) as session:
             result = session.run(query, parameters or {})
-            return [record.data() for record in result]
+            rows = [record.data() for record in result]
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "Neo4j run_query ok (database=%s, rows=%s, elapsed=%.3fs)",
+                database,
+                len(rows),
+                elapsed,
+            )
+            return rows
     except Exception:
         logger.exception(
             "Erro ao executar query Neo4j (database=%s, params=%s)",
@@ -156,9 +166,16 @@ def run_write_query(query: str, parameters: dict = None, database: str = "neo4j"
     driver = get_neo4j_driver()
 
     try:
+        start = time.perf_counter()
         with driver.session(database=database) as session:
             result = session.execute_write(
                 lambda tx: tx.run(query, parameters or {}).consume()
+            )
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "Neo4j run_write_query ok (database=%s, elapsed=%.3fs)",
+                database,
+                elapsed,
             )
             return result
     except Exception:

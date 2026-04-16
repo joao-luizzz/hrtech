@@ -1,0 +1,344 @@
+<section class="vision" id="vision">
+    <div class="container">
+        <!-- Section Header -->
+        <div class="vision-header">
+            <h2 style="text-align: center; color: var(--color-light); margin-bottom: 24px;">
+                Why We Built HRTech
+            </h2>
+            <p class="vision-intro" style="text-align: center; color: var(--color-neutral-700); max-width: 600px; margin: 0 auto 48px; font-size: 1.125rem; line-height: 1.6;">
+                A story of solving the hardest problem in recruiting: finding the right people, reliably.
+            </p>
+        </div>
+
+        <!-- Vision Content: 2-Col Desktop, 1-Col Mobile -->
+        <div class="vision-wrapper">
+            <!-- Left Column: Narrative -->
+            <div class="vision-narrative">
+                <!-- Timeline: From Problem to Solution -->
+                <div class="vision-timeline">
+                    <!-- 1. The Problem -->
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <span class="marker-number">01</span>
+                        </div>
+                        <div class="timeline-content">
+                            <h3 style="color: var(--color-light); font-size: 1.25rem; margin-bottom: 12px;">
+                                The Problem
+                            </h3>
+                            <p style="color: var(--color-neutral-700); margin-bottom: 0;">
+                                Traditional recruiting relies on keyword matching. A candidate with "Python" in their CV gets an automatic match for "Python" roles. But what about the person who built distributed systems in Rust, architected APIs in Python, and now wants to lead a backend team? Keyword systems miss 35% of qualified candidates while simultaneously flooding recruiters with false positives.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 2. The Insight -->
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <span class="marker-number">02</span>
+                        </div>
+                        <div class="timeline-content">
+                            <h3 style="color: var(--color-light); font-size: 1.25rem; margin-bottom: 12px;">
+                                The Insight
+                            </h3>
+                            <p style="color: var(--color-neutral-700); margin-bottom: 0;">
+                                What if we could model skills and experience relationships like a knowledge graph? Instead of matching keywords, we could understand that someone who built real-time systems has the foundational knowledge for streaming infrastructure. That a DevOps engineer with container orchestration experience could architect cloud-native applications. This isn't just pattern matching—it's understanding the underlying principles.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 3. The Solution -->
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <span class="marker-number">03</span>
+                        </div>
+                        <div class="timeline-content">
+                            <h3 style="color: var(--color-light); font-size: 1.25rem; margin-bottom: 12px;">
+                                Our Solution
+                            </h3>
+                            <p style="color: var(--color-neutral-700); margin-bottom: 0;">
+                                HRTech combines AI-powered resume analysis with knowledge graphs to extract the true skill ecosystem of each candidate. We model skills as nodes connected by genuine relationships—not just keywords. The result: mathematical precision in candidate matching, combined with human insight. Recruiters find the right people 3x faster, and qualified candidates finally get discovered.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Visual / Accent -->
+            <div class="vision-visual">
+                <div class="vision-card">
+                    <div class="vision-icon">🧠</div>
+                    <h4 style="color: var(--color-light); text-align: center; margin-bottom: 12px;">Knowledge Graph Matching</h4>
+                    <p style="color: var(--color-neutral-700); font-size: 0.95rem; text-align: center;">
+                        Instead of keywords, we understand relationships. A DevOps engineer becomes a viable cloud architect because we understand infrastructure principles, not just exact skill matches.
+                    </p>
+                </div>
+
+                <div style="height: 24px;"></div>
+
+                <div class="vision-card">
+                    <div class="vision-icon">⚡</div>
+                    <h4 style="color: var(--color-light); text-align: center; margin-bottom: 12px;">Speed at Scale</h4>
+                    <p style="color: var(--color-neutral-700); font-size: 0.95rem; text-align: center;">
+                        Process 1000 CVs in seconds. Our Neo4j-powered engine matches candidates in milliseconds, not hours. Hiring cycles compress from weeks to days.
+                    </p>
+                </div>
+
+                <div style="height: 24px;"></div>
+
+                <div class="vision-card">
+                    <div class="vision-icon">🎯</div>
+                    <h4 style="color: var(--color-light); text-align: center; margin-bottom: 12px;">Precision + Recall</h4>
+                    <p style="color: var(--color-neutral-700); font-size: 0.95rem; text-align: center;">
+                        Find both the perfect match AND the candidates you didn't know existed. Reduce bias by focusing on skills and experience, not keywords or demographics.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vision Section Styling -->
+    <style>
+        .vision {
+            background-color: var(--color-dark);
+            padding: 80px 48px;
+            margin-top: 64px;
+            border-top: 1px solid var(--color-border);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .vision-header {
+            margin-bottom: 64px;
+        }
+
+        .vision-intro {
+            font-weight: 500;
+        }
+
+        .vision-wrapper {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 64px;
+            align-items: start;
+        }
+
+        /* Timeline Styling */
+        .vision-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 48px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 32px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 19px;
+            width: 2px;
+            height: calc(100% + 48px);
+            bottom: -48px;
+            background: linear-gradient(to bottom, var(--color-accent), transparent);
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-marker {
+            flex-shrink: 0;
+            width: 48px;
+            height: 48px;
+            background-color: var(--color-surface);
+            border: 2px solid var(--color-brand);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .marker-number {
+            color: var(--color-brand);
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .timeline-content {
+            flex: 1;
+            padding: 24px;
+            background-color: rgba(0, 212, 170, 0.03);
+            border-left: 2px solid var(--color-accent);
+            border-radius: 8px;
+        }
+
+        /* Vision Cards (Right Column) */
+        .vision-visual {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .vision-card {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            padding: 32px 24px;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .vision-card:hover {
+            border-color: var(--color-accent);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-4px);
+        }
+
+        .vision-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .vision {
+                padding: 64px 32px;
+            }
+
+            .vision-wrapper {
+                grid-template-columns: 1fr;
+                gap: 48px;
+            }
+
+            .vision-visual {
+                order: -1; /* Show visual first on tablet */
+            }
+        }
+
+        @media (max-width: 768px) {
+            .vision {
+                padding: 48px 24px;
+                margin-top: 48px;
+            }
+
+            .vision-header {
+                margin-bottom: 48px;
+            }
+
+            .vision-wrapper {
+                gap: 32px;
+            }
+
+            .vision-timeline {
+                gap: 32px;
+            }
+
+            .timeline-item {
+                gap: 16px;
+            }
+
+            .timeline-item::before {
+                left: 15px;
+            }
+
+            .timeline-marker {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+            }
+
+            .marker-number {
+                font-size: 1rem;
+            }
+
+            .timeline-content {
+                padding: 16px;
+            }
+
+            .timeline-content h3 {
+                font-size: 1.125rem;
+            }
+
+            .vision-card {
+                padding: 20px 16px;
+            }
+
+            .vision-icon {
+                font-size: 2.5rem;
+                margin-bottom: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .vision {
+                padding: 32px 16px;
+            }
+
+            .vision-header {
+                margin-bottom: 32px;
+            }
+
+            .vision-intro {
+                font-size: 1rem;
+            }
+
+            .vision-wrapper {
+                gap: 24px;
+            }
+
+            .vision-timeline {
+                gap: 24px;
+            }
+
+            .timeline-item {
+                gap: 12px;
+            }
+
+            .timeline-marker {
+                width: 36px;
+                height: 36px;
+                min-width: 36px;
+            }
+
+            .marker-number {
+                font-size: 0.875rem;
+            }
+
+            .timeline-content {
+                padding: 12px;
+            }
+
+            .timeline-content h3 {
+                font-size: 1rem;
+                margin-bottom: 8px;
+            }
+
+            .timeline-content p {
+                font-size: 0.95rem;
+            }
+
+            .vision-card {
+                padding: 16px 12px;
+            }
+
+            .vision-icon {
+                font-size: 2rem;
+                margin-bottom: 8px;
+            }
+
+            .vision-card h4 {
+                font-size: 0.95rem !important;
+            }
+
+            .vision-card p {
+                font-size: 0.85rem !important;
+            }
+        }
+    </style>
+</section>
