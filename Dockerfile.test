@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+# Evita que o Python crie arquivos .pyc
+ENV PYTHONDONTWRITEBYTECODE 1
+# Evita que o Python faça buffer do stdout/stderr
+ENV PYTHONUNBUFFERED 1
+
+WORKDIR /app
+
+# Instala dependências do sistema necessárias para algumas libs Python
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instala dependências do Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir tzlocal
+
+# Copia o código do projeto
+COPY . .
+
+# Comando padrão executa as suítes de teste modificadas
+CMD ["python", "manage.py", "test", "core.tests.test_matching_engine", "core.tests.test_interview_questions", "core.tests.test_interview_openai_service", "--settings=hrtech.settings_test"]
