@@ -1039,14 +1039,7 @@ class InterviewQuestion(models.Model):
             models.Index(fields=['created_by_id']),
             models.Index(fields=['is_active']),
         ]
-        # Enforce one active set per candidate
-        constraints = [
-            models.UniqueConstraint(
-                fields=['candidato', 'is_active'],
-                condition=models.Q(is_active=True),
-                name='unique_active_questions_per_candidate'
-            )
-        ]
+
 
     def __str__(self):
         return f"Q: {self.question_text[:50]}... (Difficulty: {self.get_difficulty_level_display()})"

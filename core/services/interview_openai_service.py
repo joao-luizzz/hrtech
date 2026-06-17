@@ -238,10 +238,12 @@ class InterviewOpenAIService:
         logger.info(f"[{safe_candidate_id}] Cache miss or forced regeneration - calling OpenAI")
         
         try:
-            # Step 2: Fetch skill gaps from Neo4j
-            skill_gaps_data = self._get_skill_gaps(candidate_id, vaga_id)
-            skill_gaps = skill_gaps_data.get('gaps', []) if skill_gaps_data else []
+            # Step 2: Fetch skill gaps from Neo4j / Python calculations
             vaga_context = self._build_vaga_context(vaga_id, organization=organization)
+            vaga_skills = vaga_context.get('skills_obrigatorias', [])
+            
+            skill_gaps_data = self._get_skill_gaps(candidate_id, vaga_skills)
+            skill_gaps = skill_gaps_data.get('gaps', []) if skill_gaps_data else []
             
             # Step 3: Generate questions from OpenAI
             questions = self._generate_questions_openai(
@@ -315,7 +317,7 @@ class InterviewOpenAIService:
             logger.error(f"Error querying cached questions: {type(e).__name__}: {str(e)}")
             return None
 
-    def _get_skill_gaps(self, candidate_id: str, vaga_id: str) -> Optional[Dict]:
+    def _get_skill_gaps(self, candidate_id: str, vaga_skills: List[Dict]) -> Optional[Dict]:
         """
         Fetch skill gaps from Neo4j service.
         
@@ -323,7 +325,7 @@ class InterviewOpenAIService:
         
         Args:
             candidate_id (str): UUID of candidate
-            vaga_id (str): UUID of job position
+            vaga_skills (List[Dict]): Required skills for the job from PostgreSQL
         
         Returns:
             Dict with structure:
@@ -341,7 +343,7 @@ class InterviewOpenAIService:
             - Caller should check for None and handle gracefully
         """
         try:
-            return self.neo4j_service.get_candidate_skill_gaps(candidate_id, vaga_id)
+            return self.neo4j_service.get_candidate_skill_gaps(candidate_id, vaga_skills)
         except Exception as e:
             logger.error(f"Neo4j error fetching skill gaps: {type(e).__name__}: {str(e)}")
             return {}
@@ -374,8 +376,8 @@ class InterviewOpenAIService:
                 vaga = Vaga.objects.get(id=vaga_id)
             return {
                 'titulo': vaga.titulo,
-                'senioridade_minima': vaga.senioridade_minima if hasattr(vaga, 'senioridade_minima') else 'Pleno',
-                'skills_obrigatorias': []  # Would fetch from separate table if needed
+                'senioridade_minima': vaga.senioridade_desejada,
+                'skills_obrigatorias': vaga.skills_obrigatorias or []
             }
         except Vaga.DoesNotExist:
             logger.warning(f"Vaga not found: {vaga_id}")
@@ -460,7 +462,10 @@ class InterviewOpenAIService:
             )
             
             # Extract response content
-            response_text = response.choices[0].message.content
+            if isinstance(response, dict):
+                response_text = response['choices'][0]['message']['content']
+            else:
+                response_text = response.choices[0].message.content
             
             # Count tokens for cost tracking
             token_count = self._count_tokens(response_text)
@@ -496,7 +501,10 @@ class InterviewOpenAIService:
                     timeout=OPENAI_TIMEOUT
                 )
                 
-                response_text = response.choices[0].message.content
+                if isinstance(response, dict):
+                    response_text = response['choices'][0]['message']['content']
+                else:
+                    response_text = response.choices[0].message.content
                 questions = self._validate_openai_response(response_text)
                 logger.info(f"[{safe_candidate_id}] Retry succeeded - {len(questions)} questions extracted")
                 return questions

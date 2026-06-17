@@ -375,6 +375,7 @@ class InterviewOpenAIServiceTests(TestCase):
         3. Verify TimeoutError is raised
         4. Verify error is logged
         """
+        import httpx
         from openai import APITimeoutError as OpenAITimeoutError
         
         mock_neo4j = MagicMock()
@@ -384,8 +385,9 @@ class InterviewOpenAIServiceTests(TestCase):
         }
         
         mock_openai = MagicMock()
+        mock_request = MagicMock(spec=httpx.Request)
         mock_openai.chat.completions.create.side_effect = OpenAITimeoutError(
-            "Request timed out"
+            request=mock_request
         )
         
         service = InterviewOpenAIService(
@@ -411,6 +413,7 @@ class InterviewOpenAIServiceTests(TestCase):
         2. Call get_candidate_questions()
         3. Verify RateLimitError is raised to caller
         """
+        import httpx
         from openai import RateLimitError as OpenAIRateLimitError
         
         mock_neo4j = MagicMock()
@@ -420,8 +423,13 @@ class InterviewOpenAIServiceTests(TestCase):
         }
         
         mock_openai = MagicMock()
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 429
+        mock_response.headers = httpx.Headers()
         mock_openai.chat.completions.create.side_effect = OpenAIRateLimitError(
-            "Rate limit exceeded"
+            message="Rate limit exceeded",
+            response=mock_response,
+            body={}
         )
         
         service = InterviewOpenAIService(
@@ -447,6 +455,7 @@ class InterviewOpenAIServiceTests(TestCase):
         2. Call get_candidate_questions()
         3. Verify APIException is raised
         """
+        import httpx
         from openai import APIError as OpenAIAPIError
         
         mock_neo4j = MagicMock()
@@ -456,8 +465,11 @@ class InterviewOpenAIServiceTests(TestCase):
         }
         
         mock_openai = MagicMock()
+        mock_request = MagicMock(spec=httpx.Request)
         mock_openai.chat.completions.create.side_effect = OpenAIAPIError(
-            "Internal server error"
+            message="Internal server error",
+            request=mock_request,
+            body={}
         )
         
         service = InterviewOpenAIService(
@@ -671,7 +683,7 @@ class EdgeCaseHandlingTests(TestCase):
         user_message = next(m for m in messages if m['role'] == 'user')
         prompt_text = user_message['content']
         
-        self.assertIn('Advanced', prompt_text)
+        self.assertIn('advanced', prompt_text.lower())
         self.assertIn('validation', prompt_text.lower())
 
     @patch('core.services.interview_openai_service.InterviewNeo4jService')
@@ -749,7 +761,9 @@ class PromptEngineeringTests(TestCase):
 
     def setUp(self):
         """Create test fixtures."""
-        self.service = InterviewOpenAIService()
+        self.service = InterviewOpenAIService(
+            neo4j_service=MagicMock()
+        )
 
     def test_prompt_contains_skill_gaps(self):
         """Test: Prompt includes skill gaps when they exist."""
@@ -796,7 +810,7 @@ class PromptEngineeringTests(TestCase):
         )
         
         # Should mention advanced validation
-        self.assertIn('Advanced', prompt)
+        self.assertIn('advanced', prompt.lower())
         self.assertIn('validation', prompt.lower())
         self.assertIn('depth', prompt.lower())
 
@@ -810,7 +824,9 @@ class TokenCountingTests(TestCase):
 
     def setUp(self):
         """Create test fixtures."""
-        self.service = InterviewOpenAIService()
+        self.service = InterviewOpenAIService(
+            neo4j_service=MagicMock()
+        )
 
     def test_token_counting_executed(self):
         """Test: Token counting is executed without error."""
@@ -859,7 +875,9 @@ class AtomicSaveTests(TransactionTestCase):
         self.staff_user.is_staff = True
         self.staff_user.save()
 
-        self.service = InterviewOpenAIService()
+        self.service = InterviewOpenAIService(
+            neo4j_service=MagicMock()
+        )
 
     def test_save_creates_three_questions(self):
         """Test: Exactly 3 questions created."""
@@ -987,7 +1005,9 @@ class ValidationTests(TestCase):
 
     def setUp(self):
         """Create test fixtures."""
-        self.service = InterviewOpenAIService()
+        self.service = InterviewOpenAIService(
+            neo4j_service=MagicMock()
+        )
 
     def test_validate_correct_response(self):
         """Test: Valid response passes validation."""
@@ -1047,9 +1067,9 @@ class ValidationTests(TestCase):
         response_text = '''```json
 {
   "questions": [
-    {"question_text": "Question 1?", "difficulty_level": "easy"},
-    {"question_text": "Question 2?", "difficulty_level": "medium"},
-    {"question_text": "Question 3?", "difficulty_level": "hard"}
+    {"question_text": "This is a long question text for number 1?", "difficulty_level": "easy"},
+    {"question_text": "This is a long question text for number 2?", "difficulty_level": "medium"},
+    {"question_text": "This is a long question text for number 3?", "difficulty_level": "hard"}
   ]
 }
 ```'''

@@ -61,7 +61,7 @@ class CacheHeadersMiddleware:
         # Content Security Policy: allow Google Fonts, jsDelivr CDN, Bootstrap CDN
         response['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js https://www.googletagmanager.com https://www.google-analytics.com 'unsafe-inline'; "
+            "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js https://www.googletagmanager.com https://www.google-analytics.com 'unsafe-inline'; "
             "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; "
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "
             "img-src 'self' data: https:; "

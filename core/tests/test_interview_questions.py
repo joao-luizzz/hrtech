@@ -115,7 +115,8 @@ class InterviewQuestionModelTests(TestCase):
 
     def test_question_text_required(self):
         """Test that question_text is required."""
-        with self.assertRaises(ValueError):
+        from django.db import IntegrityError
+        with self.assertRaises(IntegrityError):
             InterviewQuestion.objects.create(
                 candidato=self.candidato,
                 question_text=None,
@@ -125,6 +126,7 @@ class InterviewQuestionModelTests(TestCase):
 
     def test_difficulty_level_choices(self):
         """Test that difficulty_level respects choices."""
+        from django.core.exceptions import ValidationError
         # Valid choice
         question = InterviewQuestion.objects.create(
             candidato=self.candidato,
@@ -135,7 +137,7 @@ class InterviewQuestionModelTests(TestCase):
         self.assertEqual(question.difficulty_level, 'hard')
         
         # Invalid choice should fail validation
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             q = InterviewQuestion(
                 candidato=self.candidato,
                 question_text='Test',
@@ -165,8 +167,8 @@ class InterviewQuestionModelTests(TestCase):
         self.assertIsNone(question.created_by)
         self.assertIsNotNone(question.id)
 
-    def test_unique_together_constraint_active_questions(self):
-        """Test that only one active question set per candidate is enforced."""
+    def test_multiple_active_questions_allowed(self):
+        """Test that multiple active questions are allowed per candidate."""
         # Create first active question
         q1 = InterviewQuestion.objects.create(
             candidato=self.candidato,
@@ -176,16 +178,16 @@ class InterviewQuestionModelTests(TestCase):
             is_active=True
         )
         
-        # Try to create second active question for same candidate
-        # This should violate the unique constraint
-        with self.assertRaises(Exception):  # IntegrityError
-            q2 = InterviewQuestion.objects.create(
-                candidato=self.candidato,
-                question_text='Question 2',
-                difficulty_level='medium',
-                created_by=self.staff_user,
-                is_active=True
-            )
+        # Create second active question for same candidate
+        q2 = InterviewQuestion.objects.create(
+            candidato=self.candidato,
+            question_text='Question 2',
+            difficulty_level='medium',
+            created_by=self.staff_user,
+            is_active=True
+        )
+        
+        self.assertEqual(InterviewQuestion.objects.filter(candidato=self.candidato, is_active=True).count(), 2)
 
     def test_multiple_inactive_questions_allowed(self):
         """Test that multiple inactive (old) questions are allowed per candidate."""
@@ -223,7 +225,7 @@ class InterviewQuestionModelTests(TestCase):
         
         str_repr = str(question)
         self.assertIn('What are decorators', str_repr)
-        self.assertIn('Difficulty: Hard', str_repr)
+        self.assertIn('Difficulty: Difícil', str_repr)
 
     def test_model_ordering_by_created_at(self):
         """Test that queries default to ordering by -created_at."""
@@ -280,50 +282,43 @@ class InterviewNeo4jServiceTests(TestCase):
     """Unit tests for Neo4j skill gap service with mocked driver."""
 
     def setUp(self):
-        """Create test service instance."""
+        """Create test service instance with mocked driver."""
+        self.driver_patcher = patch('core.services.interview_neo4j_service.get_neo4j_driver')
+        self.mock_get_driver = self.driver_patcher.start()
+        self.mock_driver = MagicMock()
+        self.mock_get_driver.return_value = self.mock_driver
+        
+        # Mock session
+        self.mock_session = MagicMock()
+        self.mock_driver.session.return_value.__enter__ = MagicMock(return_value=self.mock_session)
+        self.mock_driver.session.return_value.__exit__ = MagicMock(return_value=None)
+        
         self.service = InterviewNeo4jService()
 
-    @patch('core.services.interview_neo4j_service.get_neo4j_driver')
-    def test_get_candidate_skill_gaps_with_gaps(self, mock_get_driver):
+    def tearDown(self):
+        self.driver_patcher.stop()
+
+    def test_get_candidate_skill_gaps_with_gaps(self):
         """Test service returns skill gaps when gaps exist."""
-        # Mock Neo4j driver
-        mock_driver = MagicMock()
-        mock_get_driver.return_value = mock_driver
-        
-        # Mock session and query result
-        mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_driver.session.return_value.__exit__ = MagicMock(return_value=None)
-        
-        # Mock the query result
+        # Mock the result for get_candidate_skills
+        # Returns: Python (level 1)
         mock_record = MagicMock()
-        mock_record.data.return_value = {
-            'result': {
-                'missing_skills': [
-                    {'nome': 'Django', 'nivel_minimo': 2}
-                ],
-                'below_level_skills': [
-                    {'nome': 'Python', 'nivel_minimo': 3}
-                ],
-                'total_required': 5,
-                'candidate_skills': [
-                    {'nome': 'Python', 'nivel': 1}
-                ]
-            }
-        }
-        mock_session.run.return_value = [mock_record]
+        mock_record.__getitem__.side_effect = lambda key: {'nome': 'Python', 'nivel': 1} if key == 'skill' else None
+        self.mock_session.run.return_value = [mock_record]
         
-        # Re-create service with mocked driver
-        self.service = InterviewNeo4jService()
-        self.service.driver = mock_driver
+        # vaga_skills has Django (min 2) and Python (min 3)
+        vaga_skills = [
+            {'nome': 'Django', 'nivel_minimo': 2},
+            {'nome': 'Python', 'nivel_minimo': 3}
+        ]
         
         # Execute
-        result = self.service.get_candidate_skill_gaps('cand-uuid', 'vaga-uuid')
+        result = self.service.get_candidate_skill_gaps('cand-uuid', vaga_skills)
         
         # Assertions
         self.assertTrue(result['has_gaps'])
-        self.assertEqual(len(result['gaps']), 2)  # 1 missing + 1 below-level
-        self.assertEqual(result['total_required'], 5)
+        self.assertEqual(len(result['gaps']), 2)  # both are gaps
+        self.assertEqual(result['total_required'], 2)
         
         # Check gap details
         django_gap = next((g for g in result['gaps'] if g['nome'] == 'Django'), None)
@@ -332,40 +327,28 @@ class InterviewNeo4jServiceTests(TestCase):
         self.assertEqual(django_gap['nivel_candidato'], 0)
         self.assertEqual(django_gap['gap'], 2)
 
-    @patch('core.services.interview_neo4j_service.get_neo4j_driver')
-    def test_get_candidate_skill_gaps_no_gaps_100_match(self, mock_get_driver):
+    def test_get_candidate_skill_gaps_no_gaps_100_match(self):
         """Test service returns empty gaps when candidate has all required skills."""
-        # Mock Neo4j driver
-        mock_driver = MagicMock()
-        mock_get_driver.return_value = mock_driver
+        # Mock candidate skills: Python (level 4), Django (level 3), SQL (level 3)
+        mock_record_python = MagicMock()
+        mock_record_python.__getitem__.side_effect = lambda key: {'nome': 'Python', 'nivel': 4} if key == 'skill' else None
         
-        # Mock session and query result
-        mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_driver.session.return_value.__exit__ = MagicMock(return_value=None)
+        mock_record_django = MagicMock()
+        mock_record_django.__getitem__.side_effect = lambda key: {'nome': 'Django', 'nivel': 3} if key == 'skill' else None
         
-        # Mock the query result - no gaps
-        mock_record = MagicMock()
-        mock_record.data.return_value = {
-            'result': {
-                'missing_skills': [],
-                'below_level_skills': [],
-                'total_required': 3,
-                'candidate_skills': [
-                    {'nome': 'Python', 'nivel': 4},
-                    {'nome': 'Django', 'nivel': 3},
-                    {'nome': 'SQL', 'nivel': 3}
-                ]
-            }
-        }
-        mock_session.run.return_value = [mock_record]
+        mock_record_sql = MagicMock()
+        mock_record_sql.__getitem__.side_effect = lambda key: {'nome': 'SQL', 'nivel': 3} if key == 'skill' else None
         
-        # Re-create service with mocked driver
-        self.service = InterviewNeo4jService()
-        self.service.driver = mock_driver
+        self.mock_session.run.return_value = [mock_record_python, mock_record_django, mock_record_sql]
+        
+        vaga_skills = [
+            {'nome': 'Python', 'nivel_minimo': 3},
+            {'nome': 'Django', 'nivel_minimo': 2},
+            {'nome': 'SQL', 'nivel_minimo': 3}
+        ]
         
         # Execute
-        result = self.service.get_candidate_skill_gaps('cand-uuid', 'vaga-uuid')
+        result = self.service.get_candidate_skill_gaps('cand-uuid', vaga_skills)
         
         # Assertions
         self.assertFalse(result['has_gaps'])
@@ -373,72 +356,41 @@ class InterviewNeo4jServiceTests(TestCase):
         self.assertEqual(result['total_required'], 3)
         self.assertEqual(result['total_matched'], 3)
 
-    @patch('core.services.interview_neo4j_service.get_neo4j_driver')
-    def test_get_candidate_skill_gaps_no_data_found(self, mock_get_driver):
+    def test_get_candidate_skill_gaps_no_data_found(self):
         """Test service handles case when no data found from Neo4j."""
-        # Mock Neo4j driver
-        mock_driver = MagicMock()
-        mock_get_driver.return_value = mock_driver
+        self.mock_session.run.return_value = []  # No candidate skills found
         
-        # Mock session with empty results
-        mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_driver.session.return_value.__exit__ = MagicMock(return_value=None)
-        mock_session.run.return_value = []  # No results
-        
-        # Re-create service with mocked driver
-        self.service = InterviewNeo4jService()
-        self.service.driver = mock_driver
+        vaga_skills = [
+            {'nome': 'Python', 'nivel_minimo': 3}
+        ]
         
         # Execute
-        result = self.service.get_candidate_skill_gaps('unknown-id', 'unknown-vaga')
+        result = self.service.get_candidate_skill_gaps('unknown-id', vaga_skills)
         
-        # Assertions
-        self.assertFalse(result['has_gaps'])
-        self.assertEqual(result['gaps'], [])
-        self.assertEqual(result['total_required'], 0)
+        # Assertions: candidate has 0 skills, so it has 1 gap (Python gap of 3)
+        self.assertTrue(result['has_gaps'])
+        self.assertEqual(len(result['gaps']), 1)
+        self.assertEqual(result['total_required'], 1)
         self.assertEqual(result['total_matched'], 0)
 
-    @patch('core.services.interview_neo4j_service.get_neo4j_driver')
-    def test_service_query_parameters_passed_correctly(self, mock_get_driver):
+    def test_service_query_parameters_passed_correctly(self):
         """Test that service passes correct parameters to Neo4j query."""
-        # Mock Neo4j driver
-        mock_driver = MagicMock()
-        mock_get_driver.return_value = mock_driver
-        
-        # Mock session
-        mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_driver.session.return_value.__exit__ = MagicMock(return_value=None)
-        
         # Mock result
         mock_record = MagicMock()
-        mock_record.data.return_value = {
-            'result': {
-                'missing_skills': [],
-                'below_level_skills': [],
-                'total_required': 0,
-                'candidate_skills': []
-            }
-        }
-        mock_session.run.return_value = [mock_record]
-        
-        # Re-create service with mocked driver
-        self.service = InterviewNeo4jService()
-        self.service.driver = mock_driver
+        mock_record.__getitem__.side_effect = lambda key: {'nome': 'Python', 'nivel': 3} if key == 'skill' else None
+        self.mock_session.run.return_value = [mock_record]
         
         # Execute
         candidate_id = 'test-cand-uuid-123'
-        vaga_id = 'test-vaga-uuid-456'
-        self.service.get_candidate_skill_gaps(candidate_id, vaga_id)
+        vaga_skills = [{'nome': 'Python', 'nivel_minimo': 3}]
+        self.service.get_candidate_skill_gaps(candidate_id, vaga_skills)
         
         # Verify session.run was called with correct parameters
-        mock_session.run.assert_called_once()
-        call_args = mock_session.run.call_args
+        self.mock_session.run.assert_called_once()
+        call_args = self.mock_session.run.call_args
         parameters = call_args[0][1]  # Second argument is parameters dict
         
         self.assertEqual(parameters['candidate_id'], candidate_id)
-        self.assertEqual(parameters['vaga_id'], vaga_id)
 
 
 class InterviewPermissionTests(TestCase):
