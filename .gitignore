@@ -49,6 +49,7 @@ pip-delete-this-directory.txt
 # -----------------------------------------------------------------------------
 venv/
 .venv/
+vevn/
 env/
 ENV/
 .env/
