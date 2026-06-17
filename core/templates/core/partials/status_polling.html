@@ -22,140 +22,106 @@ Razão: Simplicidade, funciona sem infra adicional
 {% if not finalizado %}
 {# Ainda processando - continua polling #}
 <div hx-get="{% url 'core:status_cv_htmx' candidato_id %}?last_status={{ candidato.status_cv }}"
-    hx-headers='{"X-Status-Token": "{{ status_token|escapejs }}"}'
-     hx-trigger="every 20s"
+     hx-headers='{"X-Status-Token": "{{ status_token|escapejs }}"}'
+     hx-trigger="every 5s"
      hx-swap="outerHTML"
-     class="p-4">
+     style="animation: pulse 2s infinite;">
 {% else %}
 {# Finalizado - para o polling #}
-<div class="p-4">
+<div>
 {% endif %}
 
-    <!-- Header com status -->
-    <div class="text-center mb-4">
+    <div style="text-align:center; margin-bottom:32px;">
         {% if candidato.status_cv == 'recebido' %}
-            <div class="status-badge status-recebido">
-                <span class="spinner-grow spinner-grow-sm"></span>
-                CV Recebido - Aguardando processamento
+            <div style="display:inline-block; padding:8px 16px; background:rgba(59,130,246,0.1); color:#60A5FA; border-radius:20px; font-size:0.85rem; font-weight:700;">
+                <span class="spinner-grow spinner-grow-sm me-2"></span> CV Recebido - Aguardando...
             </div>
         {% elif candidato.status_cv == 'processando' %}
-            <div class="status-badge status-processando">
-                <span class="spinner-grow spinner-grow-sm"></span>
-                Lendo PDF...
+            <div style="display:inline-block; padding:8px 16px; background:rgba(245,158,11,0.1); color:#FBBF24; border-radius:20px; font-size:0.85rem; font-weight:700;">
+                <span class="spinner-grow spinner-grow-sm me-2"></span> Lendo PDF...
             </div>
         {% elif candidato.status_cv == 'extraindo' %}
-            <div class="status-badge status-extraindo">
-                <span class="spinner-grow spinner-grow-sm"></span>
-                Extraindo habilidades com IA...
+            <div style="display:inline-block; padding:8px 16px; background:rgba(139,92,246,0.1); color:#A78BFA; border-radius:20px; font-size:0.85rem; font-weight:700;">
+                <span class="spinner-grow spinner-grow-sm me-2"></span> Extraindo habilidades com IA...
             </div>
         {% elif candidato.status_cv == 'concluido' %}
-            <div class="status-badge status-concluido">
-                <i class="bi bi-check-circle-fill"></i>
-                Processamento Concluído!
+            <div style="display:inline-block; padding:8px 16px; background:rgba(16,185,129,0.1); color:#34D399; border-radius:20px; font-size:0.85rem; font-weight:700;">
+                <i class="bi bi-check-circle-fill me-2"></i> Processamento Concluído!
             </div>
         {% elif candidato.status_cv == 'erro' %}
-            <div class="status-badge status-erro">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                Erro no Processamento
+            <div style="display:inline-block; padding:8px 16px; background:rgba(239,68,68,0.1); color:#F87171; border-radius:20px; font-size:0.85rem; font-weight:700;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Erro no Processamento
             </div>
         {% endif %}
     </div>
 
-    <!-- Progress Steps -->
-    <div class="mb-4">
+    <!-- Progress Steps Premium Dark -->
+    <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:32px;">
+        
         <!-- Step 1: Recebido -->
-        <div class="progress-step {% if candidato.status_cv != 'pendente' %}completed{% endif %}">
-            <div class="step-icon bg-{% if candidato.status_cv != 'pendente' %}success text-white{% else %}light{% endif %}">
-                {% if candidato.status_cv != 'pendente' %}
-                    <i class="bi bi-check"></i>
-                {% else %}
-                    <i class="bi bi-cloud-upload"></i>
-                {% endif %}
+        <div style="display:flex; align-items:center; padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid {% if candidato.status_cv != 'pendente' %}#10B981{% else %}#334155{% endif %};">
+            <div style="width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:16px; background:{% if candidato.status_cv != 'pendente' %}rgba(16,185,129,0.1){% else %}#1E293B{% endif %}; color:{% if candidato.status_cv != 'pendente' %}#34D399{% else %}#64748B{% endif %};">
+                <i class="bi {% if candidato.status_cv != 'pendente' %}bi-check-lg{% else %}bi-cloud-upload{% endif %}" style="font-size:1.5rem;"></i>
             </div>
             <div>
-                <strong>Upload Recebido</strong>
-                <div class="small text-muted">CV enviado com sucesso</div>
+                <strong style="color:#F8FAFC; display:block; margin-bottom:4px;">Upload Recebido</strong>
+                <div style="font-size:0.85rem; color:#94A3B8;">CV transferido para o servidor com sucesso</div>
             </div>
         </div>
 
         <!-- Step 2: Processando -->
-        <div class="progress-step
-            {% if candidato.status_cv == 'processando' %}active{% endif %}
-            {% if candidato.status_cv in 'extraindo,concluido' %}completed{% endif %}
-            {% if candidato.status_cv == 'erro' %}error{% endif %}">
-            <div class="step-icon
-                {% if candidato.status_cv == 'processando' %}bg-warning text-dark{% elif candidato.status_cv in 'extraindo,concluido' %}bg-success text-white{% elif candidato.status_cv == 'erro' %}bg-danger text-white{% else %}bg-light{% endif %}">
+        <div style="display:flex; align-items:center; padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid {% if candidato.status_cv == 'processando' %}#F59E0B{% elif candidato.status_cv in 'extraindo,concluido' %}#10B981{% elif candidato.status_cv == 'erro' %}#EF4444{% else %}#334155{% endif %};">
+            <div style="width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:16px; background:{% if candidato.status_cv == 'processando' %}rgba(245,158,11,0.1){% elif candidato.status_cv in 'extraindo,concluido' %}rgba(16,185,129,0.1){% elif candidato.status_cv == 'erro' %}rgba(239,68,68,0.1){% else %}#1E293B{% endif %}; color:{% if candidato.status_cv == 'processando' %}#FBBF24{% elif candidato.status_cv in 'extraindo,concluido' %}#34D399{% elif candidato.status_cv == 'erro' %}#F87171{% else %}#64748B{% endif %};">
                 {% if candidato.status_cv == 'processando' %}
                     <span class="spinner-border spinner-border-sm"></span>
                 {% elif candidato.status_cv in 'extraindo,concluido' %}
-                    <i class="bi bi-check"></i>
+                    <i class="bi bi-check-lg" style="font-size:1.5rem;"></i>
                 {% elif candidato.status_cv == 'erro' %}
-                    <i class="bi bi-x"></i>
+                    <i class="bi bi-x-lg" style="font-size:1.5rem;"></i>
                 {% else %}
-                    <i class="bi bi-file-text"></i>
+                    <i class="bi bi-file-text" style="font-size:1.2rem;"></i>
                 {% endif %}
             </div>
             <div>
-                <strong>Leitura do PDF</strong>
-                <div class="small text-muted">
-                    {% if candidato.status_cv == 'processando' %}
-                        Extraindo texto do documento...
-                    {% elif candidato.status_cv in 'extraindo,concluido' %}
-                        Texto extraído com sucesso
-                    {% elif candidato.status_cv == 'erro' %}
-                        Falha na leitura do PDF
-                    {% else %}
-                        Aguardando...
-                    {% endif %}
+                <strong style="color:#F8FAFC; display:block; margin-bottom:4px;">Leitura do PDF</strong>
+                <div style="font-size:0.85rem; color:#94A3B8;">
+                    {% if candidato.status_cv == 'processando' %}Extraindo texto via OCR/PyPDF...{% elif candidato.status_cv in 'extraindo,concluido' %}Texto extraído perfeitamente{% elif candidato.status_cv == 'erro' %}Falha na extração de texto{% else %}Aguardando início...{% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Step 3: Extraindo -->
-        <div class="progress-step
-            {% if candidato.status_cv == 'extraindo' %}active{% endif %}
-            {% if candidato.status_cv == 'concluido' %}completed{% endif %}">
-            <div class="step-icon
-                {% if candidato.status_cv == 'extraindo' %}bg-info text-white{% elif candidato.status_cv == 'concluido' %}bg-success text-white{% else %}bg-light{% endif %}">
+        <!-- Step 3: Extraindo (IA) -->
+        <div style="display:flex; align-items:center; padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid {% if candidato.status_cv == 'extraindo' %}#8B5CF6{% elif candidato.status_cv == 'concluido' %}#10B981{% else %}#334155{% endif %};">
+            <div style="width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:16px; background:{% if candidato.status_cv == 'extraindo' %}rgba(139,92,246,0.1){% elif candidato.status_cv == 'concluido' %}rgba(16,185,129,0.1){% else %}#1E293B{% endif %}; color:{% if candidato.status_cv == 'extraindo' %}#A78BFA{% elif candidato.status_cv == 'concluido' %}#34D399{% else %}#64748B{% endif %};">
                 {% if candidato.status_cv == 'extraindo' %}
                     <span class="spinner-border spinner-border-sm"></span>
                 {% elif candidato.status_cv == 'concluido' %}
-                    <i class="bi bi-check"></i>
+                    <i class="bi bi-check-lg" style="font-size:1.5rem;"></i>
                 {% else %}
-                    <i class="bi bi-cpu"></i>
+                    <i class="bi bi-cpu" style="font-size:1.2rem;"></i>
                 {% endif %}
             </div>
             <div>
-                <strong>Análise com IA</strong>
-                <div class="small text-muted">
-                    {% if candidato.status_cv == 'extraindo' %}
-                        GPT-4o-mini identificando habilidades...
-                    {% elif candidato.status_cv == 'concluido' %}
-                        Habilidades extraídas com sucesso
-                    {% else %}
-                        Aguardando...
-                    {% endif %}
+                <strong style="color:#F8FAFC; display:block; margin-bottom:4px;">Análise com IA</strong>
+                <div style="font-size:0.85rem; color:#94A3B8;">
+                    {% if candidato.status_cv == 'extraindo' %}GPT identificando skills e senioridade...{% elif candidato.status_cv == 'concluido' %}Perfil mapeado estruturalmente{% else %}Aguardando texto...{% endif %}
                 </div>
             </div>
         </div>
 
         <!-- Step 4: Concluído -->
-        <div class="progress-step {% if candidato.status_cv == 'concluido' %}completed{% endif %}">
-            <div class="step-icon {% if candidato.status_cv == 'concluido' %}bg-success text-white{% else %}bg-light{% endif %}">
+        <div style="display:flex; align-items:center; padding:16px; border-radius:12px; background:var(--card-bg); border:1px solid {% if candidato.status_cv == 'concluido' %}#10B981{% else %}#334155{% endif %};">
+            <div style="width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:16px; background:{% if candidato.status_cv == 'concluido' %}rgba(16,185,129,0.1){% else %}#1E293B{% endif %}; color:{% if candidato.status_cv == 'concluido' %}#34D399{% else %}#64748B{% endif %};">
                 {% if candidato.status_cv == 'concluido' %}
-                    <i class="bi bi-check"></i>
+                    <i class="bi bi-check-lg" style="font-size:1.5rem;"></i>
                 {% else %}
-                    <i class="bi bi-diagram-3"></i>
+                    <i class="bi bi-diagram-3" style="font-size:1.2rem;"></i>
                 {% endif %}
             </div>
             <div>
-                <strong>Salvo no Grafo</strong>
-                <div class="small text-muted">
-                    {% if candidato.status_cv == 'concluido' %}
-                        Perfil pronto para matching!
-                    {% else %}
-                        Aguardando...
-                    {% endif %}
+                <strong style="color:#F8FAFC; display:block; margin-bottom:4px;">Grafo de Conhecimento</strong>
+                <div style="font-size:0.85rem; color:#94A3B8;">
+                    {% if candidato.status_cv == 'concluido' %}Nós e relacionamentos criados no Neo4j{% else %}Aguardando IA...{% endif %}
                 </div>
             </div>
         </div>
@@ -163,31 +129,34 @@ Razão: Simplicidade, funciona sem infra adicional
 
     <!-- Mensagem final -->
     {% if candidato.status_cv == 'concluido' %}
-        <div class="alert alert-success">
-            <i class="bi bi-check-circle-fill"></i>
-            <strong>Sucesso!</strong> Seu currículo foi processado.
-            <br>
-            <small class="text-muted">
+        <div style="background:rgba(16,185,129,0.1); border-left:4px solid #10B981; color:#34D399; padding:16px; border-radius:8px; margin-bottom:24px;">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong style="color:#F8FAFC;">Sucesso!</strong> Seu currículo foi processado.
+            <div style="margin-top:8px; font-size:0.85rem; color:#A7F3D0;">
                 Senioridade detectada: <strong>{{ candidato.senioridade|title }}</strong>
                 {% if candidato.anos_experiencia %}
                     | {{ candidato.anos_experiencia }} anos de experiência
                 {% endif %}
-            </small>
+            </div>
         </div>
         <div class="d-grid gap-2">
-            <a href="{% url 'core:upload_cv' %}" class="btn btn-outline-primary">
+            <a href="{% url 'core:upload_cv' %}" class="action-btn blue border-0">
                 <i class="bi bi-upload"></i> Enviar outro CV
+            </a>
+            <a href="{% url 'core:dashboard_rh' %}" class="action-btn" style="background:transparent; border-color:#334155; color:#94A3B8;">
+                Ir para Dashboard RH
             </a>
         </div>
     {% elif candidato.status_cv == 'erro' %}
-        <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-            <strong>Erro!</strong> Não foi possível processar o currículo.
-            <br>
-            <small>Possíveis causas: PDF protegido por senha, arquivo corrompido ou sem texto legível.</small>
+        <div style="background:rgba(239,68,68,0.1); border-left:4px solid #EF4444; color:#F87171; padding:16px; border-radius:8px; margin-bottom:24px;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong style="color:#F8FAFC;">Erro!</strong> Não foi possível processar o currículo.
+            <div style="margin-top:8px; font-size:0.85rem; color:#FECACA;">
+                Possíveis causas: PDF protegido por senha, arquivo corrompido ou sem texto legível.
+            </div>
         </div>
         <div class="d-grid gap-2">
-            <a href="{% url 'core:upload_cv' %}" class="btn btn-danger">
+            <a href="{% url 'core:upload_cv' %}" class="action-btn red border-0">
                 <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
             </a>
         </div>

@@ -442,6 +442,11 @@ def lista_vagas(request):
 @require_http_methods(["GET", "POST"])
 def criar_vaga(request):
     """Cria uma nova vaga."""
+    user_org = _get_user_organization(request.user)
+    if not user_org:
+        messages.error(request, 'Não é possível criar vagas: Organização não identificada.')
+        return redirect('core:lista_vagas')
+
     if request.method == 'POST':
         titulo = request.POST.get('titulo', '').strip()
         descricao = request.POST.get('descricao', '').strip()
@@ -486,6 +491,7 @@ def criar_vaga(request):
             skills_obrigatorias=parsed_obrigatorias,
             skills_desejaveis=parsed_desejaveis,
             criado_por=request.user,
+            organization=user_org,
         )
 
         # Registra ação
@@ -600,7 +606,7 @@ def rodar_matching(request, vaga_id):
     vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
     try:
-        resultados = MatchingService.run_matching(vaga_id=vaga_id, limite=50)
+        resultados = MatchingService.run_matching(vaga_id=vaga_id, organization=user_org, limite=50)
     except Exception as e:
         logger.exception(
             "Erro no matching (vaga_id=%s, request_id=%s): %s",
@@ -856,7 +862,8 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
             candidate_id=str(candidate_id),
             vaga_id=str(vaga_id),
             created_by_user=request.user,
-            force_regenerate=force_regenerate
+            force_regenerate=force_regenerate,
+            organization=user_org
         )
         
         logger.info(
@@ -1076,9 +1083,14 @@ def buscar_candidatos_similares(request, candidato_id):
 
     Returns top 10 candidatos mais similares.
     """
+    user_org = _get_user_organization(request.user)
+    if not user_org:
+        return HttpResponseForbidden('Acesso negado: Organização não identificada.')
+
     candidato_original, candidatos_similares = CandidatePortalService.find_similar_candidates(
         candidato_id=candidato_id,
         request_id=get_request_id(request),
+        organization=user_org,
     )
 
     return render(request, 'core/candidatos/similares.html', {
@@ -1395,9 +1407,11 @@ def listar_comentarios(request, candidato_id):
 @csrf_protect
 def excluir_comentario(request, comentario_id):
     """Exclui um comentário (apenas o autor pode excluir)."""
+    user_org = _get_user_organization(request.user)
     deleted = EngagementService.delete_comment(
         comentario_id=comentario_id,
         user=request.user,
+        organization=user_org,
     )
     if not deleted:
         return JsonResponse({'error': 'Sem permissão'}, status=403)

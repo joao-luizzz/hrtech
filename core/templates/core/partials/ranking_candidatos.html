@@ -2,19 +2,19 @@
 <!-- Renderizado via HTMX após POST em rodar_matching -->
 
 {% if resultados %}
-<div class="p-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="mb-0 text-success">
-            <i class="bi bi-check-circle me-1"></i>
+<div class="p-3" style="background:var(--card-bg); border-radius:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h6 style="margin:0; color:#6EE7B7; font-weight:700;">
+            <i class="bi bi-check-circle-fill me-1"></i>
             {{ total }} candidatos encontrados
         </h6>
-        <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="btn btn-sm btn-outline-primary">
+        <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="action-btn blue">
             <i class="bi bi-arrow-up-right"></i> Ver página completa
         </a>
     </div>
 
     <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
+        <table class="table vaga-table mb-0">
             <thead>
                 <tr>
                     <th>#</th>
@@ -30,45 +30,39 @@
             <tbody>
                 {% for r in resultados|slice:":10" %}
                 <tr>
-                    <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td style="color:#64748B; font-weight:700;">{{ forloop.counter }}</td>
                     <td>
-                        <div>{{ r.candidato_nome }}</div>
-                        <small class="text-muted">{{ r.candidato_senioridade|title }}</small>
+                        <strong style="color:#fff;">{{ r.candidato_nome }}</strong>
+                        <br><small style="color:#64748B;">{{ r.candidato_senioridade|title }}</small>
                     </td>
                     <td class="text-center">
                         {% if r.score_final >= 80 %}
-                            <span class="badge bg-success fs-6">{{ r.score_final|floatformat:1 }}</span>
+                            <span class="score-hi">{{ r.score_final|floatformat:1 }}</span>
                         {% elif r.score_final >= 60 %}
-                            <span class="badge bg-warning text-dark fs-6">{{ r.score_final|floatformat:1 }}</span>
+                            <span class="score-md">{{ r.score_final|floatformat:1 }}</span>
                         {% else %}
-                            <span class="badge bg-danger fs-6">{{ r.score_final|floatformat:1 }}</span>
+                            <span class="score-lo">{{ r.score_final|floatformat:1 }}</span>
                         {% endif %}
                     </td>
-                    <td class="text-center">
-                        <small class="text-muted">{{ r.breakdown.camada_1|floatformat:0 }}</small>
-                    </td>
-                    <td class="text-center">
-                        <small class="text-muted">{{ r.breakdown.camada_2|floatformat:0 }}</small>
-                    </td>
-                    <td class="text-center">
-                        <small class="text-muted">{{ r.breakdown.camada_3|floatformat:0 }}</small>
-                    </td>
+                    <td class="text-center"><span style="color:#94A3B8; font-size:0.8rem;">{{ r.breakdown.camada_1|floatformat:0 }}</span></td>
+                    <td class="text-center"><span style="color:#94A3B8; font-size:0.8rem;">{{ r.breakdown.camada_2|floatformat:0 }}</span></td>
+                    <td class="text-center"><span style="color:#94A3B8; font-size:0.8rem;">{{ r.breakdown.camada_3|floatformat:0 }}</span></td>
                     <td class="text-center">
                         {% if r.candidato_disponivel %}
-                            <span class="badge bg-success-subtle text-success">Disponível</span>
+                            <span style="color:#6EE7B7; font-size:0.8rem;"><i class="bi bi-circle-fill me-1" style="font-size:0.4rem;"></i>Disponível</span>
                         {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary">Indisponível</span>
+                            <span style="color:#94A3B8; font-size:0.8rem;"><i class="bi bi-circle-fill me-1" style="font-size:0.4rem;"></i>Indisponível</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td class="text-end">
                         <a href="{% url 'core:detalhe_match' vaga.id r.candidato_id %}"
-                           class="btn btn-sm btn-outline-primary"
+                           class="action-btn blue border-0"
                            hx-get="{% url 'core:detalhe_match' vaga.id r.candidato_id %}"
                            hx-target="#modal-body"
                            hx-swap="innerHTML"
                            data-bs-toggle="modal"
                            data-bs-target="#matchModal">
-                            <i class="bi bi-eye"></i>
+                            <i class="bi bi-eye"></i> Ver
                         </a>
                     </td>
                 </tr>
@@ -78,17 +72,17 @@
     </div>
 
     {% if resultados|length > 10 %}
-    <div class="text-center mt-2">
-        <small class="text-muted">
+    <div style="text-align:center; margin-top:16px;">
+        <small style="color:#64748B;">
             Exibindo 10 de {{ total }} candidatos.
-            <a href="{% url 'core:ranking_candidatos' vaga.id %}">Ver todos</a>
+            <a href="{% url 'core:ranking_candidatos' vaga.id %}" style="color:#3B82F6;">Ver todos</a>
         </small>
     </div>
     {% endif %}
 </div>
 {% else %}
-<div class="p-4 text-center text-muted">
-    <i class="bi bi-emoji-frown display-4 d-block mb-2"></i>
+<div style="padding:40px 20px; text-align:center; color:#94A3B8; background:var(--card-bg); border-radius:12px;">
+    <i class="bi bi-emoji-frown display-4 d-block mb-3" style="opacity:0.2;"></i>
     Nenhum candidato compatível encontrado para esta vaga.
     <br>
     <small>Verifique se há candidatos com CVs processados.</small>

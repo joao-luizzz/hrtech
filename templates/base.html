@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="HRTech ATS - Sistema Inteligente de Recrutamento com Matching baseado em IA">
+    <meta name="description" content="HRTech — Recrutamento Inteligente com IA e Grafos de Conhecimento">
     <meta name="author" content="HRTech">
     <meta name="robots" content="index, follow">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>">
-    <title>{% block title %}HRTech ATS{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233B82F6' stroke-width='2'><circle cx='12' cy='5' r='2'/><circle cx='5' cy='19' r='2'/><circle cx='19' cy='19' r='2'/><line x1='12' y1='7' x2='5' y2='17'/><line x1='12' y1='7' x2='19' y2='17'/><line x1='5' y1='19' x2='19' y2='19'/></svg>">
+    <title>{% block title %}HRTech{% endblock %}</title>
 
     <!-- Premium Font - Inter (Landing) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -287,17 +287,9 @@
             transition: all 0.3s ease;
         }
 
-        .progress-step.active {
-            background-color: #e7f1ff;
-        }
-
-        .progress-step.completed {
-            background-color: #d1e7dd;
-        }
-
-        .progress-step.error {
-            background-color: #f8d7da;
-        }
+        .progress-step.active  { background-color: rgba(59,130,246,0.12); }
+        .progress-step.completed { background-color: rgba(16,185,129,0.12); }
+        .progress-step.error   { background-color: rgba(239,68,68,0.12); }
 
         .step-icon {
             width: 32px;
@@ -308,6 +300,140 @@
             justify-content: center;
             font-size: 0.875rem;
         }
+
+        /* ========== SIDEBAR ========== */
+        .hrtech-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 60px;
+            background: #0B0F19;
+            border-right: 1px solid #2A3143;
+            display: flex;
+            flex-direction: column;
+            z-index: 1040;
+            transition: width 0.25s cubic-bezier(.4,0,.2,1);
+            overflow: hidden;
+        }
+        .hrtech-sidebar:hover,
+        .hrtech-sidebar.expanded {
+            width: 220px;
+        }
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 14px;
+            border-bottom: 1px solid #2A3143;
+            text-decoration: none;
+            min-height: 64px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .sidebar-brand svg { flex-shrink: 0; }
+        .sidebar-brand-text {
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #FFFFFF;
+            letter-spacing: -0.02em;
+            opacity: 0;
+            transition: opacity 0.2s ease 0.05s;
+        }
+        .hrtech-sidebar:hover .sidebar-brand-text,
+        .hrtech-sidebar.expanded .sidebar-brand-text { opacity: 1; }
+        .sidebar-nav { flex: 1; padding: 12px 0; }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 11px 17px;
+            color: #94A3B8;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link i { font-size: 1.1rem; flex-shrink: 0; }
+        .sidebar-link-text {
+            opacity: 0;
+            transition: opacity 0.2s ease 0.05s;
+        }
+        .hrtech-sidebar:hover .sidebar-link-text,
+        .hrtech-sidebar.expanded .sidebar-link-text { opacity: 1; }
+        .sidebar-link:hover, .sidebar-link.active {
+            color: #FFFFFF;
+            background: rgba(59,130,246,0.1);
+            border-left-color: #3B82F6;
+        }
+        .sidebar-footer {
+            padding: 12px 0;
+            border-top: 1px solid #2A3143;
+        }
+
+        /* ========== TOPBAR ========== */
+        .hrtech-topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: #0B0F19;
+            border-bottom: 1px solid #2A3143;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1030;
+        }
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #FFFFFF;
+            letter-spacing: -0.02em;
+        }
+        .topbar-actions { display: flex; align-items: center; gap: 12px; }
+        .topbar-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94A3B8;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .topbar-btn {
+            background: rgba(59,130,246,0.1);
+            border: 1px solid #2A3143;
+            border-radius: 8px;
+            color: #94A3B8;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .topbar-btn:hover { background: rgba(59,130,246,0.2); color: #FFFFFF; border-color: #3B82F6; }
+        .topbar-btn.primary { background: #3B82F6; border-color: #3B82F6; color: #FFFFFF; }
+        .topbar-btn.primary:hover { background: #2563EB; }
+
+        /* ========== LAYOUT MAIN ========== */
+        /* Margem do main só existe quando a sidebar está no DOM (usuário RH/admin) */
+        .hrtech-sidebar ~ .hrtech-page-wrap { margin-left: 60px; }
+        .hrtech-page-wrap {
+            padding-top: 64px; /* altura da topbar */
+            min-height: 100vh;
+            transition: margin-left 0.25s cubic-bezier(.4,0,.2,1);
+        }
+        .hrtech-sidebar:hover ~ .hrtech-page-wrap,
+        .hrtech-sidebar.expanded ~ .hrtech-page-wrap { margin-left: 220px; }
+        .hrtech-content { padding: 32px 24px; max-width: 1400px; margin: 0 auto; }
 
         /* Loading indicator for HTMX */
         .htmx-request .htmx-indicator {
@@ -683,83 +809,114 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar for Internal App (Bootstrap-based) -->
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4" style="background-color: var(--color-dark); border-bottom: 2px solid var(--color-brand);">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'core:home' %}" style="font-weight: 700; letter-spacing: -0.02em;">
-                👥 HRTech ATS
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    {% if user.is_authenticated %}
-                        {% if user.profile.is_rh or user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:dashboard_rh' %}" style="color: var(--color-light);">Dashboard RH</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:lista_vagas' %}" style="color: var(--color-light);">Vagas</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:pipeline_kanban' %}" style="color: var(--color-light);">Pipeline</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:dashboard_geral' %}" style="color: var(--color-light);">Estatísticas</a>
-                        </li>
-                        {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:minha_area' %}" style="color: var(--color-light);">Minha Área</a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'core:upload_cv' %}" style="color: var(--color-light);">Upload CV</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" style="color: var(--color-light);">
-                                {{ user.email|truncatechars:20 }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" style="background-color: var(--color-surface); border-color: var(--color-border);">
-                                <li><h6 class="dropdown-header" style="color: var(--color-light);">{{ user.email }}</h6></li>
-                                <li><hr class="dropdown-divider" style="border-color: var(--color-border);"></li>
-                                <li><a class="dropdown-item" href="{% url 'account_logout' %}" style="color: var(--color-light);">Logout</a></li>
-                            </ul>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'account_login' %}" style="color: var(--color-light);">Login</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'account_signup' %}" style="color: var(--color-light);">Sign Up</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Messages -->
-    {% if messages %}
-    <div class="container mb-3">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!-- ===== TOPBAR ===== -->
+    <header class="hrtech-topbar">
+        <a href="{% url 'core:home' %}" class="topbar-brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.5">
+                <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+                <line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/>
+                <line x1="5" y1="19" x2="19" y2="19"/>
+            </svg>
+            HRTech
+        </a>
+        <div class="topbar-actions">
+            {% if user.is_authenticated %}
+                <span class="topbar-user">
+                    <i class="bi bi-person-circle"></i>
+                    {{ user.get_username|truncatechars:22 }}
+                </span>
+                {% if user.profile.is_rh or user.is_superuser %}
+                <a href="{% url 'core:criar_vaga' %}" class="topbar-btn primary">
+                    <i class="bi bi-plus-lg me-1"></i>Nova Vaga
+                </a>
+                {% endif %}
+                <a href="{% url 'account_logout' %}" class="topbar-btn">
+                    <i class="bi bi-box-arrow-right me-1"></i>Sair
+                </a>
+            {% else %}
+                <a href="{% url 'account_login' %}" class="topbar-btn">Entrar</a>
+                <a href="{% url 'account_signup' %}" class="topbar-btn primary">Criar Conta</a>
+            {% endif %}
         </div>
-        {% endfor %}
-    </div>
+    </header>
+
+    <!-- ===== SIDEBAR (apenas RH/admin) ===== -->
+    {% if user.is_authenticated and user.profile.is_rh or user.is_authenticated and user.is_superuser %}
+    <aside class="hrtech-sidebar" id="hrtech-sidebar">
+        <a href="{% url 'core:home' %}" class="sidebar-brand">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.5" flex-shrink="0">
+                <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+                <line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/>
+                <line x1="5" y1="19" x2="19" y2="19"/>
+            </svg>
+            <span class="sidebar-brand-text">HRTech</span>
+        </a>
+        <nav class="sidebar-nav">
+            <a href="{% url 'core:dashboard_rh' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard_rh' %}active{% endif %}">
+                <i class="bi bi-speedometer2"></i>
+                <span class="sidebar-link-text">Dashboard RH</span>
+            </a>
+            <a href="{% url 'core:lista_vagas' %}" class="sidebar-link {% if 'vaga' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-briefcase"></i>
+                <span class="sidebar-link-text">Vagas</span>
+            </a>
+            <a href="{% url 'core:pipeline_kanban' %}" class="sidebar-link {% if 'kanban' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-kanban"></i>
+                <span class="sidebar-link-text">Pipeline Kanban</span>
+            </a>
+            <a href="{% url 'core:dashboard_geral' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard_geral' %}active{% endif %}">
+                <i class="bi bi-bar-chart-line"></i>
+                <span class="sidebar-link-text">Estatísticas</span>
+            </a>
+            <a href="{% url 'core:buscar_candidatos' %}" class="sidebar-link {% if 'candidato' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-people"></i>
+                <span class="sidebar-link-text">Candidatos</span>
+            </a>
+            <a href="{% url 'core:meus_favoritos' %}" class="sidebar-link {% if 'favorito' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-star"></i>
+                <span class="sidebar-link-text">Favoritos</span>
+            </a>
+            <a href="{% url 'core:upload_cv' %}" class="sidebar-link {% if request.resolver_match.url_name == 'upload_cv' %}active{% endif %}">
+                <i class="bi bi-cloud-upload"></i>
+                <span class="sidebar-link-text">Upload CV</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="{% url 'account_logout' %}" class="sidebar-link">
+                <i class="bi bi-box-arrow-right"></i>
+                <span class="sidebar-link-text">Sair</span>
+            </a>
+        </div>
+    </aside>
     {% endif %}
 
-    <!-- Content -->
-    <main class="container">
-        {% block content %}{% endblock %}
-    </main>
+    <!-- ===== PAGE WRAP ===== -->
+    <div class="hrtech-page-wrap">
 
-    <!-- Footer -->
-    <footer class="text-center text-muted py-4 mt-5">
-        <small>HRTech ATS &copy; 2024 - Sistema de Recomendacao de Candidatos</small>
-    </footer>
+        <!-- Messages -->
+        {% if messages %}
+        <div class="hrtech-content pb-0">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Content -->
+        <main class="hrtech-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer style="text-align:center; color:#94A3B8; padding: 24px; font-size:0.8rem; border-top: 1px solid #2A3143; margin-top: 40px;">
+            HRTech &copy; 2024 — Recrutamento Inteligente com IA e Grafos de Conhecimento
+        </footer>
+
+    </div><!-- /hrtech-page-wrap -->
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -767,43 +924,26 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
     <script>
-        // ========== DARK MODE FUNCTIONALITY ==========
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
-        const htmlElement = document.documentElement;
+        // Dark mode forçado — sempre dark
+        document.documentElement.setAttribute('data-theme', 'dark');
 
-        // Carregar tema salvo do localStorage
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        htmlElement.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
-
-        // Toggle tema ao clicar
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = htmlElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-
-            htmlElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
-        });
-
-        // Atualizar ícone baseado no tema
-        function updateThemeIcon(theme) {
-            if (theme === 'dark') {
-                themeIcon.className = 'bi bi-sun-fill';
-            } else {
-                themeIcon.className = 'bi bi-moon-stars-fill';
-            }
+        // Sidebar toggle (clique no brand para fixar/soltar)
+        const sidebar = document.getElementById('hrtech-sidebar');
+        if (sidebar) {
+            sidebar.addEventListener('click', function(e) {
+                // Só expande/colapsa se clicar no brand (logo)
+                if (e.target.closest('.sidebar-brand')) {
+                    sidebar.classList.toggle('expanded');
+                    e.preventDefault();
+                }
+            });
         }
 
         // ========== HTMX CONFIGURATION ==========
-        // Configuração global HTMX
         document.body.addEventListener('htmx:configRequest', function(evt) {
-            // Adiciona CSRF token em todas as requisições
             evt.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
         });
 
-        // Para o polling quando processamento completar
         document.body.addEventListener('processingComplete', function() {
             console.log('Processamento completo!');
         });

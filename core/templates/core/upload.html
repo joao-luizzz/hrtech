@@ -3,115 +3,111 @@
 {% block title %}Upload de Currículo - HRTech ATS{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
+<div class="row justify-content-center" style="margin-top: 40px;">
     <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0">
-                    <i class="bi bi-cloud-upload text-primary"></i>
-                    Upload de Currículo
-                </h5>
+        <div style="background:var(--card-bg); border-radius:12px; padding:32px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div style="text-align:center; margin-bottom:32px;">
+                <div style="display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; background:rgba(59,130,246,0.1); border-radius:16px; color:#3B82F6; margin-bottom:16px;">
+                    <i class="bi bi-cloud-upload" style="font-size:2rem;"></i>
+                </div>
+                <h3 style="color:#F8FAFC; font-weight:800; margin:0;">Envie seu Currículo</h3>
+                <p style="color:#94A3B8; margin-top:8px;">Junte-se à nossa rede de talentos</p>
             </div>
-            <div class="card-body p-4">
-                <!-- Área de resultado HTMX -->
-                <div id="upload-result">
-                    <!-- Formulário de upload -->
-                    <form hx-post="{% url 'core:processar_upload' %}"
-                          hx-target="#upload-result"
-                          hx-swap="innerHTML"
-                          hx-indicator="#upload-spinner"
-                          enctype="multipart/form-data"
-                          class="needs-validation"
-                          novalidate>
-                        {% csrf_token %}
+            
+            <div id="upload-result">
+                <form hx-post="{% url 'core:processar_upload' %}"
+                      hx-target="#upload-result"
+                      hx-swap="innerHTML"
+                      hx-indicator="#upload-spinner"
+                      enctype="multipart/form-data"
+                      class="needs-validation"
+                      novalidate>
+                    {% csrf_token %}
 
-                        <!-- Nome -->
-                        <div class="mb-3">
-                            <label for="nome" class="form-label">
-                                <i class="bi bi-person"></i> Nome Completo
-                            </label>
-                            <input type="text"
-                                   class="form-control"
-                                   id="nome"
-                                   name="nome"
-                                   placeholder="João da Silva"
-                                   required>
-                            <div class="invalid-feedback">
-                                Por favor, informe seu nome.
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="nome" style="color:#94A3B8; font-size:0.85rem; font-weight:600; margin-bottom:8px; display:block;">Nome Completo</label>
+                        <input type="text"
+                               class="form-control"
+                               id="nome"
+                               name="nome"
+                               placeholder="João da Silva"
+                               style="background:#0F172A; border:1px solid #334155; color:#fff; border-radius:8px; padding:12px;"
+                               required>
+                        <div class="invalid-feedback">Por favor, informe seu nome.</div>
+                    </div>
 
-                        <!-- Email -->
-                        <div class="mb-3">
-                            <label for="email" class="form-label">
-                                <i class="bi bi-envelope"></i> Email
-                            </label>
-                            <input type="email"
-                                   class="form-control"
-                                   id="email"
-                                   name="email"
-                                   placeholder="joao@exemplo.com"
-                                   required>
-                            <div class="invalid-feedback">
-                                Por favor, informe um email válido.
-                            </div>
-                        </div>
+                    <div class="mb-4">
+                        <label for="email" style="color:#94A3B8; font-size:0.85rem; font-weight:600; margin-bottom:8px; display:block;">Email</label>
+                        <input type="email"
+                               class="form-control"
+                               id="email"
+                               name="email"
+                               placeholder="joao@exemplo.com"
+                               style="background:#0F172A; border:1px solid #334155; color:#fff; border-radius:8px; padding:12px;"
+                               required>
+                        <div class="invalid-feedback">Por favor, informe um email válido.</div>
+                    </div>
 
-                        <!-- Upload CV -->
-                        <div class="mb-4">
-                            <label for="cv" class="form-label">
-                                <i class="bi bi-file-earmark-pdf"></i> Currículo (PDF)
-                            </label>
+                    <div class="mb-4">
+                        <label for="cv" style="color:#94A3B8; font-size:0.85rem; font-weight:600; margin-bottom:8px; display:block;">Currículo (PDF)</label>
+                        <div style="position:relative; background:#0F172A; border:2px dashed #334155; border-radius:12px; padding:32px; text-align:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='#3B82F6';" onmouseout="this.style.borderColor='#334155';">
+                            <i class="bi bi-file-earmark-pdf" style="font-size:2rem; color:#64748B; margin-bottom:12px; display:block;"></i>
+                            <span style="color:#94A3B8; font-size:0.9rem;">Clique para selecionar ou arraste o arquivo</span>
+                            <br>
+                            <span style="color:#64748B; font-size:0.75rem;">Máximo 10MB</span>
                             <input type="file"
                                    class="form-control"
                                    id="cv"
                                    name="cv"
                                    accept=".pdf"
+                                   style="opacity:0; position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer;"
                                    required>
-                            <div class="form-text">
-                                Arquivo PDF, máximo 10MB
-                            </div>
-                            <div class="invalid-feedback">
-                                Por favor, selecione um arquivo PDF.
-                            </div>
                         </div>
+                        <div class="invalid-feedback" style="display:none;" id="cv-error">Por favor, selecione um arquivo PDF.</div>
+                    </div>
 
-                        <!-- Botão Submit -->
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <span id="upload-spinner" class="htmx-indicator">
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    Enviando...
-                                </span>
-                                <span class="htmx-hide-on-request">
-                                    <i class="bi bi-upload"></i> Enviar Currículo
-                                </span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="d-grid">
+                        <button type="submit" class="action-btn blue" style="padding:14px; font-size:1rem; border-radius:8px;">
+                            <span id="upload-spinner" class="htmx-indicator">
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                Enviando...
+                            </span>
+                            <span class="htmx-hide-on-request">
+                                Enviar Currículo <i class="bi bi-arrow-right ms-2"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
 
-                <!-- Info LGPD -->
-                <div class="alert alert-info mt-4 mb-0">
-                    <i class="bi bi-shield-check"></i>
-                    <strong>Privacidade:</strong> Seus dados pessoais (CPF, RG, etc) são
-                    automaticamente removidos antes do processamento por IA, em conformidade com a LGPD.
+            <!-- Info LGPD -->
+            <div style="margin-top:24px; padding:16px; background:rgba(16,185,129,0.05); border-left:4px solid #10B981; border-radius:4px;">
+                <div style="display:flex; align-items:flex-start;">
+                    <i class="bi bi-shield-check text-success me-3" style="font-size:1.5rem; margin-top:-4px;"></i>
+                    <div style="font-size:0.8rem; color:#94A3B8; line-height:1.5;">
+                        <strong style="color:#F8FAFC;">Privacidade & LGPD:</strong> Seus dados pessoais sensíveis (CPF, RG, etc) são
+                        automaticamente anonimizados antes do processamento por IA.
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Como funciona -->
-        <div class="card mt-4">
-            <div class="card-body">
-                <h6 class="card-title">
-                    <i class="bi bi-info-circle text-info"></i> Como funciona?
-                </h6>
-                <ol class="mb-0 small text-muted">
-                    <li>Envie seu currículo em PDF</li>
-                    <li>Nossa IA extrai o texto (com OCR se necessário)</li>
-                    <li>GPT-4o-mini identifica suas habilidades e nível</li>
-                    <li>Suas skills são salvas no grafo para matching inteligente</li>
-                </ol>
+        <div style="margin-top:32px; text-align:center;">
+            <p style="color:#64748B; font-size:0.85rem; margin-bottom:16px; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Como funciona o processo</p>
+            <div style="display:flex; justify-content:center; gap:24px;">
+                <div style="text-align:center; width:80px;">
+                    <div style="width:40px; height:40px; border-radius:50%; background:#1E293B; color:#94A3B8; display:flex; align-items:center; justify-content:center; margin:0 auto 8px;">1</div>
+                    <div style="color:#64748B; font-size:0.75rem;">Upload do PDF</div>
+                </div>
+                <div style="text-align:center; width:80px;">
+                    <div style="width:40px; height:40px; border-radius:50%; background:#1E293B; color:#94A3B8; display:flex; align-items:center; justify-content:center; margin:0 auto 8px;">2</div>
+                    <div style="color:#64748B; font-size:0.75rem;">Análise via IA</div>
+                </div>
+                <div style="text-align:center; width:80px;">
+                    <div style="width:40px; height:40px; border-radius:50%; background:#1E293B; color:#94A3B8; display:flex; align-items:center; justify-content:center; margin:0 auto 8px;">3</div>
+                    <div style="color:#64748B; font-size:0.75rem;">Matching Inteligente</div>
+                </div>
             </div>
         </div>
     </div>

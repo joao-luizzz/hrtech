@@ -5,7 +5,7 @@ Interview Questions Processing State Template
 Displayed when questions are currently being generated or another generation is in progress.
 
 Features:
-- Bootstrap 5 spinner animation
+- Premium dark theme animation
 - User-friendly message in Portuguese
 - HTMX polling (checks every 2s if generation finished)
 - Automatically swaps to display template when ready
@@ -16,16 +16,16 @@ Context variables:
 - message (optional): Custom message (default: "Gerando perguntas...")
 -->
 
-<div class="alert alert-info d-flex align-items-center" role="alert" id="questions-container">
+<div id="questions-container" style="background:rgba(59,130,246,0.1); border-left:4px solid #3B82F6; color:#60A5FA; padding:16px; border-radius:8px; margin-bottom:24px; display:flex; align-items:flex-start;">
     <!-- Spinner icon -->
-    <div class="spinner-border spinner-border-sm me-3" role="status">
-        <span class="visually-hidden">Carregando...</span>
+    <div style="margin-right:16px; margin-top:2px;">
+        <span class="spinner-border spinner-border-sm" style="width:1.5rem; height:1.5rem;" role="status"></span>
     </div>
     
     <!-- Message -->
-    <div class="flex-grow-1">
-        <strong>{{ message|default:"Gerando perguntas..." }}</strong>
-        <p class="mb-0 small text-muted">
+    <div style="flex-grow:1;">
+        <strong style="color:#F8FAFC; display:block; margin-bottom:4px;">{{ message|default:"Gerando perguntas..." }}</strong>
+        <p style="margin:0; font-size:0.9rem; color:#93C5FD;">
             Aguarde enquanto nossa IA cria perguntas personalizadas baseadas no perfil do candidato.
         </p>
     </div>
@@ -38,7 +38,7 @@ Reloads the same endpoint every 2 seconds until generation completes.
 When complete, server returns interview_questions_display.html which replaces this template.
 -->
 <div 
-    hx-post="{% url 'generate_interview_questions_htmx' vaga.id candidato.id %}"
+    hx-post="{% url 'core:generate_interview_questions_htmx' vaga.id candidato.id %}"
     hx-trigger="every 2s"
     hx-target="#questions-container"
     hx-swap="outerHTML"

@@ -3,94 +3,96 @@
 {% block title %}Vagas - HRTech ATS{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-briefcase me-2"></i>Vagas</h2>
-    <a href="{% url 'core:criar_vaga' %}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i>Nova Vaga
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px;">
+    <h2 style="font-size:1.6rem; font-weight:800; color:#F8FAFC; margin:0;">
+        <i class="bi bi-briefcase me-2" style="color:#3B82F6;"></i>Vagas
+    </h2>
+    <a href="{% url 'core:criar_vaga' %}" class="action-btn blue border-0">
+        <i class="bi bi-plus-lg me-1"></i> Nova Vaga
     </a>
 </div>
 
 <!-- Filtros -->
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <input type="text" name="q" class="form-control" placeholder="Buscar por titulo ou descricao..." value="{{ request.GET.q }}">
-            </div>
-            <div class="col-md-3">
-                <select name="status" class="form-select">
-                    <option value="">Todos os status</option>
-                    {% for value, label in status_choices %}
-                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <input type="text" name="area" class="form-control" placeholder="Area (ex: Dados, Backend)" value="{{ request.GET.area }}">
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-outline-primary w-100">
-                    <i class="bi bi-search"></i> Filtrar
-                </button>
-            </div>
-        </form>
-    </div>
+<div style="background:var(--card-bg); border-radius:12px; padding:20px; border:1px solid #1E293B; margin-bottom:24px;">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <input type="text" name="q" class="form-control" placeholder="Buscar por título ou descrição..." value="{{ request.GET.q }}" style="background:#0F172A; border:1px solid #334155; color:#fff; border-radius:8px;">
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select" style="background:#0F172A; border:1px solid #334155; color:#fff; border-radius:8px;">
+                <option value="">Todos os status</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="text" name="area" class="form-control" placeholder="Área (ex: Dados, Backend)" value="{{ request.GET.area }}" style="background:#0F172A; border:1px solid #334155; color:#fff; border-radius:8px;">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="action-btn w-100" style="background:rgba(59,130,246,0.1); border-color:#3B82F6; color:#60A5FA; justify-content:center;">
+                <i class="bi bi-search"></i> Filtrar
+            </button>
+        </div>
+    </form>
 </div>
 
 <!-- Lista de Vagas -->
-<div class="card">
+<div class="vaga-table" style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; overflow:hidden;">
     <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead class="table-light">
+        <table class="table mb-0" style="color:#94A3B8;">
+            <thead style="background:#0F172A; border-bottom:1px solid #1E293B;">
                 <tr>
-                    <th>Titulo</th>
-                    <th>Area</th>
-                    <th>Senioridade</th>
-                    <th>Status</th>
-                    <th>Skills</th>
-                    <th>Criada em</th>
-                    <th class="text-end">Acoes</th>
+                    <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Título</th>
+                    <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Área</th>
+                    <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Senioridade</th>
+                    <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Status</th>
+                    <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Skills</th>
+                    <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Criada em</th>
+                    <th class="text-end" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for vaga in vagas %}
-                <tr>
-                    <td>
-                        <strong>{{ vaga.titulo }}</strong>
+                <tr style="border-bottom:1px solid #1E293B;">
+                    <td style="padding:16px;">
+                        <strong style="color:#F8FAFC;">{{ vaga.titulo }}</strong>
                         {% if vaga.descricao %}
-                        <br><small class="text-muted">{{ vaga.descricao|truncatewords:10 }}</small>
+                        <br><small style="color:#64748B;">{{ vaga.descricao|truncatewords:10 }}</small>
                         {% endif %}
                     </td>
-                    <td>{{ vaga.area }}</td>
-                    <td>
-                        <span class="badge bg-secondary">{{ vaga.get_senioridade_desejada_display }}</span>
+                    <td style="padding:16px; vertical-align:middle;">
+                        <span class="skill-pill">{{ vaga.area }}</span>
                     </td>
-                    <td>
+                    <td style="padding:16px; vertical-align:middle;">
+                        <span class="skill-pill">{{ vaga.get_senioridade_desejada_display }}</span>
+                    </td>
+                    <td style="padding:16px; vertical-align:middle;">
                         {% if vaga.status == 'aberta' %}
-                        <span class="badge bg-success">Aberta</span>
+                        <span class="status-pill status-aberta">Aberta</span>
                         {% elif vaga.status == 'pausada' %}
-                        <span class="badge bg-warning">Pausada</span>
+                        <span class="status-pill status-pausada">Pausada</span>
                         {% elif vaga.status == 'fechada' %}
-                        <span class="badge bg-secondary">Fechada</span>
+                        <span class="status-pill status-fechada">Fechada</span>
                         {% else %}
-                        <span class="badge bg-light text-dark">Rascunho</span>
+                        <span class="status-pill status-rascunho">Rascunho</span>
                         {% endif %}
                     </td>
-                    <td>
-                        <small>{{ vaga.skills_obrigatorias|length }} obrig. / {{ vaga.skills_desejaveis|length }} desej.</small>
+                    <td style="padding:16px; vertical-align:middle;">
+                        <small style="color:#94A3B8;">{{ vaga.skills_obrigatorias|length }} obrig. / {{ vaga.skills_desejaveis|length }} desej.</small>
                     </td>
-                    <td>
-                        <small>{{ vaga.created_at|date:"d/m/Y" }}</small>
+                    <td style="padding:16px; vertical-align:middle;">
+                        <small style="color:#94A3B8;">{{ vaga.created_at|date:"d/m/Y" }}</small>
                     </td>
-                    <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="btn btn-outline-primary" title="Ver candidatos">
+                    <td class="text-end" style="padding:16px; vertical-align:middle;">
+                        <div style="display:flex; gap:8px; justify-content:flex-end;">
+                            <a href="{% url 'core:ranking_candidatos' vaga.id %}" class="action-btn" style="padding:6px 10px; background:rgba(59,130,246,0.1); color:#3B82F6; border:none;" title="Ver candidatos">
                                 <i class="bi bi-people"></i>
                             </a>
-                            <a href="{% url 'core:editar_vaga' vaga.id %}" class="btn btn-outline-secondary" title="Editar">
+                            <a href="{% url 'core:editar_vaga' vaga.id %}" class="action-btn" style="padding:6px 10px; background:rgba(148,163,184,0.1); color:#94A3B8; border:none;" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <button type="button" class="btn btn-outline-danger" title="Excluir"
+                            <button type="button" class="action-btn" style="padding:6px 10px; background:rgba(239,68,68,0.1); color:#EF4444; border:none;" title="Excluir"
                                     data-bs-toggle="modal" data-bs-target="#deleteModal{{ vaga.id }}">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -99,20 +101,20 @@
                         <!-- Modal de confirmacao -->
                         <div class="modal fade" id="deleteModal{{ vaga.id }}" tabindex="-1">
                             <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Confirmar exclusao</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                <div class="modal-content" style="background:#0F172A; border:1px solid #334155; border-radius:12px;">
+                                    <div class="modal-header" style="border-bottom:1px solid #1E293B;">
+                                        <h5 class="modal-title" style="color:#F8FAFC;">Confirmar exclusão</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                     </div>
-                                    <div class="modal-body">
-                                        <p>Tem certeza que deseja excluir a vaga <strong>"{{ vaga.titulo }}"</strong>?</p>
-                                        <p class="text-muted small">Esta acao nao pode ser desfeita.</p>
+                                    <div class="modal-body text-start">
+                                        <p style="color:#E2E8F0;">Tem certeza que deseja excluir a vaga <strong style="color:#F8FAFC;">"{{ vaga.titulo }}"</strong>?</p>
+                                        <p style="color:#EF4444; font-size:0.85rem; margin:0;">Esta ação não pode ser desfeita.</p>
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <div class="modal-footer" style="border-top:1px solid #1E293B;">
+                                        <button type="button" class="action-btn" style="background:transparent; border-color:#334155; color:#94A3B8;" data-bs-dismiss="modal">Cancelar</button>
                                         <form action="{% url 'core:excluir_vaga' vaga.id %}" method="POST" class="d-inline">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-danger">Excluir</button>
+                                            <button type="submit" class="action-btn red border-0">Excluir</button>
                                         </form>
                                     </div>
                                 </div>
@@ -122,10 +124,10 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
-                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        Nenhuma vaga encontrada.
-                        <a href="{% url 'core:criar_vaga' %}">Criar primeira vaga</a>
+                    <td colspan="7" class="text-center py-5 text-muted" style="border:none;">
+                        <i class="bi bi-inbox" style="font-size:3rem; color:#334155; display:block; margin-bottom:16px;"></i>
+                        <span style="display:block; margin-bottom:16px; color:#64748B;">Nenhuma vaga encontrada.</span>
+                        <a href="{% url 'core:criar_vaga' %}" class="action-btn blue border-0" style="display:inline-flex;">Criar primeira vaga</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -135,25 +137,28 @@
 </div>
 
 <!-- Paginacao -->
+<!-- Paginacao -->
 {% if vagas.has_other_pages %}
-<nav class="mt-4">
-    <ul class="pagination justify-content-center">
+<nav class="mt-4" style="display:flex; justify-content:center;">
+    <ul class="pagination" style="gap:8px;">
         {% if vagas.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ vagas.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
-                Anterior
+            <a class="page-link" href="?page={{ vagas.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" style="background:#0F172A; border:1px solid #334155; color:#94A3B8; border-radius:8px;">
+                <i class="bi bi-chevron-left"></i>
             </a>
         </li>
         {% endif %}
 
         <li class="page-item disabled">
-            <span class="page-link">Pagina {{ vagas.number }} de {{ vagas.paginator.num_pages }}</span>
+            <span class="page-link" style="background:#1E293B; border:1px solid #334155; color:#F8FAFC; border-radius:8px; font-weight:600;">
+                {{ vagas.number }} de {{ vagas.paginator.num_pages }}
+            </span>
         </li>
 
         {% if vagas.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ vagas.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
-                Proxima
+            <a class="page-link" href="?page={{ vagas.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" style="background:#0F172A; border:1px solid #334155; color:#94A3B8; border-radius:8px;">
+                <i class="bi bi-chevron-right"></i>
             </a>
         </li>
         {% endif %}

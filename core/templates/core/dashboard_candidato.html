@@ -3,17 +3,17 @@
 {% block title %}{{ candidato.nome }} - HRTech{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <h2 class="mb-1">
-            <i class="bi bi-person-circle me-2"></i>{{ candidato.nome }}
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px;">
+    <div>
+        <h2 style="font-size:1.6rem; font-weight:800; color:#F8FAFC; margin-bottom:4px;">
+            <i class="bi bi-person-circle me-2" style="color:#3B82F6;"></i>{{ candidato.nome }}
         </h2>
-        <p class="text-muted mb-0">{{ candidato.email }}</p>
+        <p style="color:#94A3B8; font-size:0.9rem; margin:0;">{{ candidato.email }}</p>
     </div>
-    <div class="col-auto">
+    <div style="display:flex; gap:10px;">
         {% if candidato.status_cv == 'pendente' %}
-        <a href="{% url 'core:upload_cv' %}?candidato={{ candidato.id }}" class="btn btn-primary">
-            <i class="bi bi-upload me-1"></i>Enviar CV
+        <a href="{% url 'core:upload_cv' %}?candidato={{ candidato.id }}" class="action-btn blue border-0">
+            <i class="bi bi-upload me-1"></i> Enviar CV
         </a>
         {% endif %}
     </div>
@@ -23,112 +23,112 @@
     <!-- Coluna Principal -->
     <div class="col-lg-8">
         <!-- Status do Processamento -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-file-earmark-pdf me-2"></i>Status do CV</h5>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; margin-bottom:24px; overflow:hidden;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h5 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-file-earmark-pdf me-2" style="color:#A78BFA;"></i>Status do CV</h5>
             </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
+            <div style="padding:20px;">
+                <div style="display:flex; align-items:center; margin-bottom:16px;">
                     {% if candidato.status_cv == 'pendente' %}
-                        <span class="badge bg-secondary fs-6 me-3">Pendente</span>
-                        <span class="text-muted">Nenhum CV enviado ainda</span>
+                        <span style="background:rgba(100,116,139,0.1); color:#94A3B8; border:1px solid rgba(100,116,139,0.2); padding:4px 12px; border-radius:16px; font-weight:600; font-size:0.85rem; margin-right:12px;">Pendente</span>
+                        <span style="color:#64748B;">Nenhum CV enviado ainda</span>
                     {% elif candidato.status_cv == 'recebido' %}
-                        <span class="badge bg-info fs-6 me-3">
-                            <span class="spinner-border spinner-border-sm me-1"></span>Recebido
+                        <span style="background:rgba(14,165,233,0.1); color:#38BDF8; border:1px solid rgba(14,165,233,0.2); padding:4px 12px; border-radius:16px; font-weight:600; font-size:0.85rem; margin-right:12px; display:inline-flex; align-items:center;">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Recebido
                         </span>
-                        <span class="text-muted">CV na fila de processamento</span>
+                        <span style="color:#64748B;">CV na fila de processamento</span>
                     {% elif candidato.status_cv == 'processando' %}
-                        <span class="badge bg-warning text-dark fs-6 me-3">
-                            <span class="spinner-border spinner-border-sm me-1"></span>Lendo PDF
+                        <span style="background:rgba(245,158,11,0.1); color:#FBBF24; border:1px solid rgba(245,158,11,0.2); padding:4px 12px; border-radius:16px; font-weight:600; font-size:0.85rem; margin-right:12px; display:inline-flex; align-items:center;">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Lendo PDF
                         </span>
-                        <span class="text-muted">Extraindo texto do documento</span>
+                        <span style="color:#64748B;">Extraindo texto do documento</span>
                     {% elif candidato.status_cv == 'extraindo' %}
-                        <span class="badge bg-primary fs-6 me-3">
-                            <span class="spinner-border spinner-border-sm me-1"></span>Extraindo
+                        <span style="background:rgba(59,130,246,0.1); color:#60A5FA; border:1px solid rgba(59,130,246,0.2); padding:4px 12px; border-radius:16px; font-weight:600; font-size:0.85rem; margin-right:12px; display:inline-flex; align-items:center;">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Extraindo
                         </span>
-                        <span class="text-muted">IA identificando habilidades</span>
+                        <span style="color:#64748B;">IA identificando habilidades</span>
                     {% elif candidato.status_cv == 'concluido' %}
-                        <span class="badge bg-success fs-6 me-3">
-                            <i class="bi bi-check-circle me-1"></i>Concluído
+                        <span style="background:rgba(16,185,129,0.1); color:#34D399; border:1px solid rgba(16,185,129,0.2); padding:4px 12px; border-radius:16px; font-weight:600; font-size:0.85rem; margin-right:12px; display:inline-flex; align-items:center;">
+                            <i class="bi bi-check-circle-fill me-2"></i>Concluído
                         </span>
-                        <span class="text-muted">CV processado com sucesso</span>
+                        <span style="color:#64748B;">CV processado com sucesso</span>
                     {% elif candidato.status_cv == 'erro' %}
-                        <span class="badge bg-danger fs-6 me-3">
-                            <i class="bi bi-exclamation-triangle me-1"></i>Erro
+                        <span style="background:rgba(239,68,68,0.1); color:#F87171; border:1px solid rgba(239,68,68,0.2); padding:4px 12px; border-radius:16px; font-weight:600; font-size:0.85rem; margin-right:12px; display:inline-flex; align-items:center;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>Erro
                         </span>
-                        <span class="text-muted">Falha no processamento</span>
+                        <span style="color:#64748B;">Falha no processamento</span>
                     {% endif %}
                 </div>
 
                 <!-- Progress Steps -->
-                <div class="progress mb-3" style="height: 8px;">
+                <div style="background:#0F172A; border-radius:10px; height:8px; margin-bottom:12px; overflow:hidden; position:relative;">
                     {% if candidato.status_cv == 'pendente' %}
-                        <div class="progress-bar bg-secondary" style="width: 0%"></div>
+                        <div style="position:absolute; top:0; left:0; height:100%; width:0%; background:#334155;"></div>
                     {% elif candidato.status_cv == 'recebido' %}
-                        <div class="progress-bar bg-info" style="width: 25%"></div>
+                        <div style="position:absolute; top:0; left:0; height:100%; width:25%; background:linear-gradient(90deg, #3B82F6, #0EA5E9);"></div>
                     {% elif candidato.status_cv == 'processando' %}
-                        <div class="progress-bar bg-warning" style="width: 50%"></div>
+                        <div style="position:absolute; top:0; left:0; height:100%; width:50%; background:linear-gradient(90deg, #F59E0B, #FBBF24);"></div>
                     {% elif candidato.status_cv == 'extraindo' %}
-                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 75%"></div>
+                        <div style="position:absolute; top:0; left:0; height:100%; width:75%; background:linear-gradient(90deg, #8B5CF6, #A78BFA);"></div>
                     {% elif candidato.status_cv == 'concluido' %}
-                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                        <div style="position:absolute; top:0; left:0; height:100%; width:100%; background:linear-gradient(90deg, #10B981, #34D399);"></div>
                     {% elif candidato.status_cv == 'erro' %}
-                        <div class="progress-bar bg-danger" style="width: 100%"></div>
+                        <div style="position:absolute; top:0; left:0; height:100%; width:100%; background:linear-gradient(90deg, #EF4444, #F87171);"></div>
                     {% endif %}
                 </div>
 
-                <div class="d-flex justify-content-between small text-muted">
-                    <span>Recebido</span>
-                    <span>Lendo PDF</span>
-                    <span>Extraindo Habilidades</span>
-                    <span>Concluído</span>
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#64748B; font-weight:600; text-transform:uppercase;">
+                    <span style="{% if candidato.status_cv in 'recebido,processando,extraindo,concluido' %}color:#94A3B8;{% endif %}">Recebido</span>
+                    <span style="{% if candidato.status_cv in 'processando,extraindo,concluido' %}color:#94A3B8;{% endif %}">Lendo PDF</span>
+                    <span style="{% if candidato.status_cv in 'extraindo,concluido' %}color:#94A3B8;{% endif %}">Extraindo</span>
+                    <span style="{% if candidato.status_cv == 'concluido' %}color:#94A3B8;{% endif %}">Concluído</span>
                 </div>
             </div>
         </div>
 
         <!-- Habilidades Extraídas -->
         {% if candidato.status_cv == 'concluido' and habilidades %}
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-stars me-2"></i>Habilidades Extraídas</h5>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; margin-bottom:24px; overflow:hidden;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B; display:flex; justify-content:space-between; align-items:center;">
+                <h5 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-stars me-2" style="color:#8B5CF6;"></i>Habilidades Extraídas</h5>
                 {% if area_atuacao %}
-                <span class="badge bg-primary">{{ area_atuacao }}</span>
+                <span style="background:rgba(59,130,246,0.1); color:#60A5FA; border:1px solid rgba(59,130,246,0.2); padding:4px 12px; border-radius:16px; font-size:0.75rem; font-weight:600;">{{ area_atuacao }}</span>
                 {% endif %}
             </div>
-            <div class="card-body">
+            <div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                    <table class="table mb-0" style="color:#94A3B8; font-size:0.9rem;">
+                        <thead style="background:#0F172A; border-bottom:1px solid #1E293B;">
                             <tr>
-                                <th>Habilidade</th>
-                                <th class="text-center">Nível</th>
-                                <th class="text-center">Experiência</th>
-                                <th class="text-center">Último Uso</th>
-                                <th class="text-center">Tipo</th>
+                                <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px 20px;">Habilidade</th>
+                                <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px;">Nível</th>
+                                <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px;">Experiência</th>
+                                <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px;">Último Uso</th>
+                                <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px;">Tipo</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for h in habilidades %}
-                            <tr>
-                                <td class="fw-bold">{{ h.nome }}</td>
-                                <td class="text-center">
+                            <tr style="border-bottom:1px solid #1E293B;">
+                                <td style="color:#F8FAFC; font-weight:600; padding:12px 20px;">{{ h.nome }}</td>
+                                <td class="text-center" style="padding:12px;">
                                     {% for i in "12345" %}
                                         {% if forloop.counter <= h.nivel %}
-                                            <i class="bi bi-star-fill text-warning"></i>
+                                            <i class="bi bi-star-fill" style="color:#F59E0B;"></i>
                                         {% else %}
-                                            <i class="bi bi-star text-muted"></i>
+                                            <i class="bi bi-star" style="color:#334155;"></i>
                                         {% endif %}
                                     {% endfor %}
                                 </td>
-                                <td class="text-center">{{ h.anos|floatformat:1 }} anos</td>
-                                <td class="text-center">{{ h.ano_uso }}</td>
-                                <td class="text-center">
+                                <td class="text-center" style="padding:12px;">{{ h.anos|floatformat:1 }} anos</td>
+                                <td class="text-center" style="padding:12px;">{{ h.ano_uso }}</td>
+                                <td class="text-center" style="padding:12px;">
                                     {% if h.inferido %}
-                                        <span class="badge bg-light text-muted" title="Inferido pela IA">
+                                        <span style="color:#94A3B8; font-size:0.75rem; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:12px;" title="Inferido pela IA">
                                             <i class="bi bi-robot"></i> Inferido
                                         </span>
                                     {% else %}
-                                        <span class="badge bg-success-subtle text-success">
+                                        <span style="color:#34D399; font-size:0.75rem; background:rgba(16,185,129,0.1); padding:2px 8px; border-radius:12px;">
                                             <i class="bi bi-check"></i> Declarado
                                         </span>
                                     {% endif %}
@@ -141,51 +141,49 @@
             </div>
         </div>
         {% elif candidato.status_cv == 'concluido' %}
-        <div class="card mb-4">
-            <div class="card-body text-center text-muted py-4">
-                <i class="bi bi-file-earmark-x display-4 d-block mb-2"></i>
-                CV processado mas nenhuma habilidade foi extraída.
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; margin-bottom:24px; padding:40px; text-align:center;">
+            <i class="bi bi-file-earmark-x" style="font-size:3rem; color:#334155; display:block; margin-bottom:16px;"></i>
+            <span style="color:#94A3B8;">CV processado mas nenhuma habilidade foi extraída.</span>
         </div>
         {% endif %}
 
         <!-- Histórico de Matches -->
         {% if matches %}
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de Matches</h5>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; overflow:hidden;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h5 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-clock-history me-2" style="color:#3B82F6;"></i>Histórico de Matches</h5>
             </div>
-            <div class="card-body p-0">
+            <div>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                    <table class="table mb-0" style="color:#94A3B8; font-size:0.9rem;">
+                        <thead style="background:#0F172A; border-bottom:1px solid #1E293B;">
                             <tr>
-                                <th>Vaga</th>
-                                <th class="text-center">Score</th>
-                                <th class="text-center">Data</th>
+                                <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px 20px;">Vaga</th>
+                                <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px;">Score</th>
+                                <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:12px;">Data</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for match in matches %}
-                            <tr>
-                                <td>
+                            <tr style="border-bottom:1px solid #1E293B;">
+                                <td style="padding:12px 20px;">
                                     {% if match.vaga %}
-                                        {{ match.vaga.titulo }}
-                                        <br><small class="text-muted">{{ match.vaga.area }}</small>
+                                        <strong style="color:#F8FAFC;">{{ match.vaga.titulo }}</strong>
+                                        <br><small style="color:#64748B;">{{ match.vaga.area }}</small>
                                     {% else %}
-                                        <span class="text-muted">[Vaga removida]</span>
+                                        <span style="color:#64748B;">[Vaga removida]</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" style="padding:12px; vertical-align:middle;">
                                     {% if match.score >= 80 %}
-                                        <span class="badge bg-success fs-6">{{ match.score|floatformat:1 }}</span>
+                                        <span class="score-hi">{{ match.score|floatformat:1 }}</span>
                                     {% elif match.score >= 60 %}
-                                        <span class="badge bg-warning text-dark fs-6">{{ match.score|floatformat:1 }}</span>
+                                        <span class="score-md">{{ match.score|floatformat:1 }}</span>
                                     {% else %}
-                                        <span class="badge bg-danger fs-6">{{ match.score|floatformat:1 }}</span>
+                                        <span class="score-lo">{{ match.score|floatformat:1 }}</span>
                                     {% endif %}
                                 </td>
-                                <td class="text-center text-muted">
+                                <td class="text-center" style="padding:12px; vertical-align:middle; color:#64748B;">
                                     {{ match.created_at|date:"d/m/Y H:i" }}
                                 </td>
                             </tr>
@@ -202,25 +200,26 @@
     <div class="col-lg-4">
         <!-- Ações RH -->
         {% if user.is_authenticated and user.profile.is_rh %}
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h6 class="mb-0"><i class="bi bi-briefcase me-2"></i>Ações RH</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; margin-bottom:24px; overflow:hidden;">
+            <div style="background:#1E293B; padding:16px 20px; border-bottom:1px solid #334155;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-briefcase me-2" style="color:#60A5FA;"></i>Ações RH</h6>
             </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{% url 'core:listar_comentarios' candidato.id %}" class="btn btn-outline-primary">
+            <div style="padding:20px;">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <a href="{% url 'core:listar_comentarios' candidato.id %}" class="action-btn" style="background:rgba(59,130,246,0.1); color:#60A5FA; border:none; justify-content:center;">
                         <i class="bi bi-chat-left-text me-2"></i>Comentários
-                        {% if total_comentarios %}<span class="badge bg-primary ms-1">{{ total_comentarios }}</span>{% endif %}
+                        {% if total_comentarios %}<span style="background:#3B82F6; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-left:8px;">{{ total_comentarios }}</span>{% endif %}
                     </a>
                     <button type="button"
-                            class="btn {% if is_favorito %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                            class="action-btn"
+                            style="{% if is_favorito %}background:rgba(245,158,11,0.2); color:#FBBF24;{% else %}background:rgba(245,158,11,0.05); color:#94A3B8;{% endif %} border:none; justify-content:center;"
                             hx-post="{% url 'core:toggle_favorito' candidato.id %}"
                             hx-swap="none"
-                            hx-on::after-request="this.classList.toggle('btn-warning'); this.classList.toggle('btn-outline-warning');">
+                            onclick="if(this.style.color==='rgb(148, 163, 184)') { this.style.color='#FBBF24'; this.style.background='rgba(245,158,11,0.2)'; this.innerHTML='<i class=\'bi bi-star-fill me-2\'></i>Favoritado'; } else { this.style.color='#94A3B8'; this.style.background='rgba(245,158,11,0.05)'; this.innerHTML='<i class=\'bi bi-star me-2\'></i>Adicionar aos Favoritos'; }">
                         <i class="bi bi-star{% if is_favorito %}-fill{% endif %} me-2"></i>
                         {% if is_favorito %}Favoritado{% else %}Adicionar aos Favoritos{% endif %}
                     </button>
-                    <a href="{% url 'core:relatorio_candidato' candidato.id %}" target="_blank" class="btn btn-outline-success">
+                    <a href="{% url 'core:relatorio_candidato' candidato.id %}" target="_blank" class="action-btn" style="background:rgba(16,185,129,0.1); color:#34D399; border:none; justify-content:center;">
                         <i class="bi bi-printer me-2"></i>Imprimir Relatório
                     </a>
                 </div>
@@ -229,73 +228,73 @@
         {% endif %}
 
         <!-- Info do Candidato -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; margin-bottom:24px;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-info-circle me-2" style="color:#3B82F6;"></i>Informações</h6>
             </div>
-            <div class="card-body">
-                <dl class="mb-0">
-                    <dt class="text-muted small">Senioridade</dt>
-                    <dd class="mb-3">
+            <div style="padding:20px;">
+                <dl style="margin:0;">
+                    <dt style="color:#64748B; font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Senioridade</dt>
+                    <dd style="margin-bottom:16px;">
                         {% if candidato.senioridade == 'junior' %}
-                            <span class="badge bg-success">Júnior</span>
+                            <span style="background:rgba(16,185,129,0.1); color:#34D399; border:1px solid rgba(16,185,129,0.2); padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:600;">Júnior</span>
                         {% elif candidato.senioridade == 'pleno' %}
-                            <span class="badge bg-warning text-dark">Pleno</span>
+                            <span style="background:rgba(245,158,11,0.1); color:#FBBF24; border:1px solid rgba(245,158,11,0.2); padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:600;">Pleno</span>
                         {% else %}
-                            <span class="badge bg-danger">Sênior</span>
+                            <span style="background:rgba(239,68,68,0.1); color:#F87171; border:1px solid rgba(239,68,68,0.2); padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:600;">Sênior</span>
                         {% endif %}
                     </dd>
 
-                    <dt class="text-muted small">Anos de Experiência</dt>
-                    <dd class="mb-3">{{ candidato.anos_experiencia }} anos</dd>
+                    <dt style="color:#64748B; font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Anos de Experiência</dt>
+                    <dd style="margin-bottom:16px; color:#F8FAFC;">{{ candidato.anos_experiencia }} anos</dd>
 
-                    <dt class="text-muted small">Disponibilidade</dt>
-                    <dd class="mb-3">
+                    <dt style="color:#64748B; font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Disponibilidade</dt>
+                    <dd style="margin-bottom:16px;">
                         {% if candidato.disponivel %}
-                            <span class="text-success"><i class="bi bi-check-circle me-1"></i>Disponível</span>
+                            <span style="color:#34D399; font-weight:600;"><i class="bi bi-check-circle-fill me-1"></i>Disponível</span>
                         {% else %}
-                            <span class="text-muted"><i class="bi bi-x-circle me-1"></i>Indisponível</span>
+                            <span style="color:#64748B;"><i class="bi bi-x-circle-fill me-1"></i>Indisponível</span>
                         {% endif %}
                     </dd>
 
                     {% if candidato.telefone %}
-                    <dt class="text-muted small">Telefone</dt>
-                    <dd class="mb-3">{{ candidato.telefone }}</dd>
+                    <dt style="color:#64748B; font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Telefone</dt>
+                    <dd style="margin-bottom:16px; color:#F8FAFC;">{{ candidato.telefone }}</dd>
                     {% endif %}
 
-                    <dt class="text-muted small">Cadastrado em</dt>
-                    <dd class="mb-0">{{ candidato.created_at|date:"d/m/Y H:i" }}</dd>
+                    <dt style="color:#64748B; font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Cadastrado em</dt>
+                    <dd style="margin:0; color:#E2E8F0;">{{ candidato.created_at|date:"d/m/Y H:i" }}</dd>
                 </dl>
             </div>
         </div>
 
         <!-- Área de Atuação (se processado) -->
         {% if area_atuacao %}
-        <div class="card mb-4">
-            <div class="card-body text-center">
-                <div class="display-6 text-primary mb-2">
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; margin-bottom:24px;">
+            <div style="padding:24px; text-align:center;">
+                <div style="font-size:2rem; color:#A78BFA; margin-bottom:8px;">
                     <i class="bi bi-briefcase"></i>
                 </div>
-                <h6 class="text-muted mb-1">Área de Atuação</h6>
-                <div class="fs-4">{{ area_atuacao }}</div>
+                <h6 style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600; margin-bottom:4px;">Área de Atuação</h6>
+                <div style="font-size:1.4rem; font-weight:700; color:#F8FAFC;">{{ area_atuacao }}</div>
             </div>
         </div>
         {% endif %}
 
         <!-- Resumo de Skills -->
         {% if habilidades %}
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Resumo</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-bar-chart me-2" style="color:#10B981;"></i>Resumo</h6>
             </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Total de Skills</span>
-                    <span class="fw-bold">{{ habilidades|length }}</span>
+            <div style="padding:20px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span style="color:#94A3B8;">Total de Skills</span>
+                    <span style="color:#F8FAFC; font-weight:700;">{{ habilidades|length }}</span>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Nível Médio</span>
-                    <span class="fw-bold">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span style="color:#94A3B8;">Nível Médio</span>
+                    <span style="color:#F8FAFC; font-weight:700;">
                         {% with total=0 count=0 %}
                         {% for h in habilidades %}
                             {% with total=total|add:h.nivel count=count|add:1 %}{% endwith %}
@@ -304,9 +303,9 @@
                         ~3.5
                     </span>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">Matches Realizados</span>
-                    <span class="fw-bold">{{ matches|length }}</span>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#94A3B8;">Matches Realizados</span>
+                    <span style="color:#F8FAFC; font-weight:700;">{{ matches|length }}</span>
                 </div>
             </div>
         </div>

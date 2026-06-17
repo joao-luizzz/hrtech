@@ -9,24 +9,24 @@ Variáveis de contexto:
     - candidato: objeto Candidato
 {% endcomment %}
 
-<div class="text-center py-5">
-    <div class="text-muted mb-3">
-        <i class="bi bi-search display-4"></i>
+<div style="padding:40px 20px; text-align:center; background:var(--card-bg); border-radius:12px;">
+    <div style="color:#64748B; margin-bottom:16px;">
+        <i class="bi bi-search display-4" style="opacity:0.5;"></i>
     </div>
-    <h5 class="text-muted mb-2">Match n encontrado</h5>
-    <p class="text-muted mb-4">
-        O candidato <strong>{{ candidato.nome }}</strong> ainda n foi avaliado para a vaga <strong>{{ vaga.titulo }}</strong>.
+    <h5 style="color:#F8FAFC; margin-bottom:8px; font-weight:700;">Match não encontrado</h5>
+    <p style="color:#94A3B8; margin-bottom:24px; font-size:0.9rem;">
+        O candidato <strong style="color:#fff;">{{ candidato.nome }}</strong> ainda não foi avaliado para a vaga <strong style="color:#fff;">{{ vaga.titulo }}</strong>.
     </p>
-    <div class="d-flex justify-content-center gap-2">
-        <a href="{% url 'core:dashboard_rh' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>Voltar
+    <div style="display:flex; justify-content:center; gap:8px;">
+        <a href="{% url 'core:dashboard_rh' %}" class="action-btn" style="background:transparent; border-color:#2A3143; color:#94A3B8;">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
         </a>
         <button type="button"
-                class="btn btn-primary"
+                class="action-btn blue border-0"
                 hx-post="{% url 'core:rodar_matching' vaga.id %}"
                 hx-target="body"
                 hx-swap="innerHTML">
-            <i class="bi bi-lightning me-1"></i>Rodar Matching
+            <i class="bi bi-lightning-charge-fill me-1"></i> Rodar Matching
         </button>
     </div>
 </div>

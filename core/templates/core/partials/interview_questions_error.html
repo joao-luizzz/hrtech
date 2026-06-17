@@ -2,24 +2,34 @@
 <!-- Shows error message with retry button -->
 
 <div id="interview-questions-error">
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        <strong>Unable to Generate Questions</strong>
-        <p class="mb-3">{{ error_message|default:"An error occurred while generating interview questions. Please try again." }}</p>
+    <div style="background:rgba(239,68,68,0.1); border-left:4px solid #EF4444; color:#F87171; padding:16px; border-radius:8px; margin-bottom:24px; position:relative;">
+        <button type="button" class="btn-close btn-close-white" style="position:absolute; top:16px; right:16px; font-size:0.8rem; opacity:0.5;" data-bs-dismiss="alert"></button>
         
-        <button type="button"
-                class="btn btn-sm btn-outline-danger"
-                hx-post="{% url 'core:generate_interview_questions_htmx' vaga.id candidato.id %}"
-                hx-target="#interview-questions-container"
-                hx-swap="innerHTML"
-                hx-indicator="#interview-questions-spinner">
-            <i class="bi bi-arrow-repeat me-1"></i> Try Again
-        </button>
+        <h6 style="color:#F8FAFC; margin-bottom:12px; font-weight:700;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Não foi possível gerar as perguntas
+        </h6>
         
-        <button type="button" 
-                class="btn btn-sm btn-link text-danger" 
-                data-bs-dismiss="alert">
-            Dismiss
-        </button>
+        <p style="color:#FECACA; font-size:0.9rem; margin-bottom:16px;">
+            {{ error_message|default:"Ocorreu um erro ao gerar as perguntas de entrevista. Por favor, tente novamente." }}
+        </p>
+        
+        <div style="display:flex; gap:12px;">
+            <button type="button"
+                    class="action-btn red border-0"
+                    style="padding:6px 12px; font-size:0.85rem;"
+                    hx-post="{% url 'core:generate_interview_questions_htmx' vaga.id candidato.id %}"
+                    hx-target="#interview-questions-container"
+                    hx-swap="innerHTML"
+                    hx-indicator="#interview-questions-spinner">
+                <i class="bi bi-arrow-repeat me-1"></i> Tentar Novamente
+            </button>
+            <button type="button" 
+                    class="action-btn" 
+                    style="background:transparent; border-color:transparent; color:#F87171; padding:6px 12px; font-size:0.85rem;"
+                    data-bs-dismiss="alert">
+                Fechar
+            </button>
+        </div>
     </div>
 </div>

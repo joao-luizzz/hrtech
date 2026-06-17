@@ -3,153 +3,145 @@
 {% block title %}Ranking - {{ vaga.titulo }} - HRTech{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-2">
-                <li class="breadcrumb-item"><a href="{% url 'core:dashboard_rh' %}">Dashboard RH</a></li>
-                <li class="breadcrumb-item active">Ranking</li>
-            </ol>
-        </nav>
-        <h2 class="mb-1">{{ vaga.titulo }}</h2>
-        <p class="text-muted mb-0">
-            <span class="badge bg-primary">{{ vaga.area }}</span>
-            <span class="badge bg-secondary">{{ vaga.senioridade_desejada|title }}</span>
-            <span class="ms-2">{{ total }} candidatos compatíveis</span>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px;">
+    <div>
+        <h2 style="font-size:1.6rem; font-weight:800; color:#F8FAFC; margin-bottom:8px;">
+            {{ vaga.titulo }}
+        </h2>
+        <p style="color:#94A3B8; font-size:0.9rem; margin:0; display:flex; align-items:center; gap:8px;">
+            <span class="skill-pill">{{ vaga.area }}</span>
+            <span class="skill-pill">{{ vaga.senioridade_desejada|title }}</span>
+            <span style="border-left:1px solid #334155; padding-left:8px; color:#64748B;">{{ total }} candidatos compatíveis</span>
         </p>
     </div>
-    <div class="col-auto">
-        <a href="{% url 'core:pipeline_kanban_vaga' vaga.id %}" class="btn btn-outline-primary">
-            <i class="bi bi-kanban me-1"></i>Pipeline
+    <div style="display:flex; gap:10px;">
+        <a href="{% url 'core:pipeline_kanban_vaga' vaga.id %}" class="action-btn" style="background:rgba(139,92,246,0.1); border-color:transparent; color:#A78BFA;">
+            <i class="bi bi-kanban"></i> Pipeline
         </a>
-        <a href="{% url 'core:exportar_ranking' vaga.id %}" class="btn btn-outline-success">
-            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        <a href="{% url 'core:exportar_ranking' vaga.id %}" class="action-btn" style="background:rgba(16,185,129,0.1); border-color:transparent; color:#34D399;">
+            <i class="bi bi-file-earmark-excel"></i> Excel
         </a>
         <button type="button"
-                class="btn btn-primary"
+                class="action-btn blue border-0"
                 hx-post="{% url 'core:rodar_matching' vaga.id %}"
                 hx-target="#ranking-table"
                 hx-swap="innerHTML">
-            <i class="bi bi-arrow-repeat me-1"></i>Recalcular
+            <i class="bi bi-arrow-repeat"></i> Recalcular
         </button>
     </div>
 </div>
 
 <!-- Skills da Vaga -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Skills Obrigatórias</h6>
-                {% for skill in vaga.skills_obrigatorias %}
-                    <span class="badge bg-danger me-1 mb-1">
-                        {{ skill.nome }} (≥{{ skill.nivel_minimo }})
-                    </span>
-                {% empty %}
-                    <span class="text-muted">Nenhuma definida</span>
-                {% endfor %}
+<div style="background:var(--card-bg); border-radius:12px; padding:20px; border:1px solid #1E293B; margin-bottom:24px;">
+    <div class="row">
+        <div class="col-md-6">
+            <h6 style="color:#94A3B8; font-size:0.85rem; text-transform:uppercase; font-weight:700; margin-bottom:12px;">Skills Obrigatórias</h6>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            {% for skill in vaga.skills_obrigatorias %}
+                <span style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#F87171; padding:4px 10px; border-radius:16px; font-size:0.8rem; font-weight:600;">
+                    {{ skill.nome }} (≥{{ skill.nivel_minimo }})
+                </span>
+            {% empty %}
+                <span style="color:#64748B; font-size:0.85rem;">Nenhuma definida</span>
+            {% endfor %}
             </div>
-            <div class="col-md-6">
-                <h6 class="text-muted mb-2">Skills Desejáveis</h6>
-                {% for skill in vaga.skills_desejaveis %}
-                    <span class="badge bg-info me-1 mb-1">
-                        {{ skill.nome }} (≥{{ skill.nivel_minimo }})
-                    </span>
-                {% empty %}
-                    <span class="text-muted">Nenhuma definida</span>
-                {% endfor %}
+        </div>
+        <div class="col-md-6 mt-3 mt-md-0">
+            <h6 style="color:#94A3B8; font-size:0.85rem; text-transform:uppercase; font-weight:700; margin-bottom:12px;">Skills Desejáveis</h6>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            {% for skill in vaga.skills_desejaveis %}
+                <span style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); color:#60A5FA; padding:4px 10px; border-radius:16px; font-size:0.8rem; font-weight:600;">
+                    {{ skill.nome }} (≥{{ skill.nivel_minimo }})
+                </span>
+            {% empty %}
+                <span style="color:#64748B; font-size:0.85rem;">Nenhuma definida</span>
+            {% endfor %}
             </div>
         </div>
     </div>
 </div>
 
 <!-- Tabela de Ranking -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Ranking de Candidatos</h5>
+<div class="vaga-table" style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; overflow:hidden; position:relative; min-height:300px;">
+    <div style="padding:20px; border-bottom:1px solid #1E293B;">
+        <h5 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-trophy me-2" style="color:#F59E0B;"></i>Ranking de Candidatos</h5>
     </div>
-    <div class="card-body p-0" id="ranking-table">
+    <div id="ranking-table">
         {% if resultados %}
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+            <table class="table mb-0" style="color:#94A3B8;">
+                <thead style="background:#0F172A; border-bottom:1px solid #1E293B;">
                     <tr>
-                        <th class="text-center" style="width: 60px">#</th>
-                        <th>Candidato</th>
-                        <th class="text-center">Score Total</th>
-                        <th class="text-center">C1 (60%)</th>
-                        <th class="text-center">C2 (25%)</th>
-                        <th class="text-center">C3 (15%)</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center" style="width: 60px; color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">#</th>
+                        <th style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Candidato</th>
+                        <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Score Total</th>
+                        <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">C1 (60%)</th>
+                        <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">C2 (25%)</th>
+                        <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">C3 (15%)</th>
+                        <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Status</th>
+                        <th class="text-center" style="color:#64748B; font-weight:600; font-size:0.8rem; text-transform:uppercase; padding:16px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for r in resultados %}
-                    <tr>
-                        <td class="text-center">
+                    <tr style="border-bottom:1px solid #1E293B;">
+                        <td class="text-center" style="vertical-align:middle; padding:16px;">
                             {% if forloop.counter == 1 %}
-                                <span class="badge bg-warning text-dark fs-6"><i class="bi bi-trophy"></i> 1</span>
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:rgba(245,158,11,0.2); color:#FBBF24; border-radius:50%; font-weight:700;"><i class="bi bi-trophy-fill" style="font-size:0.8rem;"></i></span>
                             {% elif forloop.counter == 2 %}
-                                <span class="badge bg-secondary fs-6">2</span>
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:rgba(148,163,184,0.2); color:#94A3B8; border-radius:50%; font-weight:700;">2</span>
                             {% elif forloop.counter == 3 %}
-                                <span class="badge bg-danger-subtle text-danger fs-6">3</span>
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; background:rgba(180,83,9,0.2); color:#D97706; border-radius:50%; font-weight:700;">3</span>
                             {% else %}
-                                <span class="text-muted">{{ forloop.counter }}</span>
+                                <span style="color:#64748B; font-weight:600;">{{ forloop.counter }}</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <div class="fw-bold">{{ r.candidato_nome }}</div>
-                            <small class="text-muted">
+                        <td style="padding:16px;">
+                            <div style="color:#F8FAFC; font-weight:700;">{{ r.candidato_nome }}</div>
+                            <small style="color:#64748B;">
                                 {{ r.candidato_email }}
                                 <br>{{ r.candidato_senioridade|title }}
                             </small>
                         </td>
-                        <td class="text-center">
+                        <td class="text-center" style="vertical-align:middle; padding:16px;">
                             {% if r.score_final >= 80 %}
-                                <span class="badge bg-success fs-5 px-3">{{ r.score_final|floatformat:1 }}</span>
+                                <span class="score-hi">{{ r.score_final|floatformat:1 }}</span>
                             {% elif r.score_final >= 60 %}
-                                <span class="badge bg-warning text-dark fs-5 px-3">{{ r.score_final|floatformat:1 }}</span>
+                                <span class="score-md">{{ r.score_final|floatformat:1 }}</span>
                             {% else %}
-                                <span class="badge bg-danger fs-5 px-3">{{ r.score_final|floatformat:1 }}</span>
+                                <span class="score-lo">{{ r.score_final|floatformat:1 }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-center">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-primary" style="width: {{ r.breakdown.camada_1 }}%">
-                                    {{ r.breakdown.camada_1|floatformat:0 }}
-                                </div>
+                        <td class="text-center" style="vertical-align:middle; padding:16px; width:120px;">
+                            <div style="background:#1E293B; border-radius:10px; height:18px; position:relative; overflow:hidden;">
+                                <div style="position:absolute; top:0; left:0; height:100%; width:{{ r.breakdown.camada_1 }}%; background:linear-gradient(90deg, #3B82F6, #60A5FA); border-radius:10px;"></div>
+                                <span style="position:absolute; top:0; left:0; width:100%; text-align:center; color:#fff; font-size:0.7rem; font-weight:700; line-height:18px; text-shadow:0 1px 2px rgba(0,0,0,0.5);">{{ r.breakdown.camada_1|floatformat:0 }}</span>
                             </div>
                         </td>
-                        <td class="text-center">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-info" style="width: {{ r.breakdown.camada_2 }}%">
-                                    {{ r.breakdown.camada_2|floatformat:0 }}
-                                </div>
+                        <td class="text-center" style="vertical-align:middle; padding:16px; width:120px;">
+                            <div style="background:#1E293B; border-radius:10px; height:18px; position:relative; overflow:hidden;">
+                                <div style="position:absolute; top:0; left:0; height:100%; width:{{ r.breakdown.camada_2 }}%; background:linear-gradient(90deg, #8B5CF6, #A78BFA); border-radius:10px;"></div>
+                                <span style="position:absolute; top:0; left:0; width:100%; text-align:center; color:#fff; font-size:0.7rem; font-weight:700; line-height:18px; text-shadow:0 1px 2px rgba(0,0,0,0.5);">{{ r.breakdown.camada_2|floatformat:0 }}</span>
                             </div>
                         </td>
-                        <td class="text-center">
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-success" style="width: {{ r.breakdown.camada_3 }}%">
-                                    {{ r.breakdown.camada_3|floatformat:0 }}
-                                </div>
+                        <td class="text-center" style="vertical-align:middle; padding:16px; width:120px;">
+                            <div style="background:#1E293B; border-radius:10px; height:18px; position:relative; overflow:hidden;">
+                                <div style="position:absolute; top:0; left:0; height:100%; width:{{ r.breakdown.camada_3 }}%; background:linear-gradient(90deg, #10B981, #34D399); border-radius:10px;"></div>
+                                <span style="position:absolute; top:0; left:0; width:100%; text-align:center; color:#fff; font-size:0.7rem; font-weight:700; line-height:18px; text-shadow:0 1px 2px rgba(0,0,0,0.5);">{{ r.breakdown.camada_3|floatformat:0 }}</span>
                             </div>
                         </td>
-                        <td class="text-center">
+                        <td class="text-center" style="vertical-align:middle; padding:16px;">
                             {% if r.candidato_disponivel %}
-                                <span class="badge bg-success-subtle text-success">
-                                    <i class="bi bi-check-circle"></i> Disponível
-                                </span>
+                                <span style="color:#34D399;" title="Disponível"><i class="bi bi-check-circle-fill"></i></span>
                             {% else %}
-                                <span class="badge bg-secondary-subtle text-secondary">
-                                    <i class="bi bi-x-circle"></i> Indisponível
-                                </span>
+                                <span style="color:#64748B;" title="Indisponível"><i class="bi bi-x-circle-fill"></i></span>
                             {% endif %}
                         </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm">
+                        <td class="text-center" style="vertical-align:middle; padding:16px;">
+                            <div style="display:flex; justify-content:center; gap:8px;">
                                 <button type="button"
-                                        class="btn btn-outline-primary"
+                                        class="action-btn"
+                                        style="background:rgba(59,130,246,0.1); border:none; color:#3B82F6; padding:6px 10px;"
                                         hx-get="{% url 'core:detalhe_match' vaga.id r.candidato_id %}"
                                         hx-target="#modal-body"
                                         hx-swap="innerHTML"
@@ -158,7 +150,8 @@
                                     <i class="bi bi-eye"></i> Detalhes
                                 </button>
                                 <a href="{% url 'core:dashboard_candidato' r.candidato_id %}"
-                                   class="btn btn-outline-secondary">
+                                   class="action-btn"
+                                   style="background:rgba(148,163,184,0.1); border:none; color:#94A3B8; padding:6px 10px;">
                                     <i class="bi bi-person"></i>
                                 </a>
                             </div>
@@ -169,10 +162,10 @@
             </table>
         </div>
         {% else %}
-        <div class="text-center py-5 text-muted">
-            <i class="bi bi-emoji-frown display-4 d-block mb-3"></i>
-            <p>Nenhum candidato compatível encontrado.</p>
-            <p class="small">Verifique se existem candidatos com CVs processados.</p>
+        <div class="text-center py-5 text-muted" style="border:none;">
+            <i class="bi bi-emoji-frown" style="font-size:3rem; color:#334155; display:block; margin-bottom:16px;"></i>
+            <p style="color:#F8FAFC; margin-bottom:4px;">Nenhum candidato compatível encontrado.</p>
+            <p style="font-size:0.85rem; color:#64748B;">Verifique se existem candidatos com CVs processados.</p>
         </div>
         {% endif %}
     </div>
@@ -181,14 +174,14 @@
 <!-- Modal para detalhes -->
 <div class="modal fade" id="matchModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Detalhes do Match</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        <div class="modal-content" style="background:#0F172A; border:1px solid #334155; border-radius:12px;">
+            <div class="modal-header" style="border-bottom:1px solid #1E293B;">
+                <h5 class="modal-title" style="color:#F8FAFC;">Detalhes do Match</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body" id="modal-body">
+            <div class="modal-body" id="modal-body" style="padding:24px;">
                 <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border" style="color:#3B82F6;" role="status">
                         <span class="visually-hidden">Carregando...</span>
                     </div>
                 </div>

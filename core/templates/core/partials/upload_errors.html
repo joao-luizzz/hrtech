@@ -8,20 +8,20 @@ Variáveis de contexto:
     - errors: lista de strings com mensagens de erro
 {% endcomment %}
 
-<div class="alert alert-danger">
-    <h6 class="alert-heading">
-        <i class="bi bi-exclamation-triangle-fill"></i>
+<div style="background:rgba(239,68,68,0.1); border-left:4px solid #EF4444; color:#F87171; padding:16px; border-radius:8px; margin-bottom:24px;">
+    <h6 style="color:#F8FAFC; margin-bottom:12px; font-weight:700;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
         Erro no envio
     </h6>
-    <ul class="mb-0">
+    <ul style="margin:0; padding-left:24px; color:#FECACA; font-size:0.9rem;">
         {% for error in errors %}
-            <li>{{ error }}</li>
+            <li style="margin-bottom:4px;">{{ error }}</li>
         {% endfor %}
     </ul>
 </div>
 
-<div class="d-grid">
-    <a href="{% url 'core:upload_cv' %}" class="btn btn-outline-danger">
+<div class="d-grid gap-2">
+    <a href="{% url 'core:upload_cv' %}" class="action-btn red border-0">
         <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
     </a>
 </div>

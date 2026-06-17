@@ -3,16 +3,16 @@
 {% block title %}Dashboard Geral - HRTech{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <h2 class="mb-1">
-            <i class="bi bi-graph-up me-2"></i>Dashboard Geral
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px;">
+    <div>
+        <h2 style="font-size:1.6rem; font-weight:800; color:#F8FAFC; margin-bottom:4px;">
+            <i class="bi bi-graph-up me-2" style="color:#A78BFA;"></i>Dashboard Geral
         </h2>
-        <p class="text-muted mb-0">Visão geral do sistema de recrutamento</p>
+        <p style="color:#94A3B8; font-size:0.9rem; margin:0;">Visão geral do sistema de recrutamento</p>
     </div>
-    <div class="col-auto">
-        <a href="{% url 'core:dashboard_rh' %}" class="btn btn-outline-primary">
-            <i class="bi bi-briefcase me-1"></i>Dashboard RH
+    <div style="display:flex; gap:10px;">
+        <a href="{% url 'core:dashboard_rh' %}" class="action-btn" style="background:rgba(139,92,246,0.1); border-color:transparent; color:#A78BFA;">
+            <i class="bi bi-briefcase me-1"></i> Dashboard RH
         </a>
     </div>
 </div>
@@ -20,51 +20,39 @@
 <!-- Cards de Estatísticas -->
 <div class="row g-3 mb-4">
     <div class="col-md-2">
-        <div class="card h-100 border-primary">
-            <div class="card-body text-center">
-                <div class="display-5 text-primary mb-1">{{ stats.total_candidatos }}</div>
-                <div class="text-muted small">Candidatos</div>
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <div style="font-size:2rem; font-weight:800; color:#3B82F6; margin-bottom:4px;">{{ stats.total_candidatos }}</div>
+            <div style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Candidatos</div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card h-100 border-success">
-            <div class="card-body text-center">
-                <div class="display-5 text-success mb-1">{{ stats.candidatos_processados }}</div>
-                <div class="text-muted small">CVs Processados</div>
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <div style="font-size:2rem; font-weight:800; color:#10B981; margin-bottom:4px;">{{ stats.candidatos_processados }}</div>
+            <div style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600; text-align:center;">CVs Processados</div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card h-100 border-info">
-            <div class="card-body text-center">
-                <div class="display-5 text-info mb-1">{{ stats.total_vagas }}</div>
-                <div class="text-muted small">Total Vagas</div>
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <div style="font-size:2rem; font-weight:800; color:#0EA5E9; margin-bottom:4px;">{{ stats.total_vagas }}</div>
+            <div style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Total Vagas</div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card h-100 border-warning">
-            <div class="card-body text-center">
-                <div class="display-5 text-warning mb-1">{{ stats.vagas_abertas }}</div>
-                <div class="text-muted small">Vagas Abertas</div>
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <div style="font-size:2rem; font-weight:800; color:#F59E0B; margin-bottom:4px;">{{ stats.vagas_abertas }}</div>
+            <div style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Vagas Abertas</div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card h-100 border-danger">
-            <div class="card-body text-center">
-                <div class="display-5 text-danger mb-1">{{ stats.matches_total }}</div>
-                <div class="text-muted small">Matches</div>
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <div style="font-size:2rem; font-weight:800; color:#EF4444; margin-bottom:4px;">{{ stats.matches_total }}</div>
+            <div style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Matches</div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="card h-100 border-secondary">
-            <div class="card-body text-center">
-                <div class="display-5 text-secondary mb-1">{{ stats.score_medio_geral|floatformat:1 }}</div>
-                <div class="text-muted small">Score Médio</div>
-            </div>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 25px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+            <div style="font-size:2rem; font-weight:800; color:#A855F7; margin-bottom:4px;">{{ stats.score_medio_geral|floatformat:1 }}</div>
+            <div style="color:#94A3B8; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Score Médio</div>
         </div>
     </div>
 </div>
@@ -73,11 +61,11 @@
 <div class="row g-4">
     <!-- Gráfico: Candidatos por Senioridade -->
     <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Candidatos por Senioridade</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-pie-chart me-2" style="color:#3B82F6;"></i>Candidatos por Senioridade</h6>
             </div>
-            <div class="card-body">
+            <div style="padding:20px;">
                 <canvas id="chartSenioridade" height="250"></canvas>
             </div>
         </div>
@@ -85,11 +73,11 @@
 
     <!-- Gráfico: Candidatos por Área -->
     <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Candidatos por Área</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-bar-chart me-2" style="color:#10B981;"></i>Candidatos por Área</h6>
             </div>
-            <div class="card-body">
+            <div style="padding:20px;">
                 <canvas id="chartAreas" height="250"></canvas>
             </div>
         </div>
@@ -97,11 +85,11 @@
 
     <!-- Gráfico: Score Médio por Vaga -->
     <div class="col-md-8">
-        <div class="card h-100">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Score Médio por Vaga (Top 10)</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-graph-up-arrow me-2" style="color:#A855F7;"></i>Score Médio por Vaga (Top 10)</h6>
             </div>
-            <div class="card-body">
+            <div style="padding:20px;">
                 <canvas id="chartScoreVagas" height="200"></canvas>
             </div>
         </div>
@@ -109,11 +97,11 @@
 
     <!-- Gráfico: Vagas por Status -->
     <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-list-check me-2"></i>Vagas por Status</h6>
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #1E293B; height:100%;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F8FAFC; font-weight:700;"><i class="bi bi-list-check me-2" style="color:#F59E0B;"></i>Vagas por Status</h6>
             </div>
-            <div class="card-body">
+            <div style="padding:20px;">
                 <canvas id="chartVagasStatus" height="200"></canvas>
             </div>
         </div>
@@ -127,14 +115,25 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Cores padrão
+    // Configurações globais Chart.js para Dark Mode
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.borderColor = '#1E293B';
+    Chart.defaults.scale.grid.color = '#1E293B';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.9)';
+    Chart.defaults.plugins.tooltip.titleColor = '#F8FAFC';
+    Chart.defaults.plugins.tooltip.bodyColor = '#E2E8F0';
+    Chart.defaults.plugins.tooltip.borderColor = '#334155';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+
+    // Cores premium
     const colors = {
-        primary: 'rgb(13, 110, 253)',
-        success: 'rgb(25, 135, 84)',
-        warning: 'rgb(255, 193, 7)',
-        danger: 'rgb(220, 53, 69)',
-        info: 'rgb(13, 202, 240)',
-        secondary: 'rgb(108, 117, 125)',
+        primary: 'rgb(59, 130, 246)',    // #3B82F6
+        success: 'rgb(16, 185, 129)',    // #10B981
+        warning: 'rgb(245, 158, 11)',    // #F59E0B
+        danger: 'rgb(239, 68, 68)',      // #EF4444
+        info: 'rgb(14, 165, 233)',       // #0EA5E9
+        secondary: 'rgb(100, 116, 139)', // #64748B
+        purple: 'rgb(168, 85, 247)'      // #A855F7
     };
 
     // Dados do Django
@@ -150,16 +149,19 @@ document.addEventListener('DOMContentLoaded', function() {
             labels: senioridadeData.map(d => d.senioridade.charAt(0).toUpperCase() + d.senioridade.slice(1)),
             datasets: [{
                 data: senioridadeData.map(d => d.total),
-                backgroundColor: [colors.success, colors.warning, colors.danger],
-                borderWidth: 2
+                backgroundColor: [colors.success, colors.warning, colors.danger, colors.info],
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '70%',
             plugins: {
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' }
                 }
             }
         }
@@ -173,8 +175,9 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Candidatos',
                 data: areaData.map(d => d.total),
-                backgroundColor: colors.primary,
-                borderRadius: 4
+                backgroundColor: colors.info,
+                borderRadius: 4,
+                borderSkipped: false
             }]
         },
         options: {
@@ -182,17 +185,15 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                }
+                legend: { display: false }
             },
             scales: {
                 x: {
                     beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
+                    ticks: { stepSize: 1 },
+                    grid: { drawBorder: false }
+                },
+                y: { grid: { display: false, drawBorder: false } }
             }
         }
     });
@@ -211,27 +212,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (score >= 60) return colors.warning;
                     return colors.danger;
                 }),
-                borderRadius: 4
+                borderRadius: 4,
+                borderSkipped: false
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                }
+                legend: { display: false }
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     max: 100,
                     ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                }
+                        callback: function(value) { return value + '%'; }
+                    },
+                    grid: { drawBorder: false }
+                },
+                x: { grid: { display: false, drawBorder: false } }
             }
         }
     });
@@ -241,25 +241,28 @@ document.addEventListener('DOMContentLoaded', function() {
         'aberta': colors.success,
         'pausada': colors.warning,
         'fechada': colors.secondary,
-        'rascunho': colors.info
+        'rascunho': colors.primary
     };
 
     new Chart(document.getElementById('chartVagasStatus'), {
-        type: 'pie',
+        type: 'doughnut',
         data: {
             labels: vagasStatus.map(d => d.status.charAt(0).toUpperCase() + d.status.slice(1)),
             datasets: [{
                 data: vagasStatus.map(d => d.total),
                 backgroundColor: vagasStatus.map(d => statusColors[d.status] || colors.secondary),
-                borderWidth: 2
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '60%',
             plugins: {
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' }
                 }
             }
         }
