@@ -1,256 +1,296 @@
-# HRTech - Sistema Inteligente de Recrutamento
+# HRTech — Motor de Recrutamento Inteligente com Grafos e IA
 
 <p align="center">
-  <strong>Matching inteligente entre candidatos e vagas usando grafos e IA generativa</strong>
+  <strong>Matching de candidatos e vagas em 3 camadas usando Neo4j, Django e GPT-4</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/Django-5.0-092E20?logo=django&logoColor=white" alt="Django">
-  <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/Neo4j-AuraDB-008CC1?logo=neo4j&logoColor=white" alt="Neo4j">
-  <img src="https://img.shields.io/badge/Redis-7.0-DC382D?logo=redis&logoColor=white" alt="Redis">
-  <img src="https://img.shields.io/badge/OpenAI-GPT--4-412991?logo=openai&logoColor=white" alt="OpenAI">
-  <img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white" alt="Bootstrap">
-  <img src="https://img.shields.io/badge/HTMX-1.9-3366CC?logo=htmx&logoColor=white" alt="HTMX">
-  <img src="https://img.shields.io/badge/Deploy-Render-46E3B7?logo=render&logoColor=white" alt="Render">
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Django-5.x-092E20?style=for-the-badge&logo=django&logoColor=white" alt="Django">
+  <img src="https://img.shields.io/badge/Neo4j-AuraDB-008CC1?style=for-the-badge&logo=neo4j&logoColor=white" alt="Neo4j">
+  <img src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Dark_Mode-Suportado-1a1d23?logo=dark-reader&logoColor=white" alt="Dark Mode">
-  <img src="https://img.shields.io/badge/LGPD-Compliant-00875A?logo=shield&logoColor=white" alt="LGPD">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?logo=opensourceinitiative&logoColor=white" alt="License">
+  <img src="https://img.shields.io/badge/Celery-5.x-37814A?style=flat-square&logo=celery&logoColor=white" alt="Celery">
+  <img src="https://img.shields.io/badge/Redis-7+-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
+  <img src="https://img.shields.io/badge/HTMX-1.9-3366CC?style=flat-square&logo=htmx&logoColor=white" alt="HTMX">
+  <img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=flat-square&logo=bootstrap&logoColor=white" alt="Bootstrap">
+  <img src="https://img.shields.io/badge/Deploy-Render-46E3B7?style=flat-square&logo=render&logoColor=white" alt="Render">
+  <img src="https://img.shields.io/badge/Dark_Mode-Suportado-1a1d23?style=flat-square&logo=dark-reader&logoColor=white" alt="Dark Mode">
+  <img src="https://img.shields.io/badge/LGPD-Compliant-00875A?style=flat-square&logo=shield&logoColor=white" alt="LGPD">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Neo4j_Certified_Professional-✓-008CC1?style=flat-square&logo=neo4j&logoColor=white" alt="Neo4j Certified Professional">
+  <img src="https://img.shields.io/badge/Graph_Data_Analyst-✓-008CC1?style=flat-square&logo=neo4j&logoColor=white" alt="Graph Data Analyst">
 </p>
 
 ---
 
-## Sobre o Projeto
+## 📌 Sobre o Projeto
 
-O **HRTech** é uma plataforma de recrutamento que utiliza **persistência poliglota** e **IA generativa** para automatizar o processo de matching entre candidatos e vagas.
+O **HRTech** é uma plataforma ATS (Applicant Tracking System) multi-tenant que combina **persistência poliglota** (PostgreSQL + Neo4j) e **IA generativa** (GPT-4) para automatizar e otimizar o recrutamento técnico.
 
-O sistema extrai habilidades de currículos usando GPT-4 e calcula compatibilidade através de um grafo de conhecimento no Neo4j, eliminando horas de análise manual de CVs.
+O diferencial está no **motor de matching de 3 camadas** que calcula a compatibilidade entre candidatos e vagas usando **traversal de grafos** no Neo4j, ao invés de simples busca por keywords. Habilidades extraídas dos currículos por IA são persistidas como nós em um grafo de conhecimento, onde relações de **similaridade** entre skills (ex: `React ←SIMILAR_A→ Vue.js`) enriquecem a recomendação para muito além do match direto.
 
-### Problema Resolvido
+### O Problema que Resolve
 
-| Antes | Depois |
-|-------|--------|
-| Recrutadores analisam CVs manualmente | Upload do CV com extração automática de skills |
-| Planilhas para tracking de candidatos | Dashboard Kanban visual |
-| Matching subjetivo baseado em keywords | Score de compatibilidade calculado via grafo |
-| Processo lento e sujeito a viés | Recomendações objetivas e auditáveis |
+| Antes (manual) | Depois (HRTech) |
+|:---|:---|
+| Recruiter lê 100+ CVs por vaga | Upload de CV → extração automática de skills via GPT-4 |
+| Matching subjetivo baseado em keywords | Score 0-100 calculado via traversal de grafo em 3 camadas |
+| Sem rastreabilidade de decisões | Auditoria completa: snapshot de skills, scores e gaps por match |
+| Planilhas para tracking de pipeline | Dashboard Kanban interativo com drag-and-drop |
+| Perguntas de entrevista genéricas | IA gera 3 perguntas personalizadas com base nos gaps de skills |
 
 ---
 
-## Arquitetura
+## 🧠 Como o Matching Funciona
+
+O coração do HRTech é um algoritmo de **3 camadas** que roda sobre o grafo de skills no Neo4j:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND                                │
-│              Django Templates + Bootstrap 5 + HTMX              │
-│                    Dashboard Kanban + Chart.js                  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      DJANGO 5 BACKEND                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Views     │  │   Models    │  │   Celery Tasks          │  │
-│  │   URLs      │  │   Forms     │  │   (Processamento CV)    │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-         │                  │                      │
-         ▼                  ▼                      ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐
-│  PostgreSQL │    │   Neo4j     │    │         Redis           │
-│  ─────────  │    │  AuraDB     │    │       ─────────         │
-│  Candidatos │    │  ─────────  │    │  Celery Broker + Cache  │
-│  Vagas      │    │  Grafo de   │    │                         │
-│  Auditoria  │    │  Skills     │    │                         │
-└─────────────┘    └─────────────┘    └─────────────────────────┘
-                          │
-                          ▼
-┌───────────────────────────────────────────────────────────────┐
-│                      INTEGRAÇÕES                               │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │ OpenAI GPT-4│  │   AWS S3    │  │   pdfplumber + OCR      │ │
-│  │ Extração de │  │  Storage    │  │   Leitura de PDFs       │ │
-│  │   Skills    │  │  de CVs     │  │                         │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
-└───────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                     SCORE FINAL (0-100)                             │
+│                                                                     │
+│  ┌──────────────────────┐  ┌─────────────────┐  ┌───────────────┐  │
+│  │   CAMADA 1 (60%)     │  │  CAMADA 2 (25%) │  │ CAMADA 3 (15%)│  │
+│  │   Skills Diretas     │  │  Similaridade   │  │ Perfil        │  │
+│  │                      │  │                 │  │               │  │
+│  │  "Candidato tem      │  │ "Candidato tem  │  │ "Candidato é  │  │
+│  │   Python nível 4,    │  │  Tableau, que   │  │  Pleno, vaga  │  │
+│  │   vaga pede nível 3" │  │  é similar a    │  │  pede Sênior" │  │
+│  │                      │  │  Power BI (0.8)"│  │               │  │
+│  │  ✓ Match direto      │  │  ✓ Match parcial│  │  ✓ Penalidade │  │
+│  │  ✓ Decaimento de     │  │  ✓ Peso da      │  │    proporcional│  │
+│  │    15%/ano por        │  │    similaridade │  │  ✓ Área de    │  │
+│  │    skill defasada     │  │    do grafo     │  │    atuação    │  │
+│  └──────────────────────┘  └─────────────────┘  └───────────────┘  │
+│                                                                     │
+│  Desempate: Disponibilidade → Menor gap senioridade → Data cadastro │
+│  Threshold: Score < 40 = filtrado automaticamente                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### O Grafo de Skills (Neo4j)
+
+```
+                    ┌─────────┐
+          ┌────────→│  React  │←───────┐
+          │  nivel:4│         │        │ SIMILAR_A
+          │         └─────────┘        │ peso: 0.85
+          │                            ▼
+    ┌───────────┐              ┌─────────────┐
+    │ Candidato │              │   Vue.js     │
+    │  "Maria"  │              └─────────────┘
+    │  uuid:... │                      ▲
+    └───────────┘                      │ SIMILAR_A
+          │                            │ peso: 0.70
+          │  nivel:3           ┌─────────────┐
+          └───────────────────→│  Angular    │
+                               └─────────────┘
+                                       ▲
+                                       │ REQUER (nivel_min:3)
+                               ┌─────────────┐
+                               │  Vaga "Dev  │
+                               │  Frontend"  │
+                               └─────────────┘
+```
+
+**Camada 1** encontra o match direto `Maria → React → Vaga`. **Camada 2** descobre que `Maria tem Angular, que é SIMILAR_A Vue.js`, enriquecendo o score mesmo sem match direto. **Camada 3** ajusta pela senioridade e área de atuação.
+
+### Query Cypher Principal
+
+```cypher
+MATCH (c:Candidato {uuid: $uuid})-[r:TEM_HABILIDADE]->(h:Habilidade)
+OPTIONAL MATCH (h)-[sim:SIMILAR_A]-(h2:Habilidade)
+RETURN h.nome AS skill, r.nivel AS nivel,
+       r.anos_experiencia AS anos, r.ano_ultima_utilizacao AS ano_uso,
+       COLLECT({similar: h2.nome, peso: sim.peso}) AS similares
+```
+
+> **Decisão arquitetural:** Uma query Cypher única com `OPTIONAL MATCH` ao invés de múltiplas round-trips. O Neo4j otimiza o traversal do grafo; a agregação final (scores, penalizações, desempate) é feita em Python para flexibilidade.
+
+---
+
+## 🏗️ Arquitetura
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                           FRONTEND                                    │
+│                Django Templates + Bootstrap 5 + HTMX                  │
+│              Dashboard Kanban │ Chart.js │ Dark Mode                  │
+└──────────────────────────┬────────────────────────────────────────────┘
+                           │
+                           ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                       DJANGO 5 BACKEND                                │
+│                                                                       │
+│  ┌──────────────┐   ┌───────────────┐   ┌──────────────────────────┐ │
+│  │  Views/URLs  │   │ Service Layer │   │    Celery Workers        │ │
+│  │  (HTMX)     │   │               │   │  ┌────────────────────┐  │ │
+│  └──────────────┘   │ MatchingEngine│   │  │ processar_cv_task  │  │ │
+│                     │ InterviewSvc  │   │  │ extração GPT-4     │  │ │
+│                     │ CandidateSvc  │   │  │ sync Neo4j         │  │ │
+│                     └───────────────┘   │  └────────────────────┘  │ │
+└─────┬──────────────────────┬────────────┴──────────┬─────────────────┘
+      │                      │                       │
+      ▼                      ▼                       ▼
+┌───────────┐       ┌──────────────┐       ┌─────────────────────┐
+│ PostgreSQL│       │  Neo4j       │       │       Redis         │
+│           │       │  AuraDB      │       │                     │
+│ Candidatos│       │              │       │  Celery Broker      │
+│ Vagas     │       │ :Candidato   │       │  Cache de sessões   │
+│ Auditoria │       │ :Habilidade  │       │  Rate limiting      │
+│ Orgs      │       │ :SIMILAR_A   │       │                     │
+└───────────┘       └──────────────┘       └─────────────────────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+         ┌─────────┐ ┌─────────┐ ┌──────────┐
+         │ OpenAI  │ │  AWS S3 │ │pdfplumber│
+         │ GPT-4o  │ │ Storage │ │ + OCR    │
+         │ mini    │ │ de CVs  │ │          │
+         └─────────┘ └─────────┘ └──────────┘
 ```
 
 ### Decisões Arquiteturais
 
-| Decisão | Justificativa |
-|---------|---------------|
-| **Persistência Poliglota** | PostgreSQL para ACID, Neo4j para traversal de grafos |
-| **UUID como Chave de Sincronia** | Identificação única entre bancos diferentes |
-| **Neo4j AuraDB** | Grafo gerenciado na nuvem, zero ops overhead |
-| **Celery + Redis** | Processamento de CVs sem bloquear requests HTTP |
-| **WhiteNoise** | Serve estáticos em produção sem CDN adicional |
-| **Presigned URLs (S3)** | CVs nunca ficam públicos, LGPD compliant |
+| Decisão | Alternativa Rejeitada | Justificativa |
+|:--------|:----------------------|:--------------|
+| **Persistência Poliglota** (Postgres + Neo4j) | Tudo em Postgres com JSON | Grafos nativos permitem traversal O(relações) vs O(n²) para similaridade |
+| **UUID como chave de sincronia** entre bancos | Auto-increment | Identificação única cross-database sem acoplamento |
+| **Celery + Redis** para processamento de CVs | Processamento síncrono | Upload de CV leva 5-15s (GPT + parsing) — bloquearia o request HTTP |
+| **Cálculos no Neo4j, agregação em Python** | Tudo no Cypher | Neo4j é ótimo em traversal, Python dá flexibilidade para regras de negócio |
+| **Snapshot de skills na auditoria** | Referência ao estado atual | LGPD exige reprodutibilidade — o cálculo deve ser explicável meses depois |
+| **Presigned URLs (S3)** para CVs | Bucket público | CVs nunca ficam expostos; URLs expiram em 15 minutos |
 
 ---
 
-## Tech Stack
+## 📋 Funcionalidades
+
+### Upload & Processamento de CVs
+| Feature | Descrição |
+|:--------|:----------|
+| Upload de PDF | Validação de magic bytes, tamanho (10MB) e content-type |
+| Extração de texto | `pdfplumber` + Tesseract OCR para PDFs escaneados |
+| Extração de skills via IA | GPT-4o-mini identifica habilidades técnicas, soft skills e níveis |
+| Persistência no grafo | Skills são criadas como nós `:Habilidade` com relação `TEM_HABILIDADE` no Neo4j |
+| Processamento assíncrono | Celery task com retry e timeout — não bloqueia o HTTP |
+
+### Motor de Matching
+| Feature | Descrição |
+|:--------|:----------|
+| Matching de 3 camadas | Skills diretas (60%) + Similaridade (25%) + Perfil (15%) |
+| Decaimento temporal | Skills defasadas perdem 15%/ano (ex: jQuery com 3 anos → -45%) |
+| Match por similaridade | Grafo `SIMILAR_A` descobre skills equivalentes (Tableau ↔ Power BI) |
+| Gap analysis | Identifica skills ausentes e abaixo do nível mínimo da vaga |
+| Auditoria completa | Snapshot do cálculo salvo em `AuditoriaMatch` (LGPD) |
+| Threshold configurável | Score mínimo padrão: 40 (filtra ruído) |
+
+### Entrevistas com IA
+| Feature | Descrição |
+|:--------|:----------|
+| Geração de perguntas | 3 perguntas técnicas personalizadas baseadas nos **gaps de skills** do candidato |
+| Smart prompting | Se não há gaps, gera perguntas avançadas de validação |
+| Cache inteligente | Segunda geração para o mesmo candidato retorna em <100ms (leitura do banco) |
+| LGPD-safe | Nenhum dado pessoal (nome, email) é enviado à OpenAI — apenas skill gaps |
+
+### Gestão de Recrutamento
+| Feature | Descrição |
+|:--------|:----------|
+| Dashboard Kanban | Pipeline visual com drag-and-drop (Triagem → Entrevista → Aprovado) |
+| Cadastro de vagas | Skills obrigatórias/desejáveis com nível mínimo (1-5) |
+| Busca avançada | Filtros por skills (AND/OR), senioridade, disponibilidade, nível mínimo |
+| Candidatos similares | Encontra perfis parecidos via traversal do grafo |
+| Comentários e favoritos | Sistema colaborativo de notas por candidato |
+| Exportação Excel | Rankings e candidatos exportáveis com filtros aplicados |
+
+### Dashboard & Analytics
+| Feature | Descrição |
+|:--------|:----------|
+| Métricas e KPIs | Candidatos por etapa, distribuição por senioridade, tendências |
+| Gráficos interativos | Chart.js para visualizações do funil de recrutamento |
+| Relatórios imprimíveis | Perfil do candidato formatado para impressão/PDF |
+
+### Multi-Tenancy & Segurança
+| Feature | Descrição |
+|:--------|:----------|
+| Isolamento por organização | Todas as views e queries filtram por `organization` do usuário |
+| Proteção contra IDOR | 16+ views com `get_object_or_404(..., organization=user_org)` |
+| Neo4j escopo de tenant | Queries Cypher filtram por `{organization_id: $org_id}` |
+| Rate limiting | Proteção contra abuse em upload e endpoints caros |
+| CSRF em todos os forms | Django CSRF + `@csrf_protect` em views POST |
+| LGPD compliant | Exclusão de dados, exportação, auditoria de acesso, PII masking |
+| Headers de segurança | HSTS, X-Frame-Options DENY, XSS Filter, SSL redirect |
+| Credenciais seguras | 100% via `python-decouple`, zero hardcoded |
+
+### UX & Interface
+| Feature | Descrição |
+|:--------|:----------|
+| Dark Mode | Tema escuro com CSS variables, sincronizado em todo o sistema |
+| HTMX | Interatividade sem recarregar a página (polling, swaps inline) |
+| Responsivo | Mobile-first com Bootstrap 5 |
+| Admin customizado | `django-admin-interface` com tema coerente |
+
+---
+
+## 🔧 Tech Stack
 
 ### Backend
 | Tecnologia | Versão | Uso |
-|------------|--------|-----|
-| Python | 3.10 | Linguagem principal |
-| Django | 5.0 | Framework web full-stack |
-| Celery | 5.x | Task queue para processamento assíncrono |
+|:-----------|:-------|:----|
+| Python | 3.10+ | Linguagem principal |
+| Django | 5.x | Framework full-stack |
+| Celery | 5.x | Task queue assíncrona (processamento de CVs, extração de skills) |
+| Pydantic | 2.x | Validação e contrato de dados para respostas da OpenAI |
 | Gunicorn | 21.x | WSGI server de produção |
 
 ### Bancos de Dados
 | Tecnologia | Tipo | Uso |
-|------------|------|-----|
-| PostgreSQL | Relacional | Candidatos, Vagas, Auditoria (ACID) |
-| Neo4j AuraDB | Grafo | Skills e relacionamentos para matching |
-| Redis | Key-Value | Broker Celery + cache de sessões |
+|:-----------|:-----|:----|
+| PostgreSQL 15+ | Relacional (ACID) | Candidatos, Vagas, Auditoria, Organizations |
+| Neo4j AuraDB | Grafo | Skills, relações `TEM_HABILIDADE` e `SIMILAR_A` |
+| Redis 7+ | Key-Value | Celery broker, cache de sessões, rate limiting |
 
 ### Integrações Externas
 | Serviço | Uso |
-|---------|-----|
-| OpenAI GPT-4 | Extração inteligente de habilidades do CV |
-| AWS S3 | Storage seguro de currículos |
-| pdfplumber | Parsing de PDFs |
-| Tesseract OCR | Leitura de CVs escaneados |
+|:--------|:----|
+| OpenAI GPT-4o-mini | Extração de skills de CVs + geração de perguntas de entrevista |
+| AWS S3 | Storage seguro de currículos (presigned URLs, 15min TTL) |
+| pdfplumber + Tesseract | Parsing de PDFs e OCR para documentos escaneados |
 
 ### Frontend
 | Tecnologia | Uso |
-|------------|-----|
-| Bootstrap 5 | Framework CSS responsivo |
-| HTMX | Interatividade sem JavaScript pesado |
+|:-----------|:----|
+| Bootstrap 5.3 | Framework CSS responsivo |
+| HTMX 1.9 | Interatividade sem JavaScript pesado |
 | Chart.js | Gráficos do dashboard de analytics |
 | Bootstrap Icons | Iconografia consistente |
-| Dark Mode | Tema escuro com CSS variables |
+| D3.js | Animações na landing page |
 
 ### DevOps & Deploy
 | Ferramenta | Uso |
-|------------|-----|
-| Render | PaaS para deploy (Web + PostgreSQL) |
+|:-----------|:----|
+| Render | PaaS (Web Service + PostgreSQL) |
 | Upstash | Redis serverless (Celery broker) |
-| WhiteNoise | Serving de arquivos estáticos |
-| GitHub | Versionamento e CI/CD |
-
-### Deploy no Render (Blueprint)
-
-O projeto agora inclui o arquivo `render.yaml` na raiz com 3 servicos separados:
-
-- `hrtech-web` (Gunicorn)
-- `hrtech-worker` (Celery worker nas filas `default,openai`)
-- `hrtech-beat` (Celery Beat)
-
-Para usar no Render:
-
-1. No dashboard do Render, selecione **New +** -> **Blueprint**.
-2. Aponte para este repositorio.
-3. Revise as variaveis de ambiente obrigatorias antes do deploy.
+| Docker | Container para testes (`Dockerfile.test` com Python 3.11) |
+| WhiteNoise | Serving de estáticos em produção |
 
 ---
 
-## Funcionalidades
-
-### Core
-- **Upload de Currículos** - Suporte a PDF com extração automática de texto
-- **Extração de Skills com IA** - GPT-4 identifica habilidades técnicas e soft skills
-- **Grafo de Conhecimento** - Neo4j armazena e relaciona skills entre si
-- **Matching Inteligente** - Algoritmo de compatibilidade candidato ↔ vaga
-- **Busca de Candidatos Similares** - Encontra perfis semelhantes baseado em skills
-
-### Gestão de Recrutamento
-- **Dashboard Kanban** - Pipeline visual de recrutamento com drag-and-drop
-- **Cadastro de Vagas** - Skills requeridas e peso de cada uma
-- **Sistema de Tags** - Categorize candidatos com etiquetas coloridas
-- **Comentários e Notas** - Adicione observações em cada candidato
-- **Auditoria de Matches** - Histórico completo das recomendações
-
-### Dashboard & Analytics
-- **Dashboard RH** - Métricas e KPIs do processo de recrutamento
-- **Gráficos Interativos** - Chart.js para visualização de dados
-- **Distribuição por Senioridade** - Análise do pool de candidatos
-- **Tendências Temporais** - Acompanhe a evolução ao longo do tempo
-- **Funil de Etapas** - Visualize a conversão entre etapas
-
-### Área do Candidato
-- **Portal do Candidato** - Área dedicada para acompanhar candidaturas
-- **Minhas Aplicações** - Visualize status de cada vaga aplicada
-- **Perfil Editável** - Atualize informações e habilidades
-
-### UX & Interface
-- **Dark Mode** - Tema escuro sincronizado em todo o sistema
-- **Design Responsivo** - Funciona em desktop, tablet e mobile
-- **Admin Customizado** - Painel administrativo estilizado
-- **HTMX** - Interatividade sem recarregar a página
-
-### Segurança & Compliance
-- **Autenticação Completa** - Login, cadastro, recuperação de senha (django-allauth)
-- **Multi-Tenant Isolation** - Dados isolados por organização (tenant)
-- **Rate Limiting** - Proteção contra DoS em endpoints críticos
-- **LGPD Compliant** - CVs em bucket privado, exclusão de dados sob demanda
-- **PII Masking** - Exportações com dados pessoais mascarados
-- **Logs sem PII** - Dados pessoais nunca são logados
-- **Credenciais Seguras** - Todas via variáveis de ambiente
-
-### LGPD (Lei Geral de Proteção de Dados)
-- **Exclusão de Dados** - Endpoint para exclusão completa (PostgreSQL, Neo4j, S3)
-- **Solicitação de Exclusão** - Auto-serviço para candidatos
-- **Exportação de Dados** - Portabilidade completa do perfil
-- **Auditoria** - Histórico de todas as ações sobre dados pessoais
-
----
-
-## Modelo de Dados
-
-### PostgreSQL (Relacional)
-
-```sql
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Candidato     │     │      Vaga       │     │ AuditoriaMatch  │
-├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ id (UUID)    PK │     │ id (UUID)    PK │     │ id           PK │
-│ nome            │     │ titulo          │     │ candidato_id FK │
-│ email           │     │ descricao       │     │ vaga_id      FK │
-│ telefone        │     │ skills_req JSON │     │ score           │
-│ cv_url          │     │ status          │     │ created_at      │
-│ skills_json     │     │ created_at      │     │ observacoes     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-```
-
-### Neo4j (Grafo)
-
-```cypher
-(:Candidato {uuid, nome})
-        │
-        │ [:TEM_SKILL {nivel}]
-        ▼
-    (:Skill {nome, categoria})
-        ▲
-        │ [:REQUER_SKILL {peso}]
-        │
-(:Vaga {uuid, titulo})
-```
-
-O matching é calculado por traversal no grafo:
-```cypher
-MATCH (c:Candidato)-[:TEM_SKILL]->(s:Skill)<-[:REQUER_SKILL]-(v:Vaga)
-WHERE v.uuid = $vaga_uuid
-RETURN c, COUNT(s) as skills_match, SUM(s.peso) as score
-ORDER BY score DESC
-```
-
----
-
-## Instalação Local
+## 🚀 Instalação Local
 
 ### Pré-requisitos
 
-- Python 3.10+
+- Python 3.10+ (ou Docker)
 - PostgreSQL 15+
 - Redis 7+ (ou Docker)
-- Conta Neo4j AuraDB (free tier disponível)
-- Chave API OpenAI (opcional para dev)
+- Conta Neo4j AuraDB ([free tier](https://neo4j.com/cloud/platform/aura-graph-database/))
+- Chave API OpenAI (opcional — use `OPENAI_MOCK_MODE=True` para dev)
 
 ### Setup
 
@@ -262,252 +302,163 @@ cd hrtech
 # 2. Crie o ambiente virtual
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
 
 # 3. Instale as dependências
 pip install -r requirements.txt
 
 # 4. Configure as variáveis de ambiente
 cp .env.example .env
-# Edite o .env com suas credenciais
-```
+# Edite o .env com suas credenciais (SECRET_KEY, DB_*, NEO4J_*, etc.)
 
-### Variáveis de Ambiente
-
-```env
-# Django
-SECRET_KEY=sua-chave-secreta-50-caracteres-minimo
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# PostgreSQL
-DB_NAME=hrtech
-DB_USER=postgres
-DB_PASSWORD=sua-senha
-DB_HOST=localhost
-DB_PORT=5432
-
-# Neo4j AuraDB
-NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=sua-senha-neo4j
-
-# Redis (Celery)
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
-
-# OpenAI (opcional - use mock mode para dev)
-OPENAI_API_KEY=sk-xxxxx
-OPENAI_MOCK_MODE=True  # Gera skills mockadas sem gastar créditos
-
-# AWS S3 (opcional)
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_STORAGE_BUCKET_NAME=hrtech-cvs
-```
-
-### Executando
-
-```bash
-# Execute as migrations
+# 5. Execute as migrations
 python manage.py migrate
 
-# Colete arquivos estáticos
+# 6. Colete arquivos estáticos
 python manage.py collectstatic --noinput
 
-# (Opcional) Popule com dados de teste
+# 7. (Opcional) Popule o banco com dados de teste (PostgreSQL e Neo4j)
 python scripts/popular_banco.py
 
-# Inicie o servidor Django
+# 8. (Opcional) Semeie as relações de similaridade de habilidades no Neo4j
+python manage.py seed_skill_similarities --force
+
+# 9. (Opcional) Reprocesse todos os currículos cadastrados para atualizar o grafo Neo4j
+python manage.py reprocess_cvs --all --sync
+
+# 10. Inicie o servidor
 python manage.py runserver
+```
 
-# Em outro terminal, inicie o Celery
-celery -A hrtech worker -l info -Q default,openai
-
-# Em outro terminal, inicie o Celery Beat
-celery -A hrtech beat -l info
+```bash
+# Em terminais separados:
+celery -A hrtech worker -l info -Q default,openai    # Worker
+celery -A hrtech beat -l info                         # Beat scheduler
 ```
 
 Acesse: **http://localhost:8000**
 
+### Rodando Testes (via Docker)
+
+O projeto inclui um `Dockerfile.test` que isola o ambiente de testes com Python 3.11:
+
+```bash
+# Build da imagem
+docker build -t hrtech-test -f Dockerfile.test .
+
+# Roda os testes
+docker run --rm \
+  -e SECRET_KEY=test-key \
+  -e DB_NAME=t -e DB_USER=t -e DB_PASSWORD=t -e DB_HOST=localhost \
+  -e NEO4J_URI=bolt://localhost:7687 -e NEO4J_USER=t -e NEO4J_PASSWORD=t \
+  -e REDIS_URL=redis://localhost:6379 -e DEBUG=True \
+  -e OPENAI_API_KEY=sk-dummy \
+  hrtech-test
+```
+
+> Os testes usam SQLite em memória e mocks para Neo4j/OpenAI — não precisam de serviços externos.
+
 ---
 
-## Deploy no Render
+## ☁️ Deploy no Render
 
-### Serviços Utilizados
+O projeto inclui `render.yaml` com 3 serviços:
 
-| Serviço | Tier | Uso |
-|---------|------|-----|
-| Render Web Service | Free/Starter | Aplicação Django |
-| Render PostgreSQL | Free | Banco relacional |
-| Upstash Redis | Free | Celery broker |
-| Neo4j AuraDB | Free | Grafo de skills |
+| Serviço | Tipo | Tier |
+|:--------|:-----|:-----|
+| `hrtech-web` | Gunicorn | Free/Starter |
+| `hrtech-worker` | Celery Worker | Free/Starter |
+| `hrtech-beat` | Celery Beat | Free/Starter |
 
-### Variáveis no Render Dashboard
-
-```
-SECRET_KEY         → Gerar com: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-DEBUG              → False
-ALLOWED_HOSTS      → seu-app.onrender.com
-DB_NAME            → (do Render PostgreSQL)
-DB_USER            → (do Render PostgreSQL)
-DB_PASSWORD        → (do Render PostgreSQL)
-DB_HOST            → (do Render PostgreSQL)
-NEO4J_URI          → (do Neo4j AuraDB)
-NEO4J_USER         → neo4j
-NEO4J_PASSWORD     → (sua senha)
-CELERY_BROKER_URL  → (do Upstash Redis)
-OPENAI_API_KEY     → (sua chave)
-
-# setup_rh (opcional, recomendado)
-RH_ADMIN_USERNAME  → admin_rh
-RH_ADMIN_EMAIL     → rh@empresa.com
-RH_ADMIN_PASSWORD  → (senha segura)
-SITE_DOMAIN        → seu-app.onrender.com
-```
-
-### Build & Start Commands
-
-**Build Command:**
 ```bash
-pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
-```
-
-**Process Types (Procfile):**
-```bash
-web: gunicorn hrtech.wsgi --bind 0.0.0.0:$PORT --workers 2
-worker: celery -A hrtech worker -l INFO -Q default,openai
-beat: celery -A hrtech beat -l INFO
+# No Render: New + → Blueprint → Apontar para este repositório
+# Configurar variáveis de ambiente obrigatórias antes do deploy
 ```
 
 ---
 
-## Estrutura do Projeto
+## 📁 Estrutura do Projeto
 
 ```
 hrtech/
-├── docs/                      # Documentação técnica e relatórios
-│   ├── planning/              # Roadmaps e planos de execução
-│   └── reports/               # Relatórios de QA e funcionalidades
+├── core/                          # App principal
+│   ├── matching.py                # Motor de matching de 3 camadas (919 linhas)
+│   ├── neo4j_connection.py        # Singleton de conexão Neo4j com pool
+│   ├── schemas.py                 # Contrato Pydantic para respostas OpenAI
+│   ├── views.py                   # Views Django (1600+ linhas)
+│   ├── models.py                  # Candidato, Vaga, Organization, AuditoriaMatch
+│   ├── tasks.py                   # Celery tasks (processar_cv, sync Neo4j)
+│   ├── services/                  # Service layer
+│   │   ├── matching_service.py    # Orquestração do matching
+│   │   ├── interview_openai_service.py  # Geração de perguntas via GPT-4
+│   │   ├── interview_neo4j_service.py   # Skill gaps via grafo
+│   │   ├── candidate_search_service.py  # Busca avançada com filtros
+│   │   ├── cv_upload_service.py   # Upload + validação de PDFs
+│   │   └── candidate_portal_service.py  # Portal do candidato
+│   ├── tests/                     # 14 arquivos de teste
+│   │   ├── test_matching_engine.py      # Testes do motor de matching
+│   │   ├── test_tenant_isolation.py     # Testes de isolamento multi-tenant
+│   │   ├── test_interview_*.py          # Testes de geração de perguntas
+│   │   └── test_security_pentest.py     # Testes de penetração
+│   └── templates/core/            # Templates Django + HTMX partials
 │
-├── scripts/                   # Scripts utilitários (seed, manutenção)
-│   └── popular_banco.py       # Popula banco (PostgreSQL + Neo4j)
+├── hrtech/                        # Configurações do projeto
+│   ├── settings.py                # Settings com python-decouple
+│   ├── settings_test.py           # Settings para testes (SQLite + mocks)
+│   └── celery.py                  # Configuração do Celery
 │
-├── core/                      # App principal
-│   ├── migrations/            # Migrations do banco
-│   ├── templates/core/        # Templates do app
-│   │   ├── candidatos/        # Busca e similares
-│   │   ├── candidato/         # Área do candidato
-│   │   ├── vagas/             # CRUD de vagas
-│   │   └── partials/          # Componentes HTMX
-│   ├── models.py              # Candidato, Vaga, Tag, Comentario
-│   ├── views.py               # Views e lógica de negócio
-│   ├── tasks.py               # Tasks Celery (processar_cv)
-│   ├── neo4j_connection.py    # Singleton de conexão Neo4j
-│   ├── matching.py            # Motor de matching em 3 camadas
-│   ├── schemas.py             # Contrato Pydantic para OpenAI
-│   └── services/              # Integrações externas (S3/Email)
+├── scripts/                       # Utilitários
+│   ├── popular_banco.py           # Seed de dados (PostgreSQL + Neo4j)
+│   └── tenant_isolation_checker.py # Auditor de isolamento de tenant
 │
-├── hrtech/                    # Configurações do projeto
-│   ├── settings.py            # Settings com python-decouple
-│   ├── urls.py                # Rotas principais
-│   ├── celery.py              # Configuração Celery
-│   └── wsgi.py                # Entry point produção
-│
-├── templates/                 # Templates globais
-│   ├── base.html              # Layout base com dark mode
-│   ├── admin/                 # Admin customizado
-│   └── account/               # Templates de autenticação
-│
-├── static/                    # Arquivos estáticos
-│   ├── css/                   # CSS customizado (admin)
-│   └── js/                    # JavaScript (dark mode)
-│
-├── staticfiles/               # Coletados pelo collectstatic
-│
-├── Procfile                   # Start command (Render/Heroku)
-├── runtime.txt                # Versão Python (3.10.12)
-├── requirements.txt           # Dependências Python
-├── .env.example               # Template de variáveis de ambiente
-└── manage.py                  # CLI Django
-```
-
-Documentação organizada:
-- Planejamento: `docs/planning/ROADMAP_MELHORIAS.md`
-- Relatórios: `docs/reports/RELATORIO_QA.md`
-- Exportações: `docs/reports/EXPORTS_DOCUMENTATION.md`
-
----
-
-## Segurança
-
-| Medida | Implementação |
-|--------|---------------|
-| Credenciais | Todas via `python-decouple`, zero hardcoded |
-| HTTPS | `SECURE_SSL_REDIRECT = True` em produção |
-| Cookies | `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` |
-| Headers | HSTS, X-Frame-Options DENY, XSS Filter |
-| Storage | S3 bucket privado, acesso via presigned URL (15min TTL) |
-| Logs | LGPD compliant - nunca logam conteúdo de CVs |
-| **Multi-Tenant** | Isolamento de dados por organização em todas as queries |
-| **Rate Limiting** | Proteção contra DoS (10-30 req/min em endpoints críticos) |
-| **PII Masking** | Exportações mascaram email, telefone e nome |
-| **LGPD Endpoints** | Exclusão, solicitação e exportação de dados pessoais |
-
----
-
-## Desenvolvimento
-
-```bash
-# Rodar testes
-python manage.py test
-
-# Verificar configuração
-python manage.py check --deploy
-
-# Criar superusuário
-python manage.py createsuperuser
-
-# Shell interativo
-python manage.py shell
+├── Dockerfile.test                # Container Python 3.11 para testes
+├── Procfile                       # Processos para Render/Heroku
+├── render.yaml                    # Blueprint de deploy (3 serviços)
+├── requirements.txt               # Dependências Python
+└── .env.example                   # Template de variáveis de ambiente
 ```
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap
 
-- [x] ~~Autenticação com email~~ (django-allauth)
-- [x] ~~Dashboard de Analytics com gráficos~~
-- [x] ~~Sistema de Tags para candidatos~~
-- [x] ~~Área do Candidato~~
-- [x] ~~Dark Mode em todo o sistema~~
-- [x] ~~Admin customizado~~
-- [x] ~~Multi-tenancy para empresas~~
-- [x] ~~LGPD Compliance (exclusão e exportação de dados)~~
-- [x] ~~Rate Limiting em endpoints críticos~~
-- [x] ~~PII Masking em exportações~~
+- [x] Upload e extração automática de skills (GPT-4)
+- [x] Grafo de conhecimento no Neo4j (skills + similaridade)
+- [x] Motor de matching de 3 camadas com auditoria
+- [x] Dashboard Kanban com drag-and-drop
+- [x] Dashboard de analytics com Chart.js
+- [x] Área do candidato (portal, aplicações, vinculação)
+- [x] Sistema de comentários e favoritos
+- [x] Exportação para Excel (candidatos + rankings)
+- [x] Busca avançada com filtros por skills (Neo4j)
+- [x] Geração de perguntas de entrevista com IA (GPT-4o-mini)
+- [x] Multi-tenant isolation (16+ views protegidas)
+- [x] LGPD compliance (exclusão, exportação, auditoria)
+- [x] Dark Mode em todo o sistema
+- [x] Landing page com D3.js
 - [ ] Autenticação com Google/LinkedIn OAuth
-- [ ] API REST para integrações
+- [ ] API REST pública para integrações
 - [ ] Notificações por email (Celery Beat)
-- [ ] Relatórios exportáveis (PDF/Excel)
 - [ ] Integração com LinkedIn para importar perfis
+- [ ] CI/CD com GitHub Actions
 
 ---
 
-## Licença
+## 📜 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ---
 
-## Autor
+## 👤 Autor
 
-**João Luiz** - [GitHub](https://github.com/joao-luizzz)
+**João Luiz** — [GitHub](https://github.com/joao-luizzz)
+
+Neo4j Certified Professional · Graph Data Analyst
 
 ---
 
 <p align="center">
-  <sub>Desenvolvido com Django, Neo4j e OpenAI</sub>
+  <sub>Construído com Django, Neo4j e OpenAI</sub>
   <br>
-  <sub>🌙 Dark Mode | 📊 Analytics | 🤖 IA | 🔒 LGPD Compliant</sub>
+  <sub>🧠 Matching por Grafos · 🤖 IA Generativa · 🔒 Multi-Tenant · 🌙 Dark Mode</sub>
 </p>
