@@ -174,7 +174,7 @@ class MatchingEngine:
         >>> print(f"Encontrados {len(resultados)} candidatos")
     """
 
-    def __init__(self, score_minimo: float = SCORE_MINIMO, organization=None):
+    def __init__(self, score_minimo: float = SCORE_MINIMO, organization=None, allow_global: bool = False):
         """
         Inicializa o engine.
 
@@ -182,7 +182,11 @@ class MatchingEngine:
             score_minimo: Score mínimo para incluir candidato nos resultados.
                          Default: 40.0
             organization: Tenant para filtrar vagas (SECURITY: required para multi-tenant)
+            allow_global: Se True, permite rodar matching sem tenant isolation (admin only).
         """
+        if organization is None and not allow_global:
+            raise ValueError("Organization é obrigatório para execução do matching (tenant isolation).")
+        
         self.score_minimo = score_minimo
         self.organization = organization  # SECURITY: Tenant isolation
         logger.debug(f"MatchingEngine inicializado (versão {VERSAO_ALGORITMO})")
@@ -825,6 +829,7 @@ class MatchingEngine:
             auditoria = AuditoriaMatch(
                 vaga=vaga,
                 candidato=candidato,
+                organization=vaga.organization,
                 score=Decimal(str(resultado.score_final)),
                 snapshot_skills=resultado.snapshot_skills,
                 versao_algoritmo=VERSAO_ALGORITMO,
@@ -858,6 +863,7 @@ class MatchingEngine:
 
 def executar_matching_vaga(
     vaga_id: int,
+    organization,
     salvar_auditoria: bool = True,
     score_minimo: float = SCORE_MINIMO,
     limite: int | None = None
@@ -869,18 +875,15 @@ def executar_matching_vaga(
 
     Args:
         vaga_id: ID da vaga
+        organization: Tenant da vaga
         salvar_auditoria: Se salva na AuditoriaMatch
         score_minimo: Score mínimo para incluir
         limite: Máximo de resultados
 
     Returns:
         Lista de ResultadoMatch
-
-    Example:
-        >>> from core.matching import executar_matching_vaga
-        >>> resultados = executar_matching_vaga(vaga_id=1)
     """
-    engine = MatchingEngine(score_minimo=score_minimo)
+    engine = MatchingEngine(score_minimo=score_minimo, organization=organization)
     return engine.executar_matching(
         vaga_id=vaga_id,
         salvar_auditoria=salvar_auditoria,

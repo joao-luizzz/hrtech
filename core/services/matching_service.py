@@ -22,7 +22,7 @@ class MatchingService:
     """Service layer para fluxos de matching do RH."""
 
     @staticmethod
-    def run_matching(vaga_id: int, limite: int = 50, organization=None):
+    def run_matching(vaga_id: int, organization, limite: int = 50):
         # SECURITY: Passar organization para tenant isolation
         engine = MatchingEngine(organization=organization)
         return engine.executar_matching(

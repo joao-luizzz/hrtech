@@ -53,7 +53,7 @@ class MatchingEngineTests(TestCase):
 
     def setUp(self):
         """Fixtures comuns para os testes."""
-        self.engine = MatchingEngine(score_minimo=40.0)
+        self.engine = MatchingEngine(score_minimo=40.0, allow_global=True)
 
         # Vaga mock padrão
         self.vaga_mock = MagicMock()
@@ -544,7 +544,7 @@ class MatchingEngineIntegrationTests(TestCase):
         mock_auditoria.objects.bulk_create.return_value = []
 
         # Executar matching
-        engine = MatchingEngine()
+        engine = MatchingEngine(allow_global=True)
         resultados = engine.executar_matching(vaga_id=1, salvar_auditoria=False)
 
         # Verificações
@@ -562,7 +562,7 @@ class MatchingEngineIntegrationTests(TestCase):
         vaga_instance.skills_obrigatorias = []
         mock_vaga.objects.get.return_value = vaga_instance
 
-        engine = MatchingEngine()
+        engine = MatchingEngine(allow_global=True)
         resultados = engine.executar_matching(vaga_id=1, salvar_auditoria=False)
 
         self.assertEqual(resultados, [])
@@ -606,7 +606,7 @@ class MatchingEngineIntegrationTests(TestCase):
 
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        engine = MatchingEngine(score_minimo=40)
+        engine = MatchingEngine(score_minimo=40, allow_global=True)
         resultados = engine.executar_matching(vaga_id=1, salvar_auditoria=False)
 
         # Candidato deve ser filtrado por score baixo

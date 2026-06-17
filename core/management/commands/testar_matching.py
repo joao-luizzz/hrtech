@@ -144,7 +144,7 @@ class Command(BaseCommand):
             return
 
         # Executar matching para cada vaga
-        engine = MatchingEngine(score_minimo=self.score_minimo)
+        engine = MatchingEngine(score_minimo=self.score_minimo, allow_global=True)
 
         for vaga in vagas:
             self._testar_vaga(engine, vaga)

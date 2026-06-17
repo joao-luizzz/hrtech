@@ -112,7 +112,7 @@ def close_neo4j_driver():
         logger.info("Conexão Neo4j fechada")
 
 
-def run_query(query: str, parameters: dict = None, database: str = "neo4j"):
+def run_query(query: str, parameters: dict = None, database: str = None):
     """
     Executa uma query Cypher e retorna os resultados.
     
@@ -122,7 +122,7 @@ def run_query(query: str, parameters: dict = None, database: str = "neo4j"):
     Args:
         query: Query Cypher
         parameters: Parâmetros da query
-        database: Nome do database (default: neo4j)
+        database: Nome do database (default: None, usa default do servidor)
     
     Returns:
         Lista de records
@@ -151,14 +151,14 @@ def run_query(query: str, parameters: dict = None, database: str = "neo4j"):
         raise
 
 
-def run_write_query(query: str, parameters: dict = None, database: str = "neo4j"):
+def run_write_query(query: str, parameters: dict = None, database: str = None):
     """
     Executa uma query de escrita (CREATE, MERGE, DELETE) em transação.
     
     Args:
         query: Query Cypher de escrita
         parameters: Parâmetros da query
-        database: Nome do database
+        database: Nome do database (default: None, usa default do servidor)
     
     Returns:
         ResultSummary com estatísticas da operação

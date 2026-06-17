@@ -106,19 +106,19 @@ class CandidateSearchService:
                     for skill in skills_list:
                         if nivel_minimo:
                             query = """
-                            MATCH (c:Candidato)-[r:TEM_HABILIDADE]->(h:Habilidade)
+                            MATCH (c:Candidato {organization_id: $org_id})-[r:TEM_HABILIDADE]->(h:Habilidade)
                             WHERE toLower(h.nome) CONTAINS toLower($skill)
                             AND r.nivel >= $nivel_minimo
                             RETURN DISTINCT c.uuid as uuid
                             """
-                            results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo})
+                            results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo, 'org_id': str(organization.id)})
                         else:
                             query = """
-                            MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
+                            MATCH (c:Candidato {organization_id: $org_id})-[:TEM_HABILIDADE]->(h:Habilidade)
                             WHERE toLower(h.nome) CONTAINS toLower($skill)
                             RETURN DISTINCT c.uuid as uuid
                             """
-                            results = run_query(query, {'skill': skill})
+                            results = run_query(query, {'skill': skill, 'org_id': str(organization.id)})
 
                         uuids = [r['uuid'] for r in results]
                         candidatos = candidatos.filter(id__in=uuids)
@@ -127,19 +127,19 @@ class CandidateSearchService:
                     for skill in skills_list:
                         if nivel_minimo:
                             query = """
-                            MATCH (c:Candidato)-[r:TEM_HABILIDADE]->(h:Habilidade)
+                            MATCH (c:Candidato {organization_id: $org_id})-[r:TEM_HABILIDADE]->(h:Habilidade)
                             WHERE toLower(h.nome) CONTAINS toLower($skill)
                             AND r.nivel >= $nivel_minimo
                             RETURN DISTINCT c.uuid as uuid
                             """
-                            results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo})
+                            results = run_query(query, {'skill': skill, 'nivel_minimo': nivel_minimo, 'org_id': str(organization.id)})
                         else:
                             query = """
-                            MATCH (c:Candidato)-[:TEM_HABILIDADE]->(h:Habilidade)
+                            MATCH (c:Candidato {organization_id: $org_id})-[:TEM_HABILIDADE]->(h:Habilidade)
                             WHERE toLower(h.nome) CONTAINS toLower($skill)
                             RETURN DISTINCT c.uuid as uuid
                             """
-                            results = run_query(query, {'skill': skill})
+                            results = run_query(query, {'skill': skill, 'org_id': str(organization.id)})
 
                         uuids_set.update([r['uuid'] for r in results])
 
