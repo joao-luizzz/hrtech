@@ -1,3 +1,5 @@
+from core.matching.scoring import calcular_score_candidato
+from core.matching.tiebreak import ordenar_resultados
 """
 HRTech - Testes Unitários do Matching Engine (Fase 2)
 =====================================================
@@ -132,7 +134,7 @@ class MatchingEngineTests(TestCase):
     # TESTES DA CAMADA 1: Match Direto
     # =========================================================================
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_1_match_perfeito(self, mock_candidato):
         """
         Candidato com todas as skills obrigatórias no nível ou acima
@@ -140,7 +142,7 @@ class MatchingEngineTests(TestCase):
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_perfeito,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -150,7 +152,7 @@ class MatchingEngineTests(TestCase):
         # Camada 1 deve ser 100 (ou próximo) quando atende todos requisitos
         self.assertGreaterEqual(resultado.score_camada_1, 95.0)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_1_skill_ausente(self, mock_candidato):
         """
         Candidato sem uma skill obrigatória deve ter score reduzido
@@ -158,7 +160,7 @@ class MatchingEngineTests(TestCase):
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_falta_skill,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -168,7 +170,7 @@ class MatchingEngineTests(TestCase):
         # Com apenas 1 de 2 skills, esperamos cerca de 50% * ajustes
         self.assertLess(resultado.score_camada_1, 70.0)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_1_decaimento_temporal(self, mock_candidato):
         """
         Skill defasada (3 anos sem uso) deve ter decaimento aplicado.
@@ -177,7 +179,7 @@ class MatchingEngineTests(TestCase):
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
         # SQL usado há 3 anos: nivel 4 -> 4 * 0.85^3 = 2.46
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_defasado,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -185,7 +187,7 @@ class MatchingEngineTests(TestCase):
         )
 
         # O score deve ser menor que o candidato perfeito
-        resultado_perfeito = self.engine._calcular_score_candidato(
+        resultado_perfeito = calcular_score_candidato(
             dados=self.candidato_perfeito,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -204,7 +206,7 @@ class MatchingEngineTests(TestCase):
     # TESTES DA CAMADA 2: Match por Similaridade
     # =========================================================================
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_2_match_similar(self, mock_candidato):
         """
         Candidato com skill similar deve receber score parcial na Camada 2.
@@ -216,7 +218,7 @@ class MatchingEngineTests(TestCase):
         vaga_power_bi.area = "Dados"
         vaga_power_bi.senioridade_desejada = "pleno"
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_similar,
             vaga=vaga_power_bi,
             mapa_obrigatorias={'SQL': 3, 'Power BI': 2},
@@ -237,7 +239,7 @@ class MatchingEngineTests(TestCase):
     # TESTES DA CAMADA 3: Compatibilidade de Perfil
     # =========================================================================
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_3_area_match(self, mock_candidato):
         """
         Candidato na mesma área da vaga deve ter score maior na Camada 3.
@@ -245,7 +247,7 @@ class MatchingEngineTests(TestCase):
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
         # Candidato área Dados, vaga área Dados
-        resultado_match = self.engine._calcular_score_candidato(
+        resultado_match = calcular_score_candidato(
             dados=self.candidato_perfeito,
             vaga=self.vaga_mock,  # área Dados
             mapa_obrigatorias={'SQL': 3},
@@ -256,7 +258,7 @@ class MatchingEngineTests(TestCase):
         candidato_outra_area = dict(self.candidato_perfeito)
         candidato_outra_area['candidato_area'] = 'Backend'
 
-        resultado_sem_match = self.engine._calcular_score_candidato(
+        resultado_sem_match = calcular_score_candidato(
             dados=candidato_outra_area,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3},
@@ -265,14 +267,14 @@ class MatchingEngineTests(TestCase):
 
         self.assertGreater(resultado_match.score_camada_3, resultado_sem_match.score_camada_3)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_3_senioridade_match(self, mock_candidato):
         """
         Candidato com mesma senioridade da vaga deve ter score maior.
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado_pleno = self.engine._calcular_score_candidato(
+        resultado_pleno = calcular_score_candidato(
             dados=self.candidato_perfeito,  # senioridade pleno
             vaga=self.vaga_mock,  # senioridade_desejada pleno
             mapa_obrigatorias={'SQL': 3},
@@ -283,7 +285,7 @@ class MatchingEngineTests(TestCase):
         candidato_senior = dict(self.candidato_perfeito)
         candidato_senior['candidato_senioridade'] = 'senior'
 
-        resultado_senior = self.engine._calcular_score_candidato(
+        resultado_senior = calcular_score_candidato(
             dados=candidato_senior,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3},
@@ -292,7 +294,7 @@ class MatchingEngineTests(TestCase):
 
         self.assertGreater(resultado_pleno.score_camada_3, resultado_senior.score_camada_3)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_camada_3_junior_para_senior_penaliza_mais(self, mock_candidato):
         """
         Júnior para vaga sênior deve penalizar mais que sênior para júnior.
@@ -307,7 +309,7 @@ class MatchingEngineTests(TestCase):
         candidato_junior = dict(self.candidato_perfeito)
         candidato_junior['candidato_senioridade'] = 'junior'
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=candidato_junior,
             vaga=vaga_senior,
             mapa_obrigatorias={'SQL': 3},
@@ -322,14 +324,14 @@ class MatchingEngineTests(TestCase):
     # TESTES DO SCORE FINAL
     # =========================================================================
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_score_final_candidato_perfeito(self, mock_candidato):
         """
         Candidato perfeito deve ter score próximo de 100.
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_perfeito,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -339,14 +341,14 @@ class MatchingEngineTests(TestCase):
         # Score final deve ser >= 90 para candidato perfeito
         self.assertGreaterEqual(resultado.score_final, 90.0)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_score_final_pesos_corretos(self, mock_candidato):
         """
         Verifica que os pesos das camadas estão sendo aplicados corretamente.
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_perfeito,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -366,14 +368,14 @@ class MatchingEngineTests(TestCase):
     # TESTES DE GAP ANALYSIS
     # =========================================================================
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_gap_skills_ausentes(self, mock_candidato):
         """
         Skills obrigatórias ausentes devem aparecer na gap analysis.
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_falta_skill,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -382,14 +384,14 @@ class MatchingEngineTests(TestCase):
 
         self.assertIn('Python', resultado.gap_analysis.skills_ausentes)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_gap_skills_desejaveis_ausentes(self, mock_candidato):
         """
         Skills desejáveis ausentes devem ser listadas separadamente.
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_falta_skill,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3},
@@ -400,14 +402,14 @@ class MatchingEngineTests(TestCase):
         self.assertIn('Airflow', resultado.gap_analysis.skills_desejaveis_ausentes)
         self.assertIn('Spark', resultado.gap_analysis.skills_desejaveis_ausentes)
 
-    @patch('core.matching.Candidato')
+    @patch('core.matching.scoring.Candidato')
     def test_gap_texto_explicativo(self, mock_candidato):
         """
         Texto explicativo deve ser gerado com informações relevantes.
         """
         mock_candidato.objects.get.return_value = MagicMock(disponivel=True)
 
-        resultado = self.engine._calcular_score_candidato(
+        resultado = calcular_score_candidato(
             dados=self.candidato_falta_skill,
             vaga=self.vaga_mock,
             mapa_obrigatorias={'SQL': 3, 'Python': 2},
@@ -446,7 +448,7 @@ class MatchingEngineTests(TestCase):
             ),
         ]
 
-        ordenados = self.engine._ordenar_resultados(resultados)
+        ordenados = ordenar_resultados(resultados)
 
         # Primeiro deve ser B (90, disponível)
         self.assertEqual(ordenados[0].candidato_nome, 'B')
@@ -495,10 +497,10 @@ class MatchingEngineIntegrationTests(TestCase):
         python manage.py testar_matching
     """
 
-    @patch('core.matching.run_query')
-    @patch('core.matching.Vaga')
-    @patch('core.matching.Candidato')
-    @patch('core.matching.AuditoriaMatch')
+    @patch('core.matching.engine.run_query')
+    @patch('core.matching.engine.Vaga')
+    @patch('core.matching.scoring.Candidato')
+    @patch('core.matching.auditing.AuditoriaMatch')
     def test_executar_matching_fluxo_completo(
         self, mock_auditoria, mock_candidato, mock_vaga, mock_run_query
     ):
@@ -552,8 +554,8 @@ class MatchingEngineIntegrationTests(TestCase):
         self.assertEqual(resultados[0].candidato_nome, 'Test User')
         self.assertGreaterEqual(resultados[0].score_final, 40)  # Acima do threshold
 
-    @patch('core.matching.run_query')
-    @patch('core.matching.Vaga')
+    @patch('core.matching.engine.run_query')
+    @patch('core.matching.engine.Vaga')
     def test_executar_matching_sem_skills_obrigatorias(self, mock_vaga, mock_run_query):
         """
         Vaga sem skills obrigatórias deve retornar lista vazia.
@@ -568,9 +570,9 @@ class MatchingEngineIntegrationTests(TestCase):
         self.assertEqual(resultados, [])
         mock_run_query.assert_not_called()
 
-    @patch('core.matching.run_query')
-    @patch('core.matching.Vaga')
-    @patch('core.matching.Candidato')
+    @patch('core.matching.engine.run_query')
+    @patch('core.matching.engine.Vaga')
+    @patch('core.matching.scoring.Candidato')
     def test_score_minimo_filtra_candidatos(
         self, mock_candidato, mock_vaga, mock_run_query
     ):
