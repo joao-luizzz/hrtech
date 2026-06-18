@@ -30,6 +30,11 @@ from django.conf import settings
 from django.utils import timezone
 from pydantic import ValidationError
 
+from core.models import Candidato, HistoricoAcao
+from core.neo4j_connection import Neo4jConnection
+from core.services.rate_limit_service import RateLimitService
+from core.validators import normalize_skill_name
+
 # OpenAI
 from openai import OpenAI, RateLimitError, APIConnectionError, APITimeoutError
 
@@ -441,10 +446,10 @@ def processar_cv_task(self, candidato_id: str) -> dict:
         return {'status': 'error', 'reason': 'max_retries_exceeded'}
 
     except Exception as e:
-        # Apenas loga o erro, não altera status para ERRO (Celery fará retry)
+        # Tenta re-agendar a task. Se atingir max_retries, cairá no bloco MaxRetriesExceededError acima,
+        # garantindo que o status vire ERRO e não fique travado silenciosamente.
         logger.exception(f"Erro inesperado: {type(e).__name__}")
-       
-        raise
+        raise self.retry(exc=e, countdown=60)
 
 
 def chamar_openai_extracao(texto_cv: str) -> CVParseado:
@@ -463,7 +468,9 @@ def chamar_openai_extracao(texto_cv: str) -> CVParseado:
         ValidationError: Se resposta não passar validação
     """
     # MOCK MODE: retorna dados mockados sem chamar OpenAI
-    if MOCK_MODE:
+    # Use settings dynamically so tests can override it or it reflects the current state properly
+    is_mock_mode = getattr(settings, 'OPENAI_MOCK_MODE', False)
+    if is_mock_mode:
         logger.warning("[MOCK MODE ATIVO] Gerando habilidades mockadas - OpenAI nao sera chamada")
         return gerar_mock_cv_parseado(texto_cv)
 
@@ -553,7 +560,7 @@ def salvar_habilidades_neo4j(
 
     habilidades_dict = [
         {
-            'nome': h.nome,
+            'nome': normalize_skill_name(h.nome),
             'nivel': h.nivel,
             'anos_experiencia': h.anos_experiencia,
             'ano_ultima_utilizacao': h.ano_ultima_utilizacao,
@@ -610,3 +617,64 @@ def varrer_jobs_fantasmas(self) -> dict:
         )
 
     return {'jobs_marcados': count}
+
+
+# =============================================================================
+# TASK LGPD - EXCLUSÃO ATÔMICA
+# =============================================================================
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def lgpd_excluir_candidato_task(self, candidato_id: str) -> dict:
+    """
+    Task para deleção atômica e irreversível de um candidato (LGPD Art. 18).
+    
+    A ordem é crítica para resiliência:
+    1. Lê dados do Postgres (uuid, s3_key)
+    2. Deleta nó no Neo4j (DETACH DELETE)
+    3. Deleta PDF no S3
+    4. Deleta registro no PostgreSQL por último
+    
+    Se falhar no Neo4j ou S3, a task faz retry. O Postgres intacto
+    permite que o retry seja idempotente e retome sem arquivos órfãos.
+    """
+    logger.info(f"[LGPD Task] Iniciando exclusão do candidato_id={candidato_id}")
+    
+    try:
+        candidato = Candidato.objects.get(pk=candidato_id)
+        candidato_uuid = str(candidato.id)
+        cv_s3_key = candidato.cv_s3_key
+        
+        # ETAPA 1: Deletar do Neo4j
+        # Neo4j pode sofrer cold-start no AuraDB Free
+        try:
+            logger.info(f"[LGPD Task] Removendo candidato {candidato_uuid} do Neo4j")
+            query = "MATCH (c:Candidato {uuid: $uuid}) DETACH DELETE c"
+            run_write_query(query, {'uuid': candidato_uuid})
+        except Exception as e:
+            logger.warning(f"[LGPD Task] Falha temporária no Neo4j: {type(e).__name__}. Retrying...")
+            raise self.retry(exc=e, countdown=60)
+            
+        # ETAPA 2: Deletar PDF do S3
+        if cv_s3_key:
+            try:
+                logger.info(f"[LGPD Task] Removendo PDF {cv_s3_key} do S3")
+                s3_service = get_s3_service()
+                s3_service.delete_file(cv_s3_key)
+            except Exception as e:
+                logger.warning(f"[LGPD Task] Falha ao deletar arquivo do S3: {type(e).__name__}. Retrying...")
+                raise self.retry(exc=e, countdown=60)
+                
+        # ETAPA 3: Deletar do PostgreSQL
+        logger.info(f"[LGPD Task] Removendo registro do PostgreSQL")
+        candidato.delete()
+        
+        logger.info(f"[LGPD Task] Exclusão do candidato {candidato_uuid} finalizada com sucesso.")
+        return {'status': 'success'}
+        
+    except Candidato.DoesNotExist:
+        logger.warning(f"[LGPD Task] Candidato {candidato_id} já deletado ou não encontrado.")
+        return {'status': 'skipped', 'reason': 'already_deleted'}
+    except Exception as e:
+        logger.error(f"[LGPD Task] Erro inesperado ao excluir candidato: {e}")
+        raise self.retry(exc=e, countdown=60)
+

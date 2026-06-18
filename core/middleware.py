@@ -80,4 +80,8 @@ class CacheHeadersMiddleware:
         # Disable XSS protection (modern browsers use CSP instead)
         response['X-XSS-Protection'] = '1; mode=block'
 
+        # Privacy and origin safety
+        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+
         return response

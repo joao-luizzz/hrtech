@@ -38,7 +38,7 @@ from core.models import (
     Candidato, Vaga, AuditoriaMatch, HistoricoAcao, registrar_acao,
     Comentario, Favorito, Profile, InterviewQuestion
 )
-from core.tasks import processar_cv_task
+from core.tasks import processar_cv_task, lgpd_excluir_candidato_task
 from core.neo4j_connection import run_query
 from core.decorators import rh_required, get_client_ip, get_request_id, staff_required
 from core.services import (
@@ -55,6 +55,7 @@ from core.services import (
     RateLimitService,
 )
 from core.services.interview_openai_service import APIException as InterviewAPIException, ConcurrentGenerationError
+from core.validators import normalize_skill_name
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +116,9 @@ def _parse_skills_payload(raw_payload, label):
             errors.append(f'{label} inválidas: item {idx} precisa ser um objeto.')
             continue
 
-        nome = str(item.get('nome', '')).strip()
+        nome = normalize_skill_name(str(item.get('nome', '')))
         if not nome:
-            errors.append(f'{label} inválidas: item {idx} sem nome.')
+            errors.append(f'{label} inválidas: item {idx} sem nome válido após higienização.')
             continue
         if len(nome) > MAX_SKILL_NAME_LENGTH:
             errors.append(
@@ -330,24 +331,28 @@ def dashboard_rh(request):
         status_cv__in=processing_statuses,
         updated_at__lt=ghost_job_cutoff,
     ).order_by('updated_at')
-
-    candidatos_agg = Candidato.objects.filter(organization=user_org).aggregate(
-        candidatos_total=Count('id'),
-        candidatos_processados=Count('id', filter=Q(status_cv=Candidato.StatusCV.CONCLUIDO)),
-        candidatos_com_erro=Count('id', filter=Q(status_cv=Candidato.StatusCV.ERRO)),
-        jobs_em_processamento=Count('id', filter=Q(status_cv__in=processing_statuses)),
+    
+    lgpd_pendentes_qs = Candidato.objects.filter(
+        organization=user_org,
+        lgpd_exclusao_solicitada=True
     )
 
     stats = {
-        'vagas_abertas': Vaga.objects.filter(organization=user_org, status='aberta').count(),
-        'candidatos_total': candidatos_agg['candidatos_total'],
-        'candidatos_processados': candidatos_agg['candidatos_processados'],
-        'candidatos_com_erro': candidatos_agg['candidatos_com_erro'],
-        'jobs_em_processamento': candidatos_agg['jobs_em_processamento'],
-        'jobs_fantasmas': jobs_fantasmas_qs.count(),
-        'matches_realizados': AuditoriaMatch.objects.filter(
-            organization=user_org
+        'vagas_abertas': Vaga.objects.filter(organization=user_org, status=Vaga.Status.ABERTA).count(),
+        'candidatos_processados': Candidato.objects.filter(organization=user_org, status_cv=Candidato.StatusCV.CONCLUIDO).count(),
+        'candidatos_com_erro': Candidato.objects.filter(organization=user_org, status_cv=Candidato.StatusCV.ERRO).count(),
+        'candidatos_total': Candidato.objects.filter(organization=user_org).count(),
+        'matches_realizados': AuditoriaMatch.objects.filter(vaga__organization=user_org).count(),
+        'jobs_em_processamento': Candidato.objects.filter(
+            organization=user_org,
+            status_cv__in=[
+                Candidato.StatusCV.RECEBIDO,
+                Candidato.StatusCV.PROCESSANDO,
+                Candidato.StatusCV.EXTRAINDO
+            ]
         ).count(),
+        'jobs_fantasmas': jobs_fantasmas_qs.count(),
+        'lgpd_pendentes': lgpd_pendentes_qs.count(),
     }
 
     # Dados para gráficos - Candidatos por Etapa do Processo
@@ -605,6 +610,23 @@ def rodar_matching(request, vaga_id):
     user_org = _get_user_organization(request.user)
     vaga = get_object_or_404(Vaga, pk=vaga_id, organization=user_org)
 
+    # Rate limiting: 10 matches per minute per user
+    rate_limiter = RateLimitService()
+    rate_key = f"matching:run:{request.user.id}"
+    rate_check = rate_limiter.check_and_increment(
+        key=rate_key,
+        limit=10,
+        window_seconds=60
+    )
+    
+    if not rate_check['allowed']:
+        retry_after = rate_check['retry_after']
+        logger.warning(f"[RateLimit] Bloqueado rodar_matching para user {request.user.username} (retry {retry_after}s)")
+        return render(request, 'core/partials/matching_error.html', {
+            'error': f'Muitas requisições. Aguarde {retry_after} segundos antes de tentar novamente.',
+            'vaga': vaga,
+        }, status=429)
+
     try:
         resultados = MatchingService.run_matching(vaga_id=vaga_id, organization=user_org, limite=50)
     except Exception as e:
@@ -818,29 +840,51 @@ def generate_interview_questions_htmx(request, vaga_id, candidate_id):
     safe_candidate_id = str(candidate_id)[:8]
     
     # =========================================================================
-    # RATE LIMITING CHECK (90s cooldown between regenerations)
+    # RATE LIMITING CHECK
     # =========================================================================
-    # Only apply rate limit if NOT force regenerate (first generation is always allowed)
+    # Build unique rate limit key per user to prevent mass generation across candidates
+    rate_key_global = f"interview:gen_global:{request.user.id}"
+    
+    rate_limiter = RateLimitService()
+    
+    # 1. Global limit: Max 5 generations per minute per user
+    global_rate_check = rate_limiter.check_and_increment(
+        key=rate_key_global,
+        limit=5,
+        window_seconds=60
+    )
+    
+    if not global_rate_check['allowed']:
+        retry_after = global_rate_check['retry_after']
+        logger.warning(
+            f"[Interview] Global Rate limited: user {request.user.username} "
+            f"tried to generate too many interviews (retry in {retry_after}s)"
+        )
+        context = {
+            'error_message': f'Limite de gerações atingido. Aguarde {retry_after} segundos.',
+            'candidato': candidato,
+            'vaga': vaga,
+            'retry_after': retry_after,
+        }
+        return render(request, 'core/partials/interview_questions_error.html', context)
+
+    # 2. Per-candidate regeneration limit: 1 per 90s
     if force_regenerate:
-        # Build unique rate limit key: interview:regen:{candidate_id}:{user_id}
-        rate_key = f"interview:regen:{candidate_id}:{request.user.id}"
-        
-        # Check and increment rate limit
-        rate_limiter = RateLimitService()
-        rate_check = rate_limiter.check_and_increment(
-            key=rate_key,
-            limit=1,  # Only 1 regeneration allowed
-            window_seconds=90  # 90 second cooldown
+        rate_key_candidate = f"interview:regen:{candidate_id}:{request.user.id}"
+        candidate_rate_check = rate_limiter.check_and_increment(
+            key=rate_key_candidate,
+            limit=1,
+            window_seconds=90
         )
         
-        if not rate_check['allowed']:
-            retry_after = rate_check['retry_after']
+        if not candidate_rate_check['allowed']:
+            retry_after = candidate_rate_check['retry_after']
             logger.info(
-                f"[Interview] Rate limited: {safe_candidate_id}... "
+                f"[Interview] Candidate Rate limited: {safe_candidate_id}... "
                 f"by user {request.user.username} (retry in {retry_after}s)"
             )
             context = {
-                'error_message': f'Aguarde {retry_after} segundos antes de regerar as perguntas.',
+                'error_message': f'Aguarde {retry_after} segundos antes de regerar as perguntas para este candidato.',
                 'candidato': candidato,
                 'vaga': vaga,
                 'retry_after': retry_after,
@@ -1650,3 +1694,134 @@ def relatorio_candidato_print(request, candidato_id):
         request_id=get_request_id(request),
     )
     return render(request, 'core/relatorios/candidato_print.html', context)
+
+
+# =============================================================================
+# LGPD - DIREITO AO ESQUECIMENTO E PORTABILIDADE (Art. 18)
+# =============================================================================
+
+@login_required
+@rh_required
+@require_POST
+def lgpd_excluir_candidato(request, candidato_id):
+    """
+    RH solicita a exclusão definitiva do candidato e todos os seus dados.
+    """
+    user_org = _get_user_organization(request.user)
+    # SECURITY: Previne IDOR garantindo que o candidato pertence à organização do RH
+    candidato = get_object_or_404(Candidato, pk=candidato_id, organization=user_org)
+
+    # Registra no histórico de ações ANTES da deleção (a FK usuario se tornará NULL, mas o json fica)
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_EXCLUSAO_EXECUTADA,
+        vaga=None,
+        candidato=candidato,
+        detalhes={
+            'candidato_uuid': str(candidato.id),
+            'candidato_email': candidato.email,
+            'candidato_nome': candidato.nome,
+        },
+        ip_address=get_client_ip(request)
+    )
+
+    # Dispara a exclusão atômica em background
+    lgpd_excluir_candidato_task.delay(str(candidato.id))
+    
+    messages.success(request, f'A exclusão dos dados de {candidato.nome} foi iniciada.')
+    return redirect('core:buscar_candidatos')
+
+
+@login_required
+@require_POST
+def lgpd_solicitar_exclusao(request):
+    """
+    Candidato logado solicita a exclusão de seus próprios dados.
+    """
+    candidato = getattr(request.user, 'candidato', None)
+    if not candidato:
+        messages.error(request, 'Perfil de candidato não encontrado.')
+        return redirect('core:minha_area')
+
+    candidato.lgpd_exclusao_solicitada = True
+    candidato.save(update_fields=['lgpd_exclusao_solicitada'])
+
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_SOLICITACAO,
+        vaga=None,
+        candidato=candidato,
+        detalhes={'motivo': 'Solicitado pelo portal do candidato'},
+        ip_address=get_client_ip(request)
+    )
+
+    messages.success(request, 'Sua solicitação de exclusão de dados foi registrada e será processada pelo RH.')
+    return redirect('core:minha_area')
+
+
+@login_required
+@require_GET
+def lgpd_exportar_dados(request):
+    """
+    Exporta todos os dados do candidato logado em formato JSON (Portabilidade).
+    """
+    candidato = getattr(request.user, 'candidato', None)
+    if not candidato:
+        return JsonResponse({'error': 'Perfil não encontrado'}, status=404)
+
+    # Busca dados no Postgres
+    dados_pg = {
+        'uuid': str(candidato.id),
+        'nome': candidato.nome,
+        'email': candidato.email,
+        'telefone': getattr(candidato, 'telefone', None),
+        'linkedin': getattr(candidato, 'linkedin_url', None),
+        'senioridade': candidato.senioridade,
+        'anos_experiencia': candidato.anos_experiencia,
+        'data_cadastro': candidato.created_at.isoformat() if candidato.created_at else None,
+        'vagas_avaliadas': [
+            {
+                'vaga_id': str(app.vaga.id) if app.vaga else None,
+                'titulo': app.vaga.titulo if app.vaga else 'Vaga Removida',
+                'data_analise': app.created_at.isoformat()
+            }
+            for app in candidato.auditorias.select_related('vaga').all()
+        ]
+    }
+
+    # Busca habilidades do grafo (Neo4j)
+    habilidades = []
+    try:
+        from core.services.candidate_portal_service import CandidatePortalService
+        neo4j_profile = CandidatePortalService.fetch_neo4j_profile(str(candidato.id))
+        if neo4j_profile:
+            habilidades = [
+                {
+                    'nome': h.get('nome'),
+                    'nivel': h.get('nivel'),
+                    'anos_experiencia': h.get('anos_experiencia'),
+                    'inferido': h.get('inferido')
+                }
+                for h in neo4j_profile.get('habilidades', [])
+            ]
+    except Exception as e:
+        logger.error(f"Erro ao buscar skills do Neo4j para exportação (candidato {candidato.id}): {e}")
+
+    dados_completos = {
+        'perfil': dados_pg,
+        'habilidades_mapeadas_ia': habilidades,
+        'aviso_legal': 'Este arquivo contém seus dados pessoais estruturados conforme Art. 18, inciso II da LGPD.'
+    }
+
+    registrar_acao(
+        usuario=request.user,
+        tipo_acao=HistoricoAcao.TipoAcao.LGPD_EXPORT,
+        vaga=None,
+        candidato=candidato,
+        detalhes={'origem': 'portal_candidato'},
+        ip_address=get_client_ip(request)
+    )
+
+    response = JsonResponse(dados_completos, json_dumps_params={'ensure_ascii': False, 'indent': 2})
+    response['Content-Disposition'] = f'attachment; filename="meus_dados_hrtech_{candidato.id}.json"'
+    return response

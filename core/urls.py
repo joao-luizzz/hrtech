@@ -157,8 +157,7 @@ urlpatterns = [
     # ==========================================================================
     # LGPD - DIREITO AO ESQUECIMENTO (Art. 18)
     # ==========================================================================
-    # TODO: Implementar viewsde LGPD
-    # path('rh/lgpd/excluir/<str:candidato_id>/', views.lgpd_excluir_candidato, name='lgpd_excluir'),
-    # path('minha-area/lgpd/solicitar-exclusao/', views.lgpd_solicitar_exclusao, name='lgpd_solicitar_exclusao'),
-    # path('minha-area/lgpd/exportar-dados/', views.lgpd_exportar_dados, name='lgpd_exportar_dados'),
+    path('rh/lgpd/excluir/<str:candidato_id>/', views.lgpd_excluir_candidato, name='lgpd_excluir'),
+    path('minha-area/lgpd/solicitar-exclusao/', views.lgpd_solicitar_exclusao, name='lgpd_solicitar_exclusao'),
+    path('minha-area/lgpd/exportar-dados/', views.lgpd_exportar_dados, name='lgpd_exportar_dados'),
 ]

@@ -310,6 +310,32 @@
             </div>
         </div>
         {% endif %}
+        {% endif %}
+
+        <!-- Ações de RH (LGPD) -->
+        {% if user.profile.is_rh %}
+        <div style="background:var(--card-bg); border-radius:12px; border:1px solid #EF4444; margin-top:24px;">
+            <div style="padding:16px 20px; border-bottom:1px solid #1E293B;">
+                <h6 style="margin:0; color:#F87171; font-weight:700;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Zona de Perigo (LGPD)</h6>
+            </div>
+            <div style="padding:20px;">
+                {% if candidato.lgpd_exclusao_solicitada %}
+                <div class="alert alert-danger" style="font-size: 0.85rem; padding: 10px;">
+                    <i class="bi bi-info-circle-fill me-1"></i> Este candidato solicitou a exclusão de seus dados.
+                </div>
+                {% endif %}
+                <p style="color:#94A3B8; font-size:0.85rem; margin-bottom:16px;">
+                    A exclusão removerá o candidato do banco de dados, do grafo de inteligência (Neo4j) e apagará seu currículo (S3).
+                </p>
+                <form action="{% url 'core:lgpd_excluir' candidato.id %}" method="post" onsubmit="return confirm('ATENÇÃO: Tem certeza absoluta que deseja excluir TODOS os dados deste candidato? Esta ação é IRREVERSÍVEL e apaga os dados do Neo4j, S3 e PostgreSQL.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger w-100" style="font-weight:600; border-radius:8px;">
+                        <i class="bi bi-trash-fill me-2"></i>Excluir Candidato Definitivamente
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 

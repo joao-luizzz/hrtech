@@ -197,7 +197,7 @@
         </div>
 
         <!-- Dicas -->
-        <div class="card bg-light">
+        <div class="card bg-light mb-4">
             <div class="card-body">
                 <h6 class="card-title"><i class="bi bi-lightbulb me-2"></i>Dicas</h6>
                 <ul class="mb-0 ps-3 small">
@@ -205,6 +205,35 @@
                     <li class="mb-1">Um CV bem estruturado gera melhores matches</li>
                     <li class="mb-1">Destaque suas principais habilidades tecnicas</li>
                 </ul>
+            </div>
+        </div>
+
+        <!-- LGPD -->
+        <div class="card border-secondary">
+            <div class="card-header bg-transparent border-secondary">
+                <h6 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Privacidade e Dados (LGPD)</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">Você tem controle total sobre seus dados. Escolha uma das opções abaixo para exercer seus direitos.</p>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'core:lgpd_exportar_dados' %}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                        <i class="bi bi-download me-1"></i> Exportar Meus Dados
+                    </a>
+                    
+                    {% if candidato.lgpd_exclusao_solicitada %}
+                    <button class="btn btn-danger btn-sm" disabled>
+                        <i class="bi bi-clock-history me-1"></i> Exclusão Solicitada
+                    </button>
+                    <small class="text-muted text-center d-block mt-1" style="font-size: 0.75rem;">Sua solicitação está em análise.</small>
+                    {% else %}
+                    <form action="{% url 'core:lgpd_solicitar_exclusao' %}" method="post" onsubmit="return confirm('Tem certeza que deseja solicitar a exclusão de TODOS os seus dados? Esta ação é irreversível.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                            <i class="bi bi-trash me-1"></i> Solicitar Exclusão
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

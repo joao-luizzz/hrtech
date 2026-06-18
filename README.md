@@ -179,6 +179,7 @@ RETURN h.nome AS skill, r.nivel AS nivel,
 | Extração de texto | `pdfplumber` + Tesseract OCR para PDFs escaneados |
 | Extração de skills via IA | GPT-4o-mini identifica habilidades técnicas, soft skills e níveis |
 | Persistência no grafo | Skills são criadas como nós `:Habilidade` com relação `TEM_HABILIDADE` no Neo4j |
+| Sanitização de Dados | Centralizada em `normalize_skill_name()` para evitar poluição no grafo e duplicações (ex: "python" vs "Python") |
 | Processamento assíncrono | Celery task com retry e timeout — não bloqueia o HTTP |
 
 ### Motor de Matching
@@ -225,7 +226,7 @@ RETURN h.nome AS skill, r.nivel AS nivel,
 | Rate limiting | Proteção contra abuse em upload e endpoints caros |
 | CSRF em todos os forms | Django CSRF + `@csrf_protect` em views POST |
 | LGPD compliant | Exclusão de dados, exportação, auditoria de acesso, PII masking |
-| Headers de segurança | HSTS, X-Frame-Options DENY, XSS Filter, SSL redirect |
+| Headers de segurança | CSP, Referrer-Policy, Permissions-Policy, X-Frame-Options DENY, X-Content-Type-Options |
 | Credenciais seguras | 100% via `python-decouple`, zero hardcoded |
 
 ### UX & Interface
@@ -319,13 +320,16 @@ python manage.py collectstatic --noinput
 # 7. (Opcional) Popule o banco com dados de teste (PostgreSQL e Neo4j)
 python scripts/popular_banco.py
 
-# 8. (Opcional) Semeie as relações de similaridade de habilidades no Neo4j
+# 8. Crie as constraints de unicidade no Neo4j (CRÍTICO EM DESASTRE)
+python manage.py setup_neo4j_constraints
+
+# 9. (Opcional) Semeie as relações de similaridade de habilidades no Neo4j
 python manage.py seed_skill_similarities --force
 
-# 9. (Opcional) Reprocesse todos os currículos cadastrados para atualizar o grafo Neo4j
+# 10. (Opcional) Reprocesse todos os currículos cadastrados para atualizar o grafo Neo4j
 python manage.py reprocess_cvs --all --sync
 
-# 10. Inicie o servidor
+# 11. Inicie o servidor
 python manage.py runserver
 ```
 

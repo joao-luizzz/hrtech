@@ -570,6 +570,7 @@ class HistoricoAcao(models.Model):
         # Ações LGPD
         LGPD_SOLICITACAO = 'lgpd_solicitacao', 'Solicitação LGPD'
         LGPD_EXPORT = 'lgpd_export', 'Exportação de dados LGPD'
+        LGPD_EXCLUSAO_EXECUTADA = 'lgpd_exclusao', 'Exclusão LGPD executada'
 
     usuario = models.ForeignKey(
         User,

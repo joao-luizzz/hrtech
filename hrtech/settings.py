@@ -217,8 +217,8 @@ if not CACHE_URL and isinstance(CELERY_BROKER_URL, str) and CELERY_BROKER_URL.st
     CACHE_URL = CELERY_BROKER_URL
 
 # Configura backend de cache baseado na disponibilidade de Redis
+# Configuração de Cache
 if CACHE_URL.startswith(('redis://', 'rediss://')):
-    # Redis está disponível - usar para cache distribuído
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
