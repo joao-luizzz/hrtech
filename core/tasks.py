@@ -415,6 +415,10 @@ def processar_cv_task(self, candidato_id: str) -> dict:
         candidato.status_cv = Candidato.StatusCV.CONCLUIDO
         candidato.save(update_fields=['status_cv', 'updated_at'])
 
+        # Limpar cache de perguntas de entrevista, pois o perfil mudou
+        from core.services.interview_cache_service import InterviewCacheService
+        InterviewCacheService().invalidate_cache(str(candidato.id))
+
         logger.info(
             f"[Task {self.request.id}] CV processado: "
             f"{len(cv_parseado.habilidades)} habilidades extraídas"
