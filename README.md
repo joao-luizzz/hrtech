@@ -157,7 +157,7 @@ A última rodada de hardening focou em garantir a integridade dos dados, isolame
   - **Invalidação Automática**: O upload de um novo CV de um candidato automaticamente destrói o cache antigo de perguntas, garantindo que o RH sempre tenha perguntas baseadas na versão mais recente do perfil.
 - **Qualidade de Código e Refatoração**:
   - Motor de matching refatorado para o pacote `core/matching/`, dividindo responsabilidades em 6 módulos especializados (`scoring`, `auditing`, `tiebreak`, etc.) sem alterar regras de negócio.
-  - **Test Coverage**: A suite de testes local agora conta com **217 testes**, atingindo **46% de cobertura global** do projeto, e excelentes **84.6% de cobertura** para o pacote `core/matching/`.
+  - **Test Coverage**: A suite de testes local agora conta com **221 testes**, atingindo **46% de cobertura global** do projeto, e excelentes **84.6% de cobertura** para o pacote `core/matching/`.
                ▼
 ┌───────────┐       ┌──────────────┐       ┌─────────────────────┐
 │ PostgreSQL│       │  Neo4j       │       │       Redis         │
