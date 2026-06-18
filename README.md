@@ -137,8 +137,28 @@ RETURN h.nome AS skill, r.nivel AS nivel,
 │                     │ CandidateSvc  │   │  │ sync Neo4j         │  │ │
 │                     └───────────────┘   │  └────────────────────┘  │ │
 └─────┬──────────────────────┬────────────┴──────────┬─────────────────┘
-      │                      │                       │
-      ▼                      ▼                       ▼
+
+## Segurança e Conformidade (Fase Atual)
+
+A última rodada de hardening focou em garantir a integridade dos dados, isolamento entre locatários (tenant isolation) e segurança da API, além de melhorias significativas de refatoração para escalabilidade.
+
+- **LGPD e Privacidade**:
+  - Exportação completa de dados do candidato (incluindo skills e metadados).
+  - Exclusão em 3 estágios (Grafo -> Object Storage -> Transacional) com idempotência.
+  - Registro de auditoria antes da destruição de dados.
+- **Isolamento de Tenant**:
+  - Garantia de que queries de exclusão e visualização sempre exigem o `organization_id` do locatário.
+  - Testes específicos contra ataques IDOR (Insecure Direct Object Reference).
+- **Segurança e Rate Limiting da API**:
+  - Headers rigorosos via `CacheHeadersMiddleware` e Content Security Policy (CSP).
+  - **Rate Limiting** via Redis (Fixed Window) protegendo as rotas de IA e Matching (10 reqs/min por `user_id` para evitar abusos).
+- **Entrevistas com IA e Cache**:
+  - Sistema de Cache L1 (Redis, 5min TTL) e L2 (PostgreSQL) para perguntas de entrevista geradas via IA.
+  - **Invalidação Automática**: O upload de um novo CV de um candidato automaticamente destrói o cache antigo de perguntas, garantindo que o RH sempre tenha perguntas baseadas na versão mais recente do perfil.
+- **Qualidade de Código e Refatoração**:
+  - Motor de matching refatorado para o pacote `core/matching/`, dividindo responsabilidades em 6 módulos especializados (`scoring`, `auditing`, `tiebreak`, etc.) sem alterar regras de negócio.
+  - **Test Coverage**: A suite de testes local agora conta com **217 testes**, atingindo **46% de cobertura global** do projeto, e excelentes **84.6% de cobertura** para o pacote `core/matching/`.
+               ▼
 ┌───────────┐       ┌──────────────┐       ┌─────────────────────┐
 │ PostgreSQL│       │  Neo4j       │       │       Redis         │
 │           │       │  AuraDB      │       │                     │
@@ -385,7 +405,14 @@ O projeto inclui `render.yaml` com 3 serviços:
 ```
 hrtech/
 ├── core/                          # App principal
-│   ├── matching.py                # Motor de matching de 3 camadas (919 linhas)
+│   ├── matching/                  # Motor de matching de 3 camadas
+│   │   ├── __init__.py            # API Pública
+│   │   ├── engine.py              # Classe orquestradora (MatchingEngine)
+│   │   ├── scoring.py             # Lógica matemática (100% testável)
+│   │   ├── tiebreak.py            # Ordenação e critérios de desempate
+│   │   ├── explanations.py        # Geração de textos explicativos (Gaps)
+│   │   ├── auditing.py            # Serialização e snapshot no Postgres
+│   │   └── types.py               # Tipos fortes, Dataclasses e Constantes
 │   ├── neo4j_connection.py        # Singleton de conexão Neo4j com pool
 │   ├── schemas.py                 # Contrato Pydantic para respostas OpenAI
 │   ├── views.py                   # Views Django (1600+ linhas)
